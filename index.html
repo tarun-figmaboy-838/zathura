@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Driftbound</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@700;900&display=swap" />
+  <link rel="stylesheet" href="src/style.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- ============================== minimal in-game HUD -->
+  <div id="hud" class="hidden">
+    <div id="markers"></div>
+    <div id="turret-marker"></div>
+    <div id="crosshair"><span class="ring"></span><span class="dot"></span>
+      <svg id="hitmarker" viewBox="-20 -20 40 40" aria-hidden="true">
+        <line x1="-13" y1="-13" x2="-6" y2="-6" /><line x1="13" y1="-13" x2="6" y2="-6" />
+        <line x1="-13" y1="13" x2="-6" y2="6" /><line x1="13" y1="13" x2="6" y2="6" />
+      </svg>
+    </div>
+
+    <div id="top-left">
+      <div class="level"><b id="level-num">LEVEL 1</b><span id="level-name">Drift Lanes</span></div>
+      <div class="objective" id="objective">Cruising toward the black hole</div>
+      <div class="vitals">
+        <div class="vital shield"><svg viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5z" /></svg><i><em id="shield-bar"></em></i></div>
+        <div class="vital hull"><svg viewBox="0 0 24 24"><path d="M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7z" /></svg><i><em id="hull-bar"></em></i></div>
+      </div>
+    </div>
+
+    <div id="route" aria-hidden="true">
+      <span class="start"></span>
+      <div class="track"><div class="fill" id="route-fill"></div><div class="ticks"><i></i><i></i><i></i><i></i></div><div class="ship" id="route-ship"></div></div>
+      <span class="end"></span>
+    </div>
+
+    <div id="bossbar" class="hidden">
+      <div class="row"><b>Warden carrier</b><span id="boss-state">Shielded</span></div>
+      <div class="bar"><i id="boss-fill"></i></div>
+    </div>
+
+    <div id="top-right">
+      <div class="score"><span>Score</span><b id="score">0</b></div>
+      <button id="pause-btn" class="icon-btn" aria-label="Pause"><svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg></button>
+    </div>
+
+    <div id="banner"><div class="title"></div><div class="sub"></div></div>
+    <div id="alert"></div>
+  </div>
+
+  <!-- ============================== on-screen controls -->
+  <div id="controls" class="hidden" data-mode="chase">
+    <div class="pad">
+      <button class="dir up" data-hold="up" aria-label="Up"><svg class="arrow" viewBox="0 0 24 24"><path d="M12 6 5 15h14z" /></svg></button>
+      <button class="dir left" data-hold="left" aria-label="Left">
+        <svg class="arrow" viewBox="0 0 24 24"><path d="M6 12l9-7v14z" /></svg>
+        <svg class="rot" viewBox="0 0 24 24"><path d="M12 4a8 8 0 1 1-8 8h2.6A5.4 5.4 0 1 0 12 6.6V9.5L7.5 5 12 .5z" /></svg>
+      </button>
+      <button class="dir right" data-hold="right" aria-label="Right">
+        <svg class="arrow" viewBox="0 0 24 24"><path d="M18 12l-9 7V5z" /></svg>
+        <svg class="rot" viewBox="0 0 24 24"><path d="M12 4a8 8 0 1 0 8 8h-2.6A5.4 5.4 0 1 1 12 6.6V9.5L16.5 5 12 .5z" /></svg>
+      </button>
+      <button class="dir down" data-hold="down" aria-label="Down"><svg class="arrow" viewBox="0 0 24 24"><path d="M12 18 5 9h14z" /></svg></button>
+      <div class="pad-label">Steer</div>
+    </div>
+    <div class="actions">
+      <button class="act shield" data-tap="shield" aria-label="Shield">
+        <span class="cd"></span>
+        <svg viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5z" /></svg><b>Shield</b><kbd>Q</kbd>
+      </button>
+      <button class="act lock" data-tap="lock" aria-label="Lock on">
+        <span class="cd"></span>
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5" fill="none" stroke-width="2.4" /><circle cx="12" cy="12" r="2" /><path d="M12 1v5M12 18v5M1 12h5M18 12h5" stroke-width="2.4" /></svg><b>Lock</b><kbd>E</kbd>
+      </button>
+      <button class="act fire" data-hold="fire" aria-label="Fire">
+        <span class="heat"></span>
+        <svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z" /></svg><b>Fire</b><kbd>Space</kbd>
+      </button>
+    </div>
+  </div>
+
+  <div id="skip" class="hidden">Click to skip</div>
+
+  <!-- ============================== title -->
+  <div id="title" class="screen">
+    <div class="panel">
+      <div class="brand">
+        <div class="kicker">Haven-9 Orbital · Pad 3</div>
+        <h1>DRIFTBOUND</h1>
+        <p class="tagline">Fly 5 levels through the belt to the black hole. Blast the raiders that swarm your ship, then shoot your way through the meteor fields.</p>
+      </div>
+      <button id="start" class="primary" disabled><span class="icon">▶</span><span class="text">Loading…</span></button>
+      <div class="best-line">Best score <b id="title-best">0</b></div>
+      <div class="howto">
+        <div><span class="chip">🎯</span><span><b>Aim</b> with the mouse or touch · <b>Fire</b> with click, Space or the Fire button</span></div>
+        <div><span class="chip">◀▶</span><span><b>Steer</b> with the arrow buttons or arrow keys · in battles they <b>rotate the cannon</b></span></div>
+        <div><span class="chip">⚡</span><span><b>Lock</b> (E) auto-aims for a few seconds · <b>Shield</b> (Q) blocks all damage</span></div>
+      </div>
+      <p id="load-msg"></p>
+    </div>
+  </div>
+
+  <!-- ============================== pause / game over / victory -->
+  <div id="pause" class="screen modal hidden">
+    <div class="panel small">
+      <h2>Paused</h2>
+      <button id="resume" class="primary"><span class="icon">▶</span><span class="text">Resume</span></button>
+    </div>
+  </div>
+
+  <div id="gameover" class="screen modal hidden">
+    <div class="panel small">
+      <div class="kicker danger">Signal lost</div>
+      <h2>Ship destroyed</h2>
+      <div class="results">
+        <div><span>Score</span><b id="go-score">0</b></div>
+        <div><span>Level</span><b id="go-level">1</b></div>
+      </div>
+      <button id="retry" class="primary"><span class="icon">↻</span><span class="text">Retry level</span></button>
+      <button id="restart" class="ghost">Restart from the station</button>
+    </div>
+  </div>
+
+  <div id="victory" class="screen modal hidden">
+    <div class="panel small">
+      <div class="kicker">Journey complete</div>
+      <h2>Event horizon</h2>
+      <p class="muted">You crossed all five levels and dived into the black hole.</p>
+      <div class="results">
+        <div><span>Score</span><b id="v-score">0</b></div>
+        <div><span>Best</span><b id="v-best">0</b></div>
+      </div>
+      <div class="new-best hidden" id="v-newbest">New best score</div>
+      <button id="again" class="primary"><span class="icon">↻</span><span class="text">Fly again</span></button>
+    </div>
+  </div>
+
+  <div id="whiteout"></div>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
