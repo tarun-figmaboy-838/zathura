@@ -968,6 +968,10 @@ function frame() {
   bossBolts.setViewport(pxScale);
 
   audio.update(camera, ship, turret, flying);
+  // the system cursor is hidden only while the aiming crosshair replaces it (cruise and meteor
+  // fields); everywhere else (title, intro, angle battles, menus) the normal pointer shows
+  const wantCursor = play && !battlePhase() ? 'none' : 'default';
+  if (canvas.style.cursor !== wantCursor) canvas.style.cursor = wantCursor;
   if (play || mode === 'dying') {
     turret.aimPoint(markerPoint, Math.max(20, Math.min(turretPos.distanceTo(aim), 600)));
     if (input.pointerSeen && !state.locked && state.manualT <= input.pointerT) {
