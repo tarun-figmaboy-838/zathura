@@ -331,7 +331,7 @@ export class Effects {
     }
     this.smoke.emit(pos, vel.copy(dir).multiplyScalar(4).add(shipVel), 0.7, 0.4, 1.8, SMOKE0, SMOKE1, 3, 0.35);
     this.muzzleLight.position.copy(pos);
-    this.muzzleLight.intensity = 140;
+    this.muzzleLight.intensity = 55;
   }
 
   enemyMuzzle(pos, dir, shipVel) {

@@ -154,12 +154,15 @@ export class Raiders {
     r.whoosh = false;
     r.seed = Math.random() * 100;
     r.boltSpeed = ENEMY_BOLT_SPEED;
+    r.hold = null;      // set to an offset from the ship to make it hover there (angle battles)
+    r.holdT = 0;
+    r.shots = 0;        // scripted shots still to fire at the ship
     if (arena) {
       // top-view battle: slower, readable, circling close around the ship
       r.maxSpeed = r.speed = 46 + skill * 4;
       r.turnRate = 2.4 + skill * 0.12;
       r.boltSpeed = 150 + skill * 12;
-      r.orbitR = rand(36, 60);
+      r.orbitR = rand(30, 46);
       r.orbitTime = rand(1.2, 3);
       r.orbitDir = Math.random() < 0.5 ? -1 : 1;
       r.nextShot = time + rand(1.5, 2.5);
@@ -185,6 +188,7 @@ export class Raiders {
     const sp = ship.position;
     for (const r of this.list) {
       if (!r.alive) continue;
+      if (r.hold) { this.holdUpdate(r, dt, t, ctx); continue; }
       r.t += dt;
       const pos = r.root.position;
       const q = r.root.quaternion;
@@ -256,6 +260,42 @@ export class Raiders {
     this.separate(dt);
   }
 
+  // hover at a fixed spot next to the ship, facing it, and fire only when told to
+  holdUpdate(r, dt, t, ctx) {
+    const sp = ctx.ship.position;
+    const pos = r.root.position;
+    r.holdT += dt;
+    pos.copy(sp).add(r.hold);
+    r.vel.copy(ctx.ship.velocity);
+    _m.lookAt(pos, sp, UP);
+    r.root.quaternion.slerp(_q.setFromRotationMatrix(_m), 1 - Math.exp(-6 * dt));
+    r.visual.position.y = Math.sin(t * 2.2 + r.seed) * 0.35;
+    r.visual.rotation.z = Math.sin(t * 1.3 + r.seed) * 0.08;
+    r.flash = Math.max(0, r.flash - dt * 6);
+    for (const m of r.hullMats) m.emissive.setRGB(r.flash * 1.6, r.flash * 0.7, r.flash * 0.3);
+    r.glowMat.emissiveIntensity = r.glowBase * (0.85 + 0.15 * Math.sin(t * 7 + r.seed));
+    _fwd.set(0, 0, -1).applyQuaternion(r.root.quaternion);
+    this.trails.push(r.trail, _a.copy(pos).addScaledVector(_fwd, -3.1), t);
+    if (r.shots > 0 && t >= r.nextShot && ctx.shipAlive) {
+      r.root.updateMatrixWorld(true);
+      const gun = r.guns[r.gunIdx];
+      r.gunIdx ^= 1;
+      gun.getWorldPosition(_gun);
+      _dir.subVectors(sp, _gun).normalize().addScaledVector(randomDir(_c), 0.012).normalize();
+      ctx.bolts.spawn(_gun, _dir, r.vel, r.boltSpeed, ENEMY_BOLT_DAMAGE);
+      ctx.fx.enemyMuzzle(_gun, _dir, r.vel);
+      ctx.audio.enemyShot(_gun);
+      r.shots--;
+      r.nextShot = t + 0.16;
+    }
+  }
+
+  // a held raider fires a short burst at the ship
+  punish(r, t) {
+    r.shots = 3;
+    r.nextShot = t;
+  }
+
   // steer around asteroids ahead, and away from the player's hull unless attacking
   avoid(r, fwd, distToShip, ctx) {
     const pos = r.root.position;
@@ -272,7 +312,7 @@ export class Raiders {
       _c.normalize();
       _des.addScaledVector(_c, 3 * (1 - Math.max(0, along) / (look + reach)));
     }
-    const near = ctx.arena ? distToShip < 20 : distToShip < 45 && r.state !== 'attack';
+    const near = ctx.arena ? distToShip < 22 : distToShip < 45 && r.state !== 'attack';
     if (near) _des.addScaledVector(_toShip, -2 / Math.max(distToShip, 1));
   }
 
@@ -284,7 +324,7 @@ export class Raiders {
     if (r.state !== 'attack') {
       const ang = Math.atan2(pos.x - sp.x, pos.z - sp.z) + r.orbitDir * 0.55;
       _tgt.set(sp.x + Math.sin(ang) * r.orbitR, sp.y, sp.z + Math.cos(ang) * r.orbitR);
-      if (r.state !== 'orbit' && Math.abs(dist - r.orbitR) < 14) { r.state = 'orbit'; r.t = 0; }
+      if (r.state !== 'orbit' && Math.abs(dist - r.orbitR) < 12) { r.state = 'orbit'; r.t = 0; }
       if (r.state === 'orbit' && r.t > r.orbitTime) { r.state = 'attack'; r.t = 0; }
       return r.maxSpeed;
     }
@@ -292,10 +332,10 @@ export class Raiders {
     _tgt.copy(_aim);
     _tgt.y = sp.y;
     if (ctx.shipAlive) this.tryFire(r, t, dist, ctx);
-    if (dist < 24 || r.t > 3.2) {
+    if (dist < 26 || r.t > 3.2) {
       r.state = 'orbit';
       r.t = 0;
-      r.orbitR = rand(36, 60);
+      r.orbitR = rand(30, 46);
       r.orbitTime = rand(1.4, 3.4);
       if (Math.random() < 0.5) r.orbitDir *= -1;
       r.burst = 0;

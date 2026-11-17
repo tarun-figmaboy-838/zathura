@@ -303,6 +303,46 @@ export class AudioEngine {
     this.burst('bandpass', 1200, 2, 0.08, 0.5, o, t);
   }
 
+  // crossing the event horizon: a deep falling boom under a rising rush of noise
+  horizon() {
+    if (!this.ready()) return;
+    const t = this.ctx.currentTime;
+    const o = this.out(1.0);
+    this.osc('sine', 130, 24, 2.2, 0.9, o, t, 0.02);
+    this.osc('sawtooth', 65, 30, 1.6, 0.18, o, t, 0.05);
+    this.burst('lowpass', 300, 0.7, 1.8, 0.8, o, t, 4200, 0.4);
+  }
+
+  // right answer: bright rising chord
+  correct() {
+    if (!this.ready()) return;
+    const t = this.ctx.currentTime;
+    const o = this.out(0.3);
+    [660, 830, 990, 1320].forEach((f, i) => this.osc('triangle', f, f, 0.22, 0.45, o, t + i * 0.06));
+  }
+
+  // wrong answer: short low double buzz
+  wrong() {
+    if (!this.ready()) return;
+    const t = this.ctx.currentTime;
+    const o = this.out(0.28);
+    const f = this.ctx.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.value = 1200;
+    f.connect(o);
+    this.osc('square', 180, 150, 0.14, 0.5, f, t);
+    this.osc('square', 150, 120, 0.2, 0.5, f, t + 0.16);
+  }
+
+  uiConfirm() {
+    if (!this.ready()) return;
+    const t = this.ctx.currentTime;
+    const o = this.out(0.28);
+    this.osc('sine', 520, 520, 0.09, 0.5, o, t);
+    this.osc('sine', 780, 780, 0.12, 0.45, o, t + 0.07);
+    this.osc('sine', 1170, 1170, 0.2, 0.35, o, t + 0.14);
+  }
+
   boostWhoosh() {
     if (!this.ready() || !this.limit('boost', 500)) return;
     const t = this.ctx.currentTime;

@@ -95,7 +95,7 @@ export class Boss {
 
   get turretsLeft() { return this.turrets.filter((t) => t.alive).length; }
 
-  spawn(ship, time) {
+  spawn(ship, time, angle = rand(0, Math.PI * 2)) {
     for (const t of this.turrets) {
       t.hp = TURRET_HP;
       t.alive = true;
@@ -111,11 +111,12 @@ export class Boss {
     this.root.visible = true;
     this.model.visible = true;
     this.shield.visible = true;
+    this.shield.scale.setScalar(1);
     this.shieldMat.uniforms.uFade.value = 1;
     this.shieldCollapse = 0;
     this.flash = 0;
     this.coreFlash = 0;
-    this.angle = rand(0, Math.PI * 2);
+    this.angle = angle;
     this.entry = 1;
     this.nextLaunch = time + 10;
     this.volleyT = time + 3;
@@ -123,6 +124,7 @@ export class Boss {
     this.nextBarrage = 0;
     this.charge = 0;
     this.rings = [];
+    this.holdAngle = null;   // angle battles: park the carrier at this orbit angle
     this.place(ship, 0);
     this.root.quaternion.identity();
   }
@@ -158,7 +160,10 @@ export class Boss {
 
     // sweep in from far out, then circle the ship (faster once the core is exposed)
     this.entry = Math.max(0, this.entry - dt / 3.5);
-    this.angle += (this.phase === 'core' ? 0.17 : 0.1) * dt;
+    if (this.holdAngle !== null) {
+      const d = Math.atan2(Math.sin(this.holdAngle - this.angle), Math.cos(this.holdAngle - this.angle));
+      this.angle += Math.max(-0.8 * dt, Math.min(0.8 * dt, d));
+    } else this.angle += (this.phase === 'core' ? 0.17 : 0.1) * dt;
     this.place(ship, dt);
     _c.set(Math.cos(this.angle) * 80, 0, -Math.sin(this.angle) * 66).normalize();
     _m.lookAt(this.root.position, _b.copy(this.root.position).add(_c), UP);
@@ -203,7 +208,7 @@ export class Boss {
     }
     // turrets take turns: one two-shot volley at a time, slower as turrets are destroyed
     const alive = this.turretsLeft;
-    if (ready && alive && t > this.volleyT) {
+    if (!this.quiz && ready && alive && t > this.volleyT) {
       for (let k = 0; k < 4; k++) {
         const tr = this.turrets[(this.volleyIdx + k) % 4];
         if (!tr.alive) continue;
@@ -217,7 +222,7 @@ export class Boss {
 
     // core phase: charge up (telegraphed), then three spinning radial rings
     let charging = 0;
-    if (this.phase === 'core' && ready) {
+    if (!this.quiz && this.phase === 'core' && ready) {
       if (this.charge <= 0 && !this.rings.length && t > this.nextBarrage) {
         this.charge = 1.7;
         ctx.onBarrageWarning();
@@ -251,7 +256,7 @@ export class Boss {
     this.coreMat.emissiveIntensity = this.coreBase * (pulse + this.coreFlash * 1.5) * (this.phase === 'core' ? 1.3 : 0.8);
 
     // hangar launches
-    if (ready && t > this.nextLaunch && ctx.raiders.count < (this.phase === 'core' ? 2 : 1)) {
+    if (!this.quiz && ready && t > this.nextLaunch && ctx.raiders.count < (this.phase === 'core' ? 2 : 1)) {
       this.hangar.getWorldPosition(_b);
       _c.set(0, 0, -1).applyQuaternion(this.root.quaternion);
       ctx.launchRaider(_b.clone(), _c.clone());
@@ -296,7 +301,7 @@ export class Boss {
     // weak points first: the core shield must never swallow a shot aimed at a turret
     for (const tr of this.turrets) if (tr.alive) test(tr.pos, TURRET_R, tr.part);
     if (!best) {
-      if (this.phase === 'turrets') test(this.corePos, SHIELD_R, this.parts.shield);
+      if (this.phase === 'turrets') { if (!this.quiz) test(this.corePos, SHIELD_R, this.parts.shield); }
       else test(this.corePos, CORE_R, this.parts.core);
     }
     // no hull blocking: from the top view bolts visibly travel over the deck to the far turrets
@@ -328,6 +333,24 @@ export class Boss {
     }
     if (part.kind === 'shield') this.shieldMat.uniforms.uFlash.value = 1;
     return part.kind;
+  }
+
+  // angle battles: return fire after a wrong answer (turret bursts, or aimed shots from the core)
+  punish(t, ctx) {
+    let k = 0;
+    for (const tr of this.turrets) {
+      if (!tr.alive) continue;
+      tr.burst = 2;
+      tr.nextShot = t + 0.12 * k++;
+    }
+    if (k) return;
+    for (let i = 0; i < 4; i++) {
+      _c.copy(ctx.ship.position).sub(this.corePos).normalize();
+      _c.x += rand(-0.04, 0.04);
+      _c.z += rand(-0.04, 0.04);
+      ctx.bolts.spawn(this.corePos, _c.normalize(), this.vel, BOLT_SPEED * (1 + i * 0.08), 5);
+    }
+    ctx.audio.warp(this.corePos);
   }
 
   // live weak points for lock-on / aim assist

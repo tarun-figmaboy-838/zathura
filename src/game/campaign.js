@@ -5,11 +5,11 @@ export const LEVELS = [
   { name: 'Ion Reach', raiders: 4, maxAlive: 3, skill: 1, meteors: 8 },
   { name: 'Nebula Gate', raiders: 5, maxAlive: 3, skill: 2, meteors: 10 },
   { name: 'Shattered Belt', raiders: 6, maxAlive: 4, skill: 3, meteors: 12 },
-  { name: 'Event Horizon', raiders: 0, maxAlive: 0, skill: 4, meteors: 14, boss: true },
+  { name: 'The Warden', raiders: 0, maxAlive: 0, skill: 4, meteors: 14, boss: true },
 ];
 
-// Phase timings / speeds. Each level: a short journey → raiders appear (top view) →
-// targets cleared → meteor field (chase view) → level complete. After the last level: finale.
+// Phase timings / speeds. Each sector: fly through its gate → raiders appear (top view) →
+// targets cleared → meteor field (chase view) → sector complete. After the last one: the jump home.
 const PHASES = {
   journey: { view: 'chase', speed: 125, steer: true },
   contact: { view: 'top', speed: 16, steer: false },
@@ -48,19 +48,19 @@ export class Campaign {
     this.announced = false;
   }
 
-  // ctx: { raiders, field, ship, announce(title, sub), spawnRaider(pos, lookAt, skill),
-  //        spawnMeteor(pos, size, vel), levelComplete(level) }
+  // ctx: { raiders, field, ship, boss, sector(level), announce(title, sub), spawnBoss(),
+  //        spawnRaider(pos, lookAt, skill), spawnMeteor(pos, size, vel), levelComplete(level) }
   update(dt, ctx) {
     this.t += dt;
     const L = this.L;
     const ship = ctx.ship.position;
     switch (this.phase) {
       case 'journey':
-        if (!this.announced) { this.announced = true; ctx.announce(`LEVEL ${this.level + 1}`, L.name); }
+        if (!this.announced) { this.announced = true; ctx.sector(this.level); }
         if (this.t > 6.5) {
           this.enter('contact');
-          if (L.boss) ctx.announce('WARNING', 'Warden carrier · destroy its 4 turrets');
-          else ctx.announce('HOSTILES INBOUND', 'Aim the cannon at them and fire');
+          if (L.boss) ctx.announce('WARDEN INBOUND', 'Destroy the 4 turrets');
+          else ctx.announce('HOSTILES', '');
         }
         break;
       case 'contact':
@@ -71,27 +71,29 @@ export class Campaign {
       case 'boss':
         if (ctx.boss.defeated && ctx.raiders.count === 0 && this.t > 1) {
           this.enter('cleared');
-          ctx.announce('WARDEN DESTROYED', 'The way to the black hole is open');
+          ctx.announce('WARDEN DOWN', '');
         }
         break;
       case 'battle': {
-        this.spawnT -= dt;
-        if (this.spawned < L.raiders && this.spawnT <= 0 && ctx.raiders.count < L.maxAlive) {
-          const a = rand(0, Math.PI * 2);
-          ctx.spawnRaider({ x: ship.x + Math.sin(a) * 95, y: ship.y, z: ship.z + Math.cos(a) * 70 }, ship, L.skill);
-          this.spawned++;
-          this.spawnT = rand(0.5, 1.1);
-        }
-        if (this.spawned >= L.raiders && ctx.raiders.count === 0) {
+        // angle battle: one raider at a time, each one is a question
+        if (ctx.raiders.count > 0) break;
+        if (this.spawned < L.raiders) {
+          this.spawnT -= dt;
+          if (this.spawnT <= 0) {
+            ctx.spawnRaider(L.skill, this.spawned);
+            this.spawned++;
+            this.spawnT = 1.0;
+          }
+        } else {
           this.enter('cleared');
-          ctx.announce('TARGETS DESTROYED', 'Meteor field ahead');
+          ctx.announce('CLEAR', '');
         }
         break;
       }
       case 'cleared':
         if (this.t > 2.4) {
           this.enter('meteors');
-          ctx.announce('METEOR FIELD', 'Shoot the meteoroids · steer to dodge');
+          ctx.announce('METEOR FIELD', '');
         }
         break;
       case 'meteors':
@@ -119,19 +121,16 @@ export class Campaign {
     }
   }
 
+  // short objective line for the HUD ('' hides it)
   objective(boss) {
     const L = this.L;
     switch (this.phase) {
-      case 'journey': return 'Cruising toward the black hole';
       case 'contact':
-      case 'battle': return `Raiders destroyed ${this.destroyed}/${L.raiders}`;
+      case 'battle': return L.boss ? 'Turrets 0/4' : `Raiders ${this.destroyed}/${L.raiders}`;
       case 'boss':
-        if (!boss || boss.phase === 'turrets') return `Destroy the turrets ${4 - (boss ? boss.turretsLeft : 4)}/4`;
-        return 'Shields down · destroy the core!';
-      case 'cleared': return 'Targets destroyed';
-      case 'meteors': return `Meteoroids ${this.destroyed}/${L.meteors}`;
-      case 'complete': return 'Level complete';
-      case 'finale': return 'Entering the event horizon';
+        if (!boss || boss.phase === 'turrets') return `Turrets ${4 - (boss ? boss.turretsLeft : 4)}/4`;
+        return 'Destroy the core';
+      case 'meteors': return `Meteors ${this.destroyed}/${L.meteors}`;
       default: return '';
     }
   }

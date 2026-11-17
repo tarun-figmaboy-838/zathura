@@ -5,14 +5,15 @@ import { VALUE3 } from '../shaders/noise.js';
 //  - gravitational lensing: the nebula behind it is re-sampled along bent rays (Einstein ring)
 //  - event-horizon shadow + photon ring
 //  - a swirling, Doppler-brightened accretion disk, plus its lensed far side arching over the top
-export function createBlackHole(skyCube, { position, radius = 450 } = {}) {
+export function createBlackHole(skyCube, { position, radius = 450, normal = new THREE.Vector3(0, 1, 0.24) } = {}) {
   const uniforms = {
     uSky: { value: skyCube },
     uCenter: { value: position.clone() },
     uR: { value: radius },
     uTime: { value: 0 },
-    uN: { value: new THREE.Vector3(0.0, 1.0, 0.24).normalize() },
+    uN: { value: normal.clone().normalize() },
     uIntensity: { value: 1 },
+    uDisk: { value: 1 },        // brightness of the glowing parts only (disk, arcs, photon ring)
   };
   const mat = new THREE.ShaderMaterial({
     uniforms,
@@ -32,7 +33,7 @@ export function createBlackHole(skyCube, { position, radius = 450 } = {}) {
     fragmentShader: /* glsl */ `
       uniform samplerCube uSky;
       uniform vec3 uCenter, uN;
-      uniform float uR, uTime, uIntensity;
+      uniform float uR, uTime, uIntensity, uDisk;
       varying vec3 vWorld;
       ${VALUE3}
 
@@ -69,7 +70,7 @@ export function createBlackHole(skyCube, { position, radius = 450 } = {}) {
         // lensed background
         float thE = angR * 2.3;
         float beta = th - thE * thE / max(th, 1e-5);
-        vec3 col = textureCube(uSky, normalize(c * cos(beta) + perp * sin(beta))).rgb * 1.25;
+        vec3 col = textureCube(uSky, normalize(c * cos(beta) + perp * sin(beta))).rgb;
 
         // basis in the disk plane, and the disk's "up" as seen on screen
         vec3 N = uN;
@@ -84,7 +85,7 @@ export function createBlackHole(skyCube, { position, radius = 450 } = {}) {
           float ang = atan(dot(perp, cross(c, nScreen)), side);
           float a2;
           vec3 arc = diskColor(1.75 + (x - 1.05) * 2.6, ang * 1.2 + 3.14159, a2);
-          col += arc * arcBand * a2 * (0.45 + 0.75 * smoothstep(-0.3, 0.8, side));
+          col += arc * arcBand * a2 * (0.45 + 0.75 * smoothstep(-0.3, 0.8, side)) * uDisk;
         }
 
         // direct image of the near disk (ray / plane intersection), hidden behind the horizon
@@ -103,14 +104,14 @@ export function createBlackHole(skyCube, { position, radius = 450 } = {}) {
               vec3 dc = diskColor(r, atan(dot(P, V), dot(P, U)), a);
               vec3 vel = normalize(cross(N, P));
               float doppler = 0.55 + 0.9 * max(0.0, dot(vel, -rd) * 0.5 + 0.5);
-              col = mix(col, col * 0.3 + dc * doppler * 1.4, a * 0.92);
+              col = mix(col, col * 0.3 + dc * doppler * 1.4 * uDisk, a * 0.92);
             }
           }
         }
 
         // photon ring and the shadow itself
-        col += vec3(1.0, 0.85, 0.65) * exp(-pow((x - 1.04) * 26.0, 2.0)) * 3.0;
-        col += vec3(0.6, 0.4, 1.0) * exp(-pow((x - 1.1) * 7.0, 2.0)) * 0.35;
+        col += vec3(1.0, 0.85, 0.65) * exp(-pow((x - 1.04) * 26.0, 2.0)) * 3.0 * uDisk;
+        col += vec3(0.6, 0.4, 1.0) * exp(-pow((x - 1.1) * 7.0, 2.0)) * 0.35 * uDisk;
         col *= smoothstep(0.97, 1.01, x);
 
         float alpha = 1.0 - smoothstep(6.0, 9.0, x);
@@ -127,6 +128,7 @@ export function createBlackHole(skyCube, { position, radius = 450 } = {}) {
     get position() { return uniforms.uCenter.value; },
     update(time) { uniforms.uTime.value = time; },
     blocksRay(origin, dir) {
+      if (!mesh.visible) return false;
       _v.copy(uniforms.uCenter.value).sub(origin);
       const tca = _v.dot(dir);
       return tca > 0 && _v.lengthSq() - tca * tca < radius * radius * 2.2;

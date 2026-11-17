@@ -191,16 +191,17 @@ export function createPlanet(sunDir, skyCube, { position, radius = 900, preset =
   }
 
   const _n = new THREE.Vector3();
-  return {
+  const api = {
     object: group,
     radius,
+    enabled: true,
     update(camera, time) {
       uniforms.uTime.value = time;
       // only worlds within ~6.5 km ahead are shown, so the route never feels crowded
       const ahead = camera.position.z - group.position.z;
       const f = Math.min(1, Math.max(0, (6500 - ahead) / 1500));
       uniforms.uFade.value = f;
-      group.visible = f > 0.001;
+      group.visible = api.enabled && f > 0.001;
     },
     blocksRay(origin, dir) {
       if (!group.visible) return false;
@@ -210,4 +211,5 @@ export function createPlanet(sunDir, skyCube, { position, radius = 900, preset =
       return b < 0 && b * b - c > 0;
     },
   };
+  return api;
 }

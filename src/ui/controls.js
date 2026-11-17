@@ -1,6 +1,6 @@
-// On-screen, game-style controls: a direction pad on the left (steer the ship, or rotate the
-// cannon in top view) and action buttons on the right (FIRE with a heat ring, LOCK-ON and
-// SHIELD with cooldown sweeps). Works with mouse and multi-touch; keys light them up too.
+// On-screen, game-style controls while cruising: left/right steering on the left and action
+// buttons on the right (FIRE with a heat ring, LOCK-ON and SHIELD with cooldown sweeps). Works
+// with mouse and multi-touch; keys light them up too.
 export class Controls {
   constructor(input) {
     this.input = input;
@@ -44,11 +44,11 @@ export class Controls {
     el._urge = setTimeout(() => el.classList.remove('urge'), seconds * 1000);
   }
 
-  // 'chase' = steer with four arrows, 'top' = rotate the cannon with two
+  // 'chase': steer left/right, fire, lock, shield. 'top' (angle battles): hidden, the answer
+  // options take over (see game/quiz.js)
   setMode(mode) {
     if (this.root.dataset.mode === mode) return;
     this.root.dataset.mode = mode;
-    this.root.querySelector('.pad-label').textContent = mode === 'top' ? 'Rotate cannon' : 'Steer';
   }
 
   update({ heat, overheated, lock, shield }) {

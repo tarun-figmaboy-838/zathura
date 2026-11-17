@@ -5,7 +5,7 @@ import * as THREE from 'three';
 export class EngineFX {
   constructor(ship, scene) {
     this.ship = ship;
-    this.uniforms = { uTime: { value: 0 }, uThrottle: { value: 0 }, uBoost: { value: 0 } };
+    this.uniforms = { uTime: { value: 0 }, uThrottle: { value: 0 }, uBoost: { value: 0 }, uRed: { value: 0 } };
     const mat = new THREE.ShaderMaterial({
       uniforms: this.uniforms,
       transparent: true,
@@ -21,7 +21,7 @@ export class EngineFX {
           gl_Position = projectionMatrix * mv;
         }`,
       fragmentShader: /* glsl */ `
-        uniform float uTime, uThrottle, uBoost;
+        uniform float uTime, uThrottle, uBoost, uRed;
         varying vec3 vPos; varying vec3 vN; varying vec3 vView;
         void main() {
           float t = clamp(vPos.z, 0.0, 1.0);
@@ -33,7 +33,8 @@ export class EngineFX {
           vec3 hot = vec3(1.0, 0.95, 0.9);
           vec3 cold = mix(vec3(0.25, 0.6, 1.0), vec3(0.6, 0.35, 1.0), uBoost);
           vec3 col = mix(hot, cold, smoothstep(0.0, 0.3, t));
-          gl_FragColor = vec4(col * (0.5 + 2.2 * uThrottle + 2.5 * uBoost), a * (0.55 + 0.45 * uThrottle));
+          col = mix(col, vec3(0.9, 0.08, 0.02), uRed);
+          gl_FragColor = vec4(col * (0.5 + 2.2 * uThrottle + 2.5 * uBoost), a * (0.55 + 0.45 * uThrottle) * (1.0 - uRed));
         }`,
     });
 
@@ -63,8 +64,9 @@ export class EngineFX {
     this.uniforms.uTime.value = time;
     this.uniforms.uThrottle.value = s.thrust;
     this.uniforms.uBoost.value = s.boost;
+    this.uniforms.uRed.value = s.redshift;
     const len = 1.6 + s.thrust * 5 + s.boost * 7; // long hot boost plumes: the look we're keeping
     for (const p of this.plumes) p.scale.set(1, 1, len * (0.95 + Math.random() * 0.1));
-    this.light.intensity = 3 + s.thrust * 22 + s.boost * 30;
+    this.light.intensity = (3 + s.thrust * 22 + s.boost * 30) * (1 - s.redshift);
   }
 }

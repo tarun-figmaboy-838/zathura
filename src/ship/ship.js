@@ -8,6 +8,7 @@ const _qa = new THREE.Quaternion();
 const X = new THREE.Vector3(1, 0, 0);
 const Y = new THREE.Vector3(0, 1, 0);
 const Z = new THREE.Vector3(0, 0, 1);
+const DEEP_RED = new THREE.Color(0.55, 0.06, 0.03);
 
 // "Used-future" surface: triplanar panel seams with per-panel tint/roughness variation,
 // grime streaks that run aft, chipped paint exposing bare metal near seams, and carbon
@@ -113,6 +114,23 @@ export class Ship {
     this.docked = false;   // held by the station clamps: no physics, no bob
     this.kinematic = false; // moved by rail() / the finale instead of the free-flight model
     this.scripted = null;  // { fwd, boost } overrides the controls (launch cinematic)
+    this.redshift = 0;     // 0..1 near a black hole: colours slide to deep red and fade to black
+    this.base = new Map([...Object.values(this.materials)].map((m) => [m, {
+      color: m.color.clone(), emissive: m.emissive.clone(), env: m.envMapIntensity ?? 1,
+    }]));
+  }
+
+  // light climbing out of a deep gravity well loses energy: the ship reddens and darkens until
+  // it is a black silhouette against the disk
+  setRedshift(k) {
+    if (k === this.redshift) return;
+    this.redshift = k;
+    const dim = Math.pow(1 - k, 1.6);
+    for (const [m, b] of this.base) {
+      m.color.copy(b.color).lerp(DEEP_RED, Math.min(1, k * 1.2)).multiplyScalar(dim);
+      m.emissive.copy(b.emissive).lerp(DEEP_RED, k).multiplyScalar(dim);
+      m.envMapIntensity = b.env * dim;
+    }
   }
 
   get position() { return this.root.position; }
@@ -127,6 +145,7 @@ export class Ship {
     this.model.visible = true;
     this.visual.rotation.set(0, 0, 0);
     this.visual.scale.set(1, 1, 1);
+    this.setRedshift(0);
   }
 
   // On-rails flight: the route carries the ship forward (-Z) at `speed`; steer (-1..1) slides it
@@ -153,8 +172,9 @@ export class Ship {
   // cannon coils glow with heat and flash on each shot
   setCannonGlow(heat, flash) {
     if (!this.cannonGlow) return;
-    this.cannonGlow.emissiveIntensity = this.cannonBase * (0.55 + heat * 1.6 + flash * 1.5);
-    this.cannonGlow.emissive.setRGB(1.0, 0.42 - heat * 0.3, 0.08);
+    const dim = 1 - this.redshift;
+    this.cannonGlow.emissiveIntensity = this.cannonBase * (0.55 + heat * 1.6 + flash * 1.5) * dim * dim;
+    this.cannonGlow.emissive.setRGB(1.0, (0.42 - heat * 0.3) * dim, 0.08 * dim);
   }
 
   update(dt, input, time, controllable) {
