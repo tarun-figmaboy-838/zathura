@@ -98,7 +98,8 @@ export class Intro {
     s.root.position.set(0, 0, 0);
     s.root.quaternion.identity();
     s.docked = true;
-    if (this.tube) this.tube.alpha = 0;      // the wormhole closes until the next dive
+    if (this.tube) { this.tube.alpha = 0; this.tube.exit = 0; }      // the wormhole closes until the next dive
+    this.white = 0;
     this.phase = 'docked';
     this.t = 0;
     this.fade = 0;
@@ -251,7 +252,7 @@ export class Intro {
       this.distort = k;
       this.dir.copy(toBH);
       this.infall(dt, sp, toBH, R, k);
-      if (this.tube) this.tube.alpha = ease((k - 0.45) / 0.5);
+      if (this.tube) this.tube.alpha = ease((k - 0.2) / 0.75);   // the throat opens gradually as the ship falls
       if (dist < R * 1.03) {
         this.stage = 'follow';
         this.crossT = t;
@@ -284,6 +285,10 @@ export class Intro {
       s.setRedshift(Math.max(0, 1 - this.tunnelT / 0.5));
       s.visual.scale.lerp(ONE, 1 - Math.exp(-5 * dt));
       if (this.tunnelT > 0.5) this.blackhole.object.visible = false;   // behind us now
+      // the light at the far end swells until everything is white, and the ship comes out of it
+      const e = ease((this.tunnelT - (TUNNEL_TIME - 0.8)) / 0.8);
+      if (this.tube) this.tube.exit = e;
+      this.white = e * e;
     }
     s.velocity.copy(this.dir).multiplyScalar(this.speed);
     sp.addScaledVector(s.velocity, dt);
@@ -297,6 +302,7 @@ export class Intro {
     this.tunnelT = 0;
     s.model.visible = true;
     // straight on down the wormhole's funnel, which has been opening inside the hole all along
+    this.white = 0;
     this.audio.boostWhoosh();
   }
 

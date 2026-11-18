@@ -18,8 +18,9 @@ meteor field and its buttons, the boss) the game introduces it: one short line i
 with a drone camera shot that zooms in on it and back out. Tap the line to skip ahead. Every fresh visit introduces everything again.
 
 After the ship crosses the black hole's horizon, and every time it flies through a portal, it rides a
-wormhole: a tunnel of swirling energy rings (cyan near, red-orange deep inside), light streaks and
-sparks rushing past, then a bright exit (`src/world/wormhole.js`).
+wormhole: a real 3D funnel anchored where it opens (inside the hole, behind the portal's ring), seen
+opening as the ship approaches. Swirling gas, light streaks and sparks rush past, and the light at
+the far end swells until it carries the ship out (`src/world/wormhole.js`).
 
 ## Angle battles
 
