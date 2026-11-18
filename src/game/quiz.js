@@ -10,6 +10,18 @@ const $ = (id) => document.getElementById(id);
 // and the narration box shows the rule (then the working, after a second miss); try again.
 //
 // ctx: { audio, fire(correct), punish(target), solved(target) }
+// text with the angles in orange and x in italic serif, built from DOM nodes
+function rich(text) {
+  const frag = document.createDocumentFragment();
+  for (const part of text.split(/(\d+°|\bx\b)/)) {
+    if (!part) continue;
+    if (/^\d+°$/.test(part)) { const s = document.createElement('span'); s.className = 'deg'; s.textContent = part; frag.append(s); }
+    else if (part === 'x') { const s = document.createElement('i'); s.className = 'xv'; s.textContent = 'x'; frag.append(s); }
+    else frag.append(part);
+  }
+  return frag;
+}
+
 export class AngleQuiz {
   constructor(overlay, ctx) {
     this.overlay = overlay;
@@ -18,6 +30,9 @@ export class AngleQuiz {
     this.box = $('quiz-prompt');
     this.textEl = $('quiz-text');
     this.timerEl = $('quiz-timer');
+    this.secsEl = $('quiz-secs');
+    this.clockEl = this.box.querySelector('.clock');
+    this.drawn = { off: '', secs: '', tone: '' };
     this.limit = 0;
     this.timeLeft = 0;
     this.buttons = [...this.root.querySelectorAll('.opt')];
@@ -139,15 +154,16 @@ export class AngleQuiz {
     }
   }
 
-  // narration box: "Find ?" in the game font, then the rest; mood: '' | 'bad'
+  // the question box: "Find x" in the game font, then the rest; angles in orange (like their arcs
+  // on the radar) and x in the radar's italic serif. mood: '' | 'ok' | 'bad'
   say(text, mood) {
     const [head, ...rest] = text.split('  ');
     if (rest.length) {
       const find = document.createElement('b');
       find.className = 'find';
-      find.textContent = head;
-      this.textEl.replaceChildren(find, document.createTextNode(rest.join(' ')));
-    } else this.textEl.textContent = text;
+      find.append(rich(head));
+      this.textEl.replaceChildren(find, rich(rest.join(' ')));
+    } else this.textEl.replaceChildren(rich(text));
     this.flash(mood);
   }
 
@@ -158,12 +174,20 @@ export class AngleQuiz {
     this.box.classList.add(mood);
   }
 
+  // the countdown badge: the ring drains and the seconds count down (only what changed is written)
   drawTimer() {
     const k = this.limit ? Math.max(0, this.timeLeft / this.limit) : 1;
-    this.timerEl.style.transform = `scaleX(${k.toFixed(3)})`;
-    this.timerEl.classList.toggle('warn', k < 0.45 && k >= 0.22);
-    this.timerEl.classList.toggle('danger', k < 0.22);
-    this.timerEl.parentElement.style.visibility = this.limit ? '' : 'hidden';
+    const off = (100 * (1 - k)).toFixed(1);
+    const secs = this.limit ? String(Math.max(0, Math.ceil(this.timeLeft))) : '';
+    const tone = k < 0.22 ? 'danger' : k < 0.45 ? 'warn' : '';
+    const d = this.drawn;
+    if (off !== d.off) { d.off = off; this.timerEl.style.strokeDashoffset = off; }
+    if (secs !== d.secs) { d.secs = secs; this.secsEl.textContent = secs; this.clockEl.style.visibility = this.limit ? '' : 'hidden'; }
+    if (tone !== d.tone) {
+      d.tone = tone;
+      this.box.classList.toggle('warn', tone === 'warn');
+      this.box.classList.toggle('danger', tone === 'danger');
+    }
   }
 
   stop() {
