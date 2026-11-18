@@ -55,13 +55,16 @@ export class Portal {
           float arms = 0.5 + 0.5 * sin(swirl);
           arms = arms * arms;
           float fine = 0.5 + 0.5 * sin(a * 11.0 + log(r + 0.02) * 17.0 - uTime * 4.0 * uSpin);
-          float rim = smoothstep(0.7, 0.98, r) * (1.0 - smoothstep(0.98, 1.0, r));
-          float mouth = exp(-r * r * 9.0);                       // the bright far end of the tunnel
-          vec3 deep = vec3(0.12, 0.05, 0.4), mid = vec3(0.2, 0.55, 1.0), hot = vec3(0.85, 0.95, 1.0);
-          vec3 col = mix(deep, mid, arms * smoothstep(0.05, 0.8, r)) * (0.35 + 0.65 * fine);
-          col += hot * mouth * 2.2 + mid * rim * 1.4;
-          float a2 = (0.35 + 0.65 * arms) * smoothstep(1.0, 0.85, r) + mouth;
-          gl_FragColor = vec4(col * a2 * uAlpha * (1.0 + uFlash * 2.0), 1.0);
+          // looking down a tunnel: energy arms bright near the ring, sinking into darkness toward the
+          // middle, with one small far-off light at the end (no white blob)
+          float rim = smoothstep(0.82, 0.98, r) * (1.0 - smoothstep(0.98, 1.0, r));
+          float depth = smoothstep(0.08, 0.95, r);
+          float mouth = exp(-r * r * 160.0);
+          vec3 deep = vec3(0.03, 0.02, 0.12), mid = vec3(0.1, 0.32, 0.85), edge = vec3(0.35, 0.2, 0.9), hot = vec3(0.6, 0.9, 1.0);
+          vec3 arm = mix(mid, edge, smoothstep(0.55, 0.95, r));          // blue arms turning violet at the rim
+          vec3 col = mix(deep, arm, arms * depth) * (0.35 + 0.65 * fine) * (0.15 + 0.6 * depth * depth);
+          col += hot * (mouth * 0.8 + rim * 0.4 + arms * fine * depth * depth * 0.12);
+          gl_FragColor = vec4(col * uAlpha * (1.0 + uFlash * 1.5), 1.0);
         }`,
     });
     this.vortex = new THREE.Mesh(new THREE.CircleGeometry(radius - 1.0, 96), vortexMat);
@@ -75,7 +78,7 @@ export class Portal {
       const g = c.getContext('2d');
       const grd = g.createRadialGradient(128, 128, 60, 128, 128, 128);
       grd.addColorStop(0, 'rgba(120,200,255,0)');
-      grd.addColorStop(0.55, 'rgba(120,200,255,0.55)');
+      grd.addColorStop(0.72, 'rgba(120,200,255,0.45)');
       grd.addColorStop(1, 'rgba(90,60,255,0)');
       g.fillStyle = grd;
       g.fillRect(0, 0, 256, 256);
@@ -84,7 +87,7 @@ export class Portal {
       return t;
     })();
     this.haloMat = new THREE.MeshBasicMaterial({ map: haloTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 });
-    const halo = new THREE.Mesh(new THREE.PlaneGeometry(radius * 3.4, radius * 3.4), this.haloMat);
+    const halo = new THREE.Mesh(new THREE.PlaneGeometry(radius * 2.7, radius * 2.7), this.haloMat);
     halo.position.z = -0.6;
     this.group.add(halo);
 
@@ -162,7 +165,7 @@ export class Portal {
     u.uSpin.value = 1 + 2.5 * Math.max(0, 1 - Math.abs(dz) / 400);
     u.uAlpha.value = this.alpha;
     u.uFlash.value = Math.max(0, u.uFlash.value - dt * 2);
-    this.haloMat.opacity = this.alpha * 0.55;
+    this.haloMat.opacity = this.alpha * 0.25;
     this.labelMat.opacity = this.alpha * Math.min(1, Math.max(0, (-dz - 40) / 140));
     this.stripMat.color.setRGB(0.6, 2.4, 3.2).multiplyScalar(0.6 + 0.4 * Math.sin(time * 3) ** 2 + u.uFlash.value * 2);
     if (this.state === 'out' && this.alpha < 0.01) this.hide();

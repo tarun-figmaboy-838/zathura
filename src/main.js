@@ -79,6 +79,7 @@ const planets = [
   createPlanet(SUN_DIR, sky.cube, { position: V(-1900, -500, -17000), radius: 950, preset: 'ocean', tilt: [0.3, 1.2, -0.2] }),
 ];
 const SUN_OCCLUDERS = [...planets, blackhole];
+const _dustVel = new THREE.Vector3();
 scene.add(stars.object, dust.object, blackhole.object, ...planets.map((p) => p.object));
 
 let shipGltf, rockGltf, raiderGltf, stationGltf, bossGltf;
@@ -244,9 +245,9 @@ function setMode(m) {
 }
 
 // full-screen fade layer: white for the black-hole crossing, black for the ending
-function setWhiteout(color, opacity, seconds = 0) {
+function setWhiteout(color, opacity, seconds = 0, easing = 'ease') {
   whiteout.classList.toggle('black', color === 'black');
-  whiteout.style.transition = seconds ? `opacity ${seconds}s ease` : 'none';
+  whiteout.style.transition = seconds ? `opacity ${seconds}s ${easing}` : 'none';
   whiteout.style.opacity = opacity;
 }
 
@@ -296,9 +297,12 @@ function emerge() {
   startCampaign();
   setWhiteout('white', 1);
   void whiteout.offsetWidth;
-  setWhiteout('white', 0, 1.1);
+  setWhiteout('white', 0, 0.7, 'cubic-bezier(0.15, 0.75, 0.3, 1)');
   lens.uniforms.uFlash.value = 0.4;
+  state.warp = 1.3;
   audio.warp(ship.position);
+  document.body.classList.add('warping');            // controls fade in once the flash has cleared
+  setTimeout(() => document.body.classList.remove('warping'), 650);
 }
 
 function startCampaign() {
@@ -592,10 +596,11 @@ function onPlayerBolt(target, point, bolt) {
 // flying through a sector portal: a flash of light, and the sector begins
 function crossPortal() {
   state.portalPassed = true;
-  setWhiteout('white', 0.85);
+  setWhiteout('white', 0.6);
   void whiteout.offsetWidth;
-  setWhiteout('white', 0, 0.8);
-  lens.uniforms.uFlash.value = 0.5;
+  setWhiteout('white', 0, 0.4, 'cubic-bezier(0.1, 0.7, 0.3, 1)');
+  lens.uniforms.uFlash.value = 0.35;
+  state.warp = 1;                        // a lens warp that settles as the ship comes out
   rig.addShake(0.5);
   fx.ring(ship.position, 60, 0.7);
   audio.warp(ship.position);
@@ -1442,8 +1447,9 @@ function frame() {
     trails.push(wingTrails[i], ship.nodes[n].getWorldPosition(tmp), t);
   });
   trails.update(camera.position, t);
-  dust.object.visible = rig.mode !== 'top' && !(play && battlePhase());   // the streaks read as rain in the overhead view
-  dust.update(camera, ship.velocity);
+  // the streaks read as rain in the overhead view, and must not draw over the black hole's shadow
+  dust.object.visible = rig.mode !== 'top' && !(play && battlePhase()) && !(mode === 'launch' && (intro.stage === 'plunge' || intro.stage === 'crossed'));
+  dust.update(camera, _dustVel.copy(ship.velocity).clampLength(0, 650));   // capped: at warp speed they became screen-wide lines
   stars.update(camera, t);
   for (const p of planets) p.update(camera, t);
   blackhole.update(t);
@@ -1462,6 +1468,9 @@ function frame() {
   const lowHull = play && vitals.hullFrac < 0.3 ? 0.25 + 0.2 * Math.sin(t * 6) : 0;
   const hurry = play && quiz.state === 'ask' && quiz.limit && quiz.timeLeft < 3 && !director.active
     ? (0.3 + 0.25 * Math.sin(t * 10)) * (1 - quiz.timeLeft / 3) : 0;
+  // after a portal or the black hole: a lens warp (colour split) that settles in a moment
+  state.warp = Math.max(0, (state.warp || 0) - dt * 2.2);
+  if (mode !== 'title' && mode !== 'launch') lens.uniforms.uAberration.value = 0.0018 + 0.02 * state.warp * state.warp;
   lens.uniforms.uTime.value = t;
   lens.uniforms.uSun.value.copy(sun.state.screen);
   lens.uniforms.uSunVis.value = sun.state.visibility;

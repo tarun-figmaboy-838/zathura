@@ -33,7 +33,9 @@ kbd { font: 700 9px 'Inter', sans-serif; padding: 1px 4px; border-radius: 4px; b
 button:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
 
 /* ---------------------------------------------------------------- HUD (kept to the edges) */
-#hud { position: fixed; inset: 0; pointer-events: none; }
+#hud { position: fixed; inset: 0; pointer-events: none; transition: opacity 0.4s ease; }
+/* coming out of the black hole: the HUD and the controls fade in once the flash has cleared */
+body.warping #hud, body.warping #controls { opacity: 0; }
 
 #bossbar { position: absolute; left: 50%; top: 16px; transform: translateX(-50%); width: min(40vw, 380px); }
 #bossbar .row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
@@ -92,7 +94,7 @@ button:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
 #pause-btn { width: 46px; height: 46px; }
 
 /* ---------------------------------------------------------------- on-screen controls */
-#controls { position: fixed; inset: auto 0 0 0; height: 0; }
+#controls { position: fixed; inset: auto 0 0 0; height: 0; transition: opacity 0.4s ease; }
 #controls button { pointer-events: auto; touch-action: none; padding: 0; border: 0; background: none; cursor: pointer; color: #fff;
   transition: transform 0.08s ease, filter 0.12s ease; }
 #controls button:active, #controls button.pressed { transform: translateY(3px) scale(0.92); filter: brightness(1.25); }
