@@ -142,7 +142,10 @@ body.warping #hud, body.warping #controls { opacity: 0; }
 .act.active img { filter: drop-shadow(0 0 14px rgba(255, 255, 255, 0.95)) brightness(1.15); }
 
 /* ---------------------------------------------------------------- angle battle */
-#quiz { position: fixed; inset: 0; z-index: 4; pointer-events: none; }
+#quiz { position: fixed; inset: 0; z-index: 4; pointer-events: none; transition: opacity 0.3s ease; }
+/* a focus shot on a talking craft: the question steps aside until the battle view is back */
+body.focusing #quiz { opacity: 0; }
+body.focusing #quiz .opt { pointer-events: none; }
 /* the question: built like the game's other panels (ink outline, gold rim, gradient, gloss, lip).
    No timer is shown (running out of time is felt: ticks, a red pulse, then the raider's blast). The
    given angle is orange like its arc on the radar, and x is the radar's x, so the words point at

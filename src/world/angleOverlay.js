@@ -274,7 +274,8 @@ export class AngleOverlay {
     this.mesh.position.copy(center);
     this.t += dt;
     u.uTime.value = time;
-    u.uAlpha.value = this.on ? Math.min(1, u.uAlpha.value + dt * 4) : Math.max(0, u.uAlpha.value - dt * 3);
+    // muted: hidden during a focus shot on a talking craft (comes back with the battle view)
+    u.uAlpha.value = this.on && !this.muted ? Math.min(1, u.uAlpha.value + dt * 4) : Math.max(0, u.uAlpha.value - dt * 5);
     u.uDraw.value = this.on ? ease(this.t / 0.7) : u.uDraw.value;
     u.uFlash.value = Math.max(0, u.uFlash.value - dt * 1.2);
     // ghost sweep: grow through the asked angle, hold, fade, repeat

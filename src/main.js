@@ -1188,6 +1188,47 @@ const camRaider = (r, exact = false) => (o) => {
   o.up.set(0, 1, 0);
   o.fov = 42 / Math.sqrt(Math.min(1, camera.aspect));   // wider lens on portrait screens
 };
+// your ship, for the co-pilot: from behind and to the side, looking past it toward the enemy
+function camShip(o) {
+  const r = raiders.list.find((x) => x.alive && x.hold);
+  const foe = r ? r.position : boss.active ? boss.position : null;
+  if (foe) _cA.copy(foe).sub(ship.position).setY(0).normalize(); else _cA.set(0, 0, -1);   // ship -> enemy
+  _cB.set(_cA.z, 0, -_cA.x);
+  const k = dronePull() * state.shipScale;
+  o.pos.copy(ship.position).addScaledVector(_cA, -11 * k).addScaledVector(_cB, 8 * k).add(tmp.set(0, 6 * k, 0));
+  o.target.copy(ship.position).addScaledVector(_cA, 3);
+  o.up.set(0, 1, 0);
+  o.fov = 42 / Math.sqrt(Math.min(1, camera.aspect));
+}
+
+// Focus shots: when a craft talks (a raider arriving or laughing at a miss, the Warden, the
+// co-pilot answering from your ship) the camera zooms in on it like the defeat shot, then returns
+// to the battle. The question waits and its timer is held while anyone talks.
+const _focus = { pos: new THREE.Vector3(), target: new THREE.Vector3(), up: new THREE.Vector3(0, 1, 0), fov: 50 };
+const focusing = () => {
+  const l = dialogue.line;
+  if (!l || !l.focus || state.mode !== 'play' || director.camera || !battlePhase()) return null;
+  if (l.focus === 'ship' || l.focus === 'boss') return l.focus === 'boss' && !boss.active ? null : l.focus;
+  return l.focus.alive ? l.focus : null;
+};
+function focusShot(dt) {
+  const f = focusing();
+  if (!f) return false;
+  if (f === 'ship') camShip(_focus); else if (f === 'boss') camBoss(_focus); else camRaider(f, true)(_focus);
+  if (rig.mode !== 'drone') {
+    rig.dronePos.copy(_focus.pos); rig.droneTarget.copy(_focus.target); rig.droneFov = _focus.fov;
+    rig.setMode('drone', 0.7);
+  }
+  const s = 1 - Math.exp(-5 * dt);                // from one speaker to the next: a smooth swing
+  rig.dronePos.lerp(_focus.pos, s);
+  rig.droneTarget.lerp(_focus.target, s);
+  rig.droneUp.copy(_focus.up);
+  rig.droneFov += (_focus.fov - rig.droneFov) * s;
+  return true;
+}
+// a line that gets a focus shot (and a moment longer to enjoy it)
+const focus = (line, on) => Object.assign(line, { focus: on, hold: Math.max(line.hold || 0, 1.5) });
+
 // the boss: a wide close-up from in front of it, the player's ship small beyond
 function camBoss(o) {
   _cA.copy(ship.position).sub(boss.position).setY(0).normalize();
@@ -1238,7 +1279,7 @@ function updateQuiz(dt, t) {
   quizCenter.y = ship.position.y;
   if (!battlePhase()) {
     if (quiz.active) quiz.stop();
-  } else if (!quiz.active && !director.camera && state.mode === 'play' && !(state.doom > 0) && !(dialogue.active && dialogue.line.intro)) {
+  } else if (!quiz.active && !director.camera && state.mode === 'play' && !(state.doom > 0) && !(dialogue.active && (dialogue.line.intro || dialogue.line.focus))) {
     const tgt = nextQuizTarget(dt);
     if (tgt) {
       const dx = tgt.pos.x - quizCenter.x, dz = tgt.pos.z - quizCenter.z;
@@ -1270,7 +1311,8 @@ function quizFire(correct) {
 
 function quizPunish(target) {
   buzz([70, 50, 70]);
-  dialogue.say(target.kind === 'raider' ? at(enemyLine(target.obj.callsign, 'raiderMock', 1.5), target.obj.model, target.obj.position) : at(enemyLine(WARDEN, 'wardenMock', 1.5), boss.model, boss.corePos));
+  dialogue.say(target.kind === 'raider' ? focus(at(enemyLine(target.obj.callsign, 'raiderMock', 1.5), target.obj.model, target.obj.position), target.obj)
+    : focus(at(enemyLine(WARDEN, 'wardenMock', 1.5), boss.model, boss.corePos), 'boss'));
   if (target.kind === 'raider') raiders.punish(target.obj, state.time);
   else boss.punish(state.time, bossCtx);
   audio.alarm();
@@ -1458,14 +1500,14 @@ function updateBanter() {
   for (const r of raiders.list) {
     if (!r.alive || !r.hold || r.taunted || !raiders.arrived(r)) continue;
     r.taunted = true;
-    const lines = [at(enemyLine(r.callsign, 'raiderArrive', 1.3), r.model, r.position)];
-    if (Math.random() < 0.35) lines.push(at(crewLine('crewReply', 1.2), ship.model, ship.position));   // the co-pilot answers from your ship
+    const lines = [focus(at(enemyLine(r.callsign, 'raiderArrive', 1.3), r.model, r.position), r)];
+    if (Math.random() < 0.35) lines.push(focus(at(crewLine('crewReply', 1.2), ship.model, ship.position), 'ship'));   // the co-pilot answers from your ship
     for (const l of lines) l.intro = true;     // the question waits for the opening banter
     dialogue.play(lines);
   }
   if (boss.active && !boss.dying && state.wardenTalk === false) {
     state.wardenTalk = true;
-    dialogue.play(wardenIntro().map((l) => ({ ...at(l, boss.model, boss.corePos), intro: true })));
+    dialogue.play(wardenIntro().map((l) => ({ ...focus(at(l, boss.model, boss.corePos), 'boss'), intro: true })));
   }
 }
 
@@ -1552,6 +1594,7 @@ function frame() {
   if (mode === 'dying' && state.killer && state.modeT > 0.9) deathShot(dt);
   if (play) {
     if (director.camera) rig.setMode('drone', 0.95);      // drone shot: zoom in on what is introduced
+    else if (focusShot(dt)) { /* a craft is talking: close on it */ }
     else rig.setMode(campaign.cfg.view, 1.15);            // ...and back out
   }
   rig.update(dt, ship, t);
@@ -1662,7 +1705,11 @@ function frame() {
   scenery.update(dt, t, ship.position, camera.position);
   if (play && dt > 0) collideShip();
   updateHolo(t, play);
-  rings.mesh.visible = !director.camera;   // lock-on brackets would float oddly in a low close-up
+  rings.mesh.visible = !director.camera && !focusing();   // lock-on brackets would float oddly in a low close-up
+  // a focus shot is about the craft: the radar and the question fade out until the battle view is back
+  const focusNow = !!focusing();
+  angleOverlay.muted = focusNow;
+  document.body.classList.toggle('focusing', focusNow);
   if (play) updateQuiz(dt, t);
   else angleOverlay.update(dt, t, quizCenter, camera);
   if (portal.state === 'in' && mode === 'play') portalTube.alpha = 0.85 * clamp(1 - (ship.position.z - portal.group.position.z - 30) / 240, 0, 1);
