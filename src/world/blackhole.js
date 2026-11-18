@@ -46,7 +46,7 @@ export function createBlackHole(skyCube, { position, radius = 450, normal = new 
         float spin = phi + uTime * 1.6 / (r * sqrt(r));
         vec3 q = vec3(cos(spin) * 2.2, sin(spin) * 2.2, r * 9.0);   // stretched along the orbit
         float n = fbm3(q) * 0.75 + vnoise(q * 3.0) * 0.25;
-        float streaks = 0.62 + 0.38 * sin(r * 46.0 + n * 9.0);
+        float streaks = 0.82 + 0.18 * sin(r * 13.0 + n * 7.0);   // soft orbit streaks; tight grooves read as a vinyl record
         float temp = clamp((r - 1.65) / 4.3, 0.0, 1.0);
         vec3 col = mix(vec3(1.0, 0.97, 0.92), vec3(1.0, 0.72, 0.36), smoothstep(0.0, 0.3, temp));
         col = mix(col, vec3(0.9, 0.34, 0.1), smoothstep(0.3, 1.0, temp));
@@ -68,8 +68,9 @@ export function createBlackHole(skyCube, { position, radius = 450, normal = new 
         perp = pl > 1e-6 ? perp / pl : vec3(1.0, 0.0, 0.0);
 
         // lensed background
+        // the bend fades out by 4 shadow radii, so stars further out are not smeared into a whirlpool
         float thE = angR * 2.3;
-        float beta = th - thE * thE / max(th, 1e-5);
+        float beta = th - thE * thE / max(th, 1e-5) * (1.0 - smoothstep(2.2, 4.2, x));
         vec3 col = textureCube(uSky, normalize(c * cos(beta) + perp * sin(beta))).rgb;
 
         // basis in the disk plane, and the disk's "up" as seen on screen

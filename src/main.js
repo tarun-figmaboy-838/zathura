@@ -250,15 +250,13 @@ function setWhiteout(color, opacity, seconds = 0) {
 }
 
 // a few rocks drifting around the pad on the title screen, clear of the launch line
-const TITLE_ROCKS = [
-  [-17, 9, -22, 2.6], [15, 13, -34, 3.6], [-30, -5, -48, 5.5], [27, 3, -62, 4.2], [-48, 16, -96, 7],
-  [44, 22, -118, 8], [11, -13, -44, 2.4], [-22, 26, -70, 3.4], [36, -9, -30, 2.2],
-];
+// a few rocks for depth, low at the edges of the windshield: clear of the title and the black hole
+const TITLE_ROCKS = [[-30, -6, -46, 3.4], [34, -4, -60, 3.0], [-58, 4, -120, 5.5]];
 function dockScene() {
   setWorld('intro');
   intro.dock();
   field.clearAll();
-  for (const [x, y, z, s] of TITLE_ROCKS) field.spawn(V(x, y, z), s, V(rand(-0.4, 0.4), rand(-0.3, 0.3), rand(-0.4, 0.2)));
+  for (const [x, y, z, s] of TITLE_ROCKS) field.spawn(V(x, y, z), s, V(rand(-0.15, 0.15), rand(-0.1, 0.1), rand(-0.1, 0.05)));
 }
 
 // 'intro': the station and the black hole; 'route': the far side, with its planets
@@ -281,7 +279,7 @@ function launch() {
 
 // the ship comes out of the black hole on the far side and the first sector begins
 function emerge() {
-  lens.uniforms.uAberration.value = 0.0035;
+  lens.uniforms.uAberration.value = 0.0018;
   setWorld('route');
   field.clearAll();
   ship.reset();
@@ -542,7 +540,7 @@ function onBossHit(part, point, amount = 1) {
   if (res === 'defeated') {
     addScore(5000, boss.corePos);
     hud.banner('WARDEN DOWN', '+5,000', 2.4);
-    dialogue.say(enemyLine(WARDEN, 'wardenDown', 1.8));
+    dialogue.say(enemyLine(WARDEN, 'wardenDown', 1.8, boss.corePos.clone()));
   }
 }
 
@@ -749,7 +747,7 @@ const campaignCtx = {
     if (campaign.firstOfGroup) state.sector = { asked: 0, first: 0 };
   },
   spawnBoss() {
-    boss.spawn(ship, state.time, Math.PI + (wideLayout(camera.aspect) ? 1 : Math.random() < 0.5 ? -1 : 1) * (camera.aspect < 1 ? rand(0.4, 0.55) : rand(0.8, 1.05)));
+    boss.spawn(ship, state.time, Math.PI + (Math.random() < 0.5 ? -1 : 1) * (camera.aspect < 1 ? rand(0.4, 0.55) : rand(0.8, 1.05)));
     boss.quiz = true;
     boss.holdAngle = boss.angle;
     state.bossHoldT = 0;
@@ -764,7 +762,7 @@ const campaignCtx = {
   announce(title, sub) { hud.banner(title, sub, 2.2); audio.waveHorn(); },
   spawnRaider(skill) {
     // anywhere around the ship except straight up (question bar) or straight down (answers)
-    const side = wideLayout(camera.aspect) || Math.random() < 0.5 ? 1 : -1;
+    const side = Math.random() < 0.5 ? 1 : -1;
     const tilt = rand(0.4, 0.68);   // portrait: up or down along the long side, clear of the question and answers
     const yaw = side * (camera.aspect >= 1 ? rand(1.05, Math.PI - 1.05) : Math.random() < 0.5 ? tilt : Math.PI - tilt);
     const D = quizDist();
@@ -1139,7 +1137,7 @@ function updateQuiz(dt, t) {
   quizCenter.y = ship.position.y;
   if (!battlePhase()) {
     if (quiz.active) quiz.stop();
-  } else if (!quiz.active && !director.camera && state.mode === 'play') {
+  } else if (!quiz.active && !director.camera && state.mode === 'play' && !(dialogue.active && dialogue.line.intro)) {
     const tgt = nextQuizTarget(dt);
     if (tgt) {
       const dx = tgt.pos.x - quizCenter.x, dz = tgt.pos.z - quizCenter.z;
@@ -1171,7 +1169,7 @@ function quizFire(correct) {
 
 function quizPunish(target) {
   buzz([70, 50, 70]);
-  dialogue.say(target.kind === 'raider' ? enemyLine(target.obj.callsign, 'raiderMock') : enemyLine(WARDEN, 'wardenMock'));
+  dialogue.say(target.kind === 'raider' ? enemyLine(target.obj.callsign, 'raiderMock', 1.5, target.obj.position) : enemyLine(WARDEN, 'wardenMock', 1.5, boss.corePos));
   if (target.kind === 'raider') raiders.punish(target.obj, state.time);
   else boss.punish(state.time, bossCtx);
   audio.alarm();
@@ -1202,23 +1200,64 @@ function quizSolved(target, firstTry) {
   if (target.kind === 'raider') {
     const r = target.obj;
     if (r.alive) { raiders.kill(r); raiderDestroyed(r, true); }
-    dialogue.say(enemyLine(r.callsign || 'RAIDER', 'raiderHit', 1.3));
+    dialogue.say(enemyLine(r.callsign || 'RAIDER', 'raiderHit', 1.3, r.position.clone()));
   } else {
     if (target.kind === 'turret' && target.obj.alive) onBossHit(target.part, target.pos.clone(), 99);
-    if (target.kind === 'turret') dialogue.say(enemyLine(WARDEN, 'wardenTurret', 1.3));
+    if (target.kind === 'turret') dialogue.say(enemyLine(WARDEN, 'wardenTurret', 1.3, boss.corePos));
     // the core always takes exactly three right answers, however many of the volley's shots land
     if (target.kind === 'core' && !boss.dying) {
       const hitsLeft = Math.max(0, 3 - (state.bossSolved - 4) - 1);
       const want = Math.ceil((CORE_HP * hitsLeft) / 3);
       if (boss.coreHp > want) onBossHit(target.part, target.pos.clone(), boss.coreHp - want);
-      if (!boss.dying) dialogue.say(enemyLine(WARDEN, 'wardenCore', 1.3));
+      if (!boss.dying) dialogue.say(enemyLine(WARDEN, 'wardenCore', 1.3, boss.corePos));
     }
     state.bossSolved++;
-    boss.holdAngle = Math.PI + (wideLayout(camera.aspect) ? 1 : Math.random() < 0.5 ? -1 : 1) * (camera.aspect < 1 ? rand(0.4, 0.55) : rand(0.8, 1.05));
+    boss.holdAngle = Math.PI + (Math.random() < 0.5 ? -1 : 1) * (camera.aspect < 1 ? rand(0.4, 0.55) : rand(0.8, 1.05));
     state.bossHoldT = 0;
   }
   if (firstTry) { addScore(50, tmp.copy(target.pos).add(V(0, 0, -9))); state.sector.first++; }
   buzz(20);
+}
+
+// Landscape battles: comms are a speech bubble beside whoever is talking, in the open side space
+// next to the radar (never over the radar, the question bar or the answers). The co-pilot talks
+// from the other side. Phones and defeat close-ups keep the docked box from the CSS.
+const dlgEl = $('dialog');
+let lastSpeaker = null;
+function placeComms() {
+  const l = dialogue.line;
+  const on = l && camera.aspect >= 1 && document.body.classList.contains('battle');
+  if (!on) {
+    if (dlgEl.classList.contains('bubble')) { dlgEl.classList.remove('bubble'); dlgEl.style.cssText = ''; }
+    return;
+  }
+  const W = window.innerWidth, H = window.innerHeight;
+  const ringPx = angleOverlay.ringPx || 0.6 * H / 2;
+  const bands = [[16, W / 2 - ringPx - 16], [W / 2 + ringPx + 16, W - 16]];
+  const bh = dlgEl.offsetHeight;                 // read before writing: one layout pass per frame
+  let x, y, tail = '', tailX = 0, bw;
+  if (l.src) {
+    tmp.copy(l.src).project(camera);
+    const ex = (tmp.x * 0.5 + 0.5) * W, ey = (-tmp.y * 0.5 + 0.5) * H;
+    lastSpeaker = ex < W / 2 ? 0 : 1;
+    const [b0, b1] = bands[lastSpeaker];
+    bw = Math.max(190, Math.min(300, b1 - b0));
+    x = clamp(ex - bw / 2, Math.max(12, b0), Math.min(W - 12, b1) - bw);   // stays in the side space
+    const off = 0.2 * H;                          // clear of the craft itself
+    const above = ey > H / 2;
+    y = above ? ey - off - bh : ey + off;
+    tail = above ? 'down' : 'up';
+    tailX = clamp(ex - x, 22, bw - 22);
+  } else {
+    const [b0, b1] = bands[lastSpeaker === 0 ? 1 : 0];   // the crew: the side without the enemy
+    bw = Math.max(190, Math.min(300, b1 - b0));
+    x = clamp((b0 + b1) / 2 - bw / 2, Math.max(12, b0), Math.min(W - 12, b1) - bw);
+    y = H / 2 - bh / 2;
+  }
+  y = clamp(y, 112, H - 118 - bh);              // between the question bar and the answers
+  if (!dlgEl.classList.contains('bubble')) dlgEl.classList.add('bubble');
+  dlgEl.dataset.tail = tail;
+  dlgEl.style.cssText = `left:${x.toFixed(0)}px;top:${y.toFixed(0)}px;width:${bw.toFixed(0)}px;--tail-x:${tailX.toFixed(0)}px`;
 }
 
 // enemy banter: a raider taunts once it has flown in, the Warden boasts after its introduction
@@ -1227,13 +1266,14 @@ function updateBanter() {
   for (const r of raiders.list) {
     if (!r.alive || !r.hold || r.taunted || !raiders.arrived(r)) continue;
     r.taunted = true;
-    const lines = [enemyLine(r.callsign, 'raiderArrive', 1.3)];
+    const lines = [enemyLine(r.callsign, 'raiderArrive', 1.3, r.position)];
     if (Math.random() < 0.35) lines.push(crewLine('crewReply', 1.2));
+    for (const l of lines) l.intro = true;     // the question waits for the opening banter
     dialogue.play(lines);
   }
   if (boss.active && !boss.dying && state.wardenTalk === false) {
     state.wardenTalk = true;
-    dialogue.play(wardenIntro());
+    dialogue.play(wardenIntro(boss.corePos).map((l) => ({ ...l, intro: true })));
   }
 }
 
@@ -1281,7 +1321,7 @@ function frame() {
     const ev = intro.update(dt, t);
     // crossing the horizon goes black; emerge() then bursts out into white light
     if (mode === 'launch') setWhiteout('black', intro.fade);
-    lens.uniforms.uAberration.value = 0.0035 + 0.012 * intro.distort * intro.distort;
+    lens.uniforms.uAberration.value = 0.0018 + 0.012 * intro.distort * intro.distort;
     if (ev === 'emerge') emerge();
   }
 
@@ -1332,6 +1372,7 @@ function frame() {
   }
   if (play) updateBanter();
   if (mode !== 'paused') dialogue.update(dt);
+  placeComms();
   // comms sit in the battle layout (console column / top strip) during battles; a line that is
   // still playing keeps its place until it ends
   const battleUI = play && battlePhase();
@@ -1443,7 +1484,9 @@ function frame() {
     : 1;
   blackhole.uniforms.uIntensity.value = 0.32 + 0.68 * near;
   blackhole.uniforms.uDisk.value = 0.7;
-  bloom.strength = BLOOM_STRENGTH * (blackhole.object.visible ? 0.3 + 0.45 * near : 1) * (1 - 0.6 * (state.battleDim || 0));
+  const titleView = mode === 'title';
+  bloom.strength = BLOOM_STRENGTH * (blackhole.object.visible ? 0.3 + 0.45 * near : 1) * (1 - 0.6 * (state.battleDim || 0)) * (titleView ? 0.75 : 1);
+  field.material.color.setScalar(titleView || mode === 'launch' ? 0.55 : 1);   // rocks by the station sit in shadow
   sun.update(dt, camera, ship.position, [...planets, blackhole]);
 
   state.damage = damp(state.damage, 0, 2.5, dt);

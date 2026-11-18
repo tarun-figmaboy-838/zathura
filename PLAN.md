@@ -16,7 +16,7 @@ Built with **Three.js** (rendering and game, ES modules, no build step) and **he
 | **Learn by seeing** | A clean radar diagram per question; the rule appears when you miss, the working when you hit. |
 | **Cinematic space** | Real-looking galaxies and stars, a lensed black hole, asteroid journeys, drone camera shots. |
 | **Explain everything** | Each new thing (enemy, radar, rule, buttons, boss) is introduced the first time it appears in a visit. |
-| **Minimal UI** | No clutter: narration, one question card with the answers, enemy comms, score and pause, each in its own slot. |
+| **Minimal UI** | No clutter: the question bar on top, answers at the bottom, enemy speech bubbles beside the enemy, score and pause. |
 | **Fun enemies** | Comic comms banter: raiders with silly callsigns taunt, mock and panic; the Warden boasts. |
 
 ## 2. The run

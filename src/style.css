@@ -187,47 +187,12 @@ body.narrating .quiz-prompt, body.narrating #banner { opacity: 0 !important; }
 .spot { animation: spot 0.9s ease-in-out infinite !important; }
 @keyframes spot { 50% { scale: 1.08; filter: drop-shadow(0 0 14px rgba(255, 226, 110, 1)) brightness(1.15); } }
 
-/* wide screens: one console column on the right, so the radar, the ship and the enemy own the rest
-   of the screen. Top: the introductions. Middle: one card with the question, the timer and the
-   answers. Bottom: the comms (enemy banter). Each has its own slot; nothing overlaps. */
+/* landscape: the classic layout. The question bar on top, the answers in one row at the bottom and
+   the radar in the middle; the enemy flies in from the side, and its comms appear as a speech bubble
+   beside it in that side space (placed by the game, see placeComms in main.js) */
 @media (min-aspect-ratio: 6/5) {
-  #quiz { inset: auto; right: calc(32px + env(safe-area-inset-right)); top: 50%; translate: 0 calc(-50% + 12px); width: min(30vw, 400px);
-    display: flex; flex-direction: column; gap: 14px; padding: 16px 16px 18px; border-radius: 22px;
-    background: linear-gradient(180deg, rgba(14, 26, 54, 0.92), rgba(7, 13, 31, 0.92));
-    border: 2px solid rgba(111, 227, 255, 0.28); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.07);
-    opacity: 0; transition: opacity 0.3s ease, translate 0.35s var(--spring), border-color 0.2s, box-shadow 0.2s; }
-  #quiz.show { opacity: 1; translate: 0 -50%; }
-  #quiz:has(.quiz-prompt.ok) { border-color: rgba(77, 255, 136, 0.9); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), 0 0 28px rgba(77, 255, 136, 0.35); }
-  #quiz:has(.quiz-prompt.bad) { border-color: rgba(255, 106, 79, 0.9); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), 0 0 28px rgba(255, 90, 60, 0.35); }
-  #quiz .quiz-prompt, #quiz.show .quiz-prompt { position: relative; left: auto; top: auto; translate: none; opacity: 1 !important; width: auto;
-    display: block; padding: 4px 6px 18px; background: none; border: 0; box-shadow: none; white-space: normal; text-align: left; animation: none; }
-  #quiz .quiz-prompt .text { display: block; font-size: clamp(17px, 1.45vw, 20px); line-height: 1.3; text-wrap: balance; }
-  #quiz .quiz-prompt .find { display: block; margin: 0 0 4px; font-size: clamp(22px, 1.9vw, 27px); }
-  #quiz .quiz-prompt .timer { left: 6px; right: 6px; bottom: 2px; height: 5px; }
-  #quiz .quiz-options { position: static; translate: none; width: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
-  #quiz .opt { width: 100%; }
-  #quiz .opt span { font-size: clamp(24px, 2.1vw, 30px); }
-  /* the introductions sit at the top of the column while a question is up */
-  body.quiz-on .narrate { left: auto; right: calc(32px + env(safe-area-inset-right)); top: 76px; width: min(30vw, 400px);
-    translate: 0 -10px; text-align: left; padding: 12px 18px; font-size: clamp(16px, 1.4vw, 19px); }
-  body.quiz-on .narrate.show { translate: 0 0; }
-  body.narrating #quiz .quiz-prompt { opacity: 1 !important; }
-  /* short alerts sit just under the card, banners at the top of the column; the boss bar is
-     centred over the battle area */
-  body.quiz-on #alert { top: calc(50% + 158px); bottom: auto; left: auto; right: calc(32px + env(safe-area-inset-right) + min(15vw, 200px));
-    transform: translateX(50%); }
-  body.quiz-on #banner { top: 70px; left: auto; right: calc(32px + env(safe-area-inset-right)); width: min(30vw, 400px); transform: none; }
-  body.quiz-on #banner.show { transform: none; }
-  body.quiz-on:has(#banner.show) .quiz-prompt { opacity: 1; }
-  body.quiz-on:has(#banner.show) .narrate { opacity: 0; }
-  body.battle #bossbar { left: calc((100vw - min(30vw, 400px) - 56px) / 2); }
-  /* comms during battles: the bottom of the column */
-  body.battle .dialog { left: auto; right: calc(32px + env(safe-area-inset-right)); bottom: calc(24px + env(safe-area-inset-bottom));
-    width: min(30vw, 400px); translate: 0 16px; padding: 12px 16px 14px 12px; gap: 2px 12px; }
-  body.battle .dialog.show { translate: 0 0; }
-  body.battle .dialog .badge { width: 46px; height: 46px; }
-  body.battle .dialog .badge svg { width: 26px; height: 26px; }
-  body.battle .dialog .line { font-size: clamp(15px, 1.3vw, 18px); min-height: 2.6em; }
+  .quiz-options { gap: clamp(12px, 1.6vw, 22px); }
+  body.quiz-on #alert { bottom: 100px; }
 }
 
 /* comms dialogue: a speaker badge, a name and the line typing out, at the bottom like a real game
@@ -247,6 +212,18 @@ body.narrating .quiz-prompt, body.narrating #banner { opacity: 0 !important; }
 .dialog .name { font: 400 15px var(--font-game); letter-spacing: 0.08em; color: #ff8a6a; }
 .dialog[data-who='crew'] .name { color: var(--accent); }
 .dialog .line { margin: 0; min-height: 2.6em; font: 700 clamp(16px, 1.8vw, 21px)/1.3 'Inter', sans-serif; color: #fff; }
+/* battles on landscape screens: a compact speech bubble next to whoever is talking, with a tail
+   pointing at them (left/top/width and the tail are set by the game every frame) */
+.dialog.bubble { right: auto; bottom: auto; translate: 0 6px; padding: 10px 14px 12px 10px; gap: 2px 12px; border-radius: 16px; }
+.dialog.bubble.show { translate: 0 0; }
+.dialog.bubble .badge { width: 40px; height: 40px; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85); }
+.dialog.bubble .badge svg { width: 23px; height: 23px; }
+.dialog.bubble .name { font-size: 12px; }
+.dialog.bubble .line { font-size: clamp(14px, 1.15vw, 17px); line-height: 1.3; min-height: 0; }
+.dialog.bubble::after { content: ''; position: absolute; left: var(--tail-x, 50%); width: 14px; height: 14px; margin-left: -7px;
+  background: rgb(8, 14, 32); border: inherit; rotate: 45deg; display: none; }
+.dialog.bubble[data-tail='down']::after { display: block; bottom: -9px; border-top: 0; border-left: 0; }
+.dialog.bubble[data-tail='up']::after { display: block; top: -9px; border-bottom: 0; border-right: 0; }
 
 /* in-world angle labels */
 .ang-label { position: absolute; left: 0; top: 0; translate: -50% -50%; font: 400 clamp(17px, calc(var(--u, 7px) * 3.7), 30px) var(--font-game); letter-spacing: 0.02em; color: #ffb547;
@@ -267,7 +244,8 @@ body.narrating .quiz-prompt, body.narrating #banner { opacity: 0 !important; }
 #cockpit.gone { opacity: 0; }
 #cockpit img { display: block; width: 100%; height: 100%; -webkit-user-drag: none; }
 #title { display: block; padding: 0; overflow: hidden; }
-.title-logo { position: absolute; left: 50%; top: calc(5vh + env(safe-area-inset-top)); width: min(46vw, 720px); margin: 0; translate: -50% 0; z-index: 1;
+/* the title sits inside the windshield glass, just under the frame's top bar (locked to the art) */
+.title-logo { position: absolute; left: 50%; top: 10.6%; width: 36%; max-width: 760px; margin: 0; translate: -50% 0; z-index: 1;
   animation: logo-in 1s var(--spring) both, logo-float 6s ease-in-out 1s infinite; }
 .title-logo img { display: block; width: 100%; height: auto; -webkit-user-drag: none;
   filter: drop-shadow(0 0 14px rgba(60, 220, 255, 0.4)) drop-shadow(0 10px 14px rgba(0, 0, 0, 0.7)); }
@@ -356,7 +334,7 @@ body.narrating .quiz-prompt, body.narrating #banner { opacity: 0 !important; }
 
 /* ---------------------------------------------------------------- small screens */
 @media (max-width: 760px), (max-aspect-ratio: 4/5) {
-  .title-logo { width: 90vw; top: calc(6vh + env(safe-area-inset-top)); }
+  .title-logo { width: 90vw; top: calc(9.5% + env(safe-area-inset-top)); }
   #bossbar { top: 66px; width: 80vw; }
   #alert { top: 104px; }
   .pad { left: 8px; bottom: 10px; transform: scale(0.8); transform-origin: bottom left; }

@@ -28,9 +28,9 @@ value of **x** and the cannon turns by that angle: the right answer lands on the
 and the question card shows the working (for example "76° + 104° = 180°"). A wrong answer misses, the
 enemy fires back, and the card shows the rule (after a second miss, the working).
 
-On wide screens the right side is one console column: introductions at the top, the question card
-(question, timer, answers) in the middle, enemy comms at the bottom. Phones stack the question at the
-top and the answers at the bottom, with comms in the top corner.
+Layout: the question bar on top, the radar in the middle and the answers along the bottom (one row on
+landscape screens, 2×2 on phones). On landscape screens the enemy flies in from the side and its comms
+appear as a speech bubble beside it; on phones the comms sit in the top corner.
 
 Enemies talk back, like comms chatter in an arcade shooter: each raider gets a silly callsign, taunts
 you when it arrives, mocks a wrong answer and panics when hit, and the Warden boasts and sulks

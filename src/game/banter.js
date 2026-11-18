@@ -87,7 +87,9 @@ const POOLS = {
   wardenWin: ['Bow before the Warden! ...Or what is left of you.', 'Your ship is scrap! Mwahaha!'],
 };
 
-const line = (who, name, key, hold = 1.5) => ({ who, name, text: pick(key, POOLS[key]).replace('{name}', name), hold });
-export const enemyLine = (name, key, hold) => line('enemy', name, key, hold);
+// src: where the speaker is (a Vector3, live or a snapshot) so landscape screens can put the speech
+// bubble beside it
+const line = (who, name, key, hold = 1.5, src = null) => ({ who, name, text: pick(key, POOLS[key]).replace('{name}', name), hold, src });
+export const enemyLine = (name, key, hold, src) => line('enemy', name, key, hold, src);
 export const crewLine = (key, hold) => line('crew', CREW, key, hold);
-export const wardenIntro = () => POOLS.wardenArrive.map((text) => ({ who: 'enemy', name: WARDEN, text, hold: 1.3 }));
+export const wardenIntro = (src) => POOLS.wardenArrive.map((text) => ({ who: 'enemy', name: WARDEN, text, hold: 1.3, src }));
