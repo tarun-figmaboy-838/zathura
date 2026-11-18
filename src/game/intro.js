@@ -98,6 +98,7 @@ export class Intro {
     s.root.position.set(0, 0, 0);
     s.root.quaternion.identity();
     s.docked = true;
+    if (this.tube) this.tube.alpha = 0;      // the wormhole closes until the next dive
     this.phase = 'docked';
     this.t = 0;
     this.fade = 0;
@@ -234,6 +235,8 @@ export class Intro {
       if (dist < R * 4.2) {
         this.stage = 'plunge';
         this.holdPos.copy(this.camPos);
+        this.tube?.place(bh, toBH);         // the wormhole's mouth, inside the hole, on the line of the fall
+        if (this.tube) this.tube.alpha = 0;
       }
     } else if (this.stage === 'plunge') {
       // Seen from outside, the falling ship slows and freezes at the horizon (time dilation),
@@ -248,6 +251,7 @@ export class Intro {
       this.distort = k;
       this.dir.copy(toBH);
       this.infall(dt, sp, toBH, R, k);
+      if (this.tube) this.tube.alpha = ease((k - 0.45) / 0.5);
       if (dist < R * 1.03) {
         this.stage = 'follow';
         this.crossT = t;
@@ -264,6 +268,7 @@ export class Intro {
       this.speed = lerp(95, 260, k);
       s.thrust = 0.3;
       this.distort = 1 - 0.5 * k;
+      if (this.tube) this.tube.alpha = 1;
       if (this.followT >= FOLLOW_TIME && !this.skipping) this.enterTunnel();
     }
     if (this.stage === 'tunnel') {
@@ -278,7 +283,7 @@ export class Intro {
       this.rig.addShake(dt * 0.6);
       s.setRedshift(Math.max(0, 1 - this.tunnelT / 0.5));
       s.visual.scale.lerp(ONE, 1 - Math.exp(-5 * dt));
-      if (this.tunnelT > 1.0) this.blackhole.object.visible = false;
+      if (this.tunnelT > 0.5) this.blackhole.object.visible = false;   // behind us now
     }
     s.velocity.copy(this.dir).multiplyScalar(this.speed);
     sp.addScaledVector(s.velocity, dt);
@@ -291,9 +296,7 @@ export class Intro {
     this.stage = 'tunnel';
     this.tunnelT = 0;
     s.model.visible = true;
-    // the wormhole opens from the centre of the black, where the ship is heading; its first rings
-    // still glow in the accretion disk's gold before turning cyan
-    this.wormhole?.start(1, 0, { reveal: 0.9, heat: 1 });
+    // straight on down the wormhole's funnel, which has been opening inside the hole all along
     this.audio.boostWhoosh();
   }
 

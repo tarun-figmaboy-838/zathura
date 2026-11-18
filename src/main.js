@@ -11,7 +11,7 @@ import { createPlanet } from './world/planet.js';
 import { createBlackHole } from './world/blackhole.js';
 import { AsteroidField } from './world/asteroids.js';
 import { createDust } from './world/dust.js';
-import { Wormhole } from './world/wormhole.js';
+import { Wormhole, WormholeTube } from './world/wormhole.js';
 import { TargetRings } from './world/holo.js';
 import { Portal } from './world/portal.js';
 import { SpaceTrash } from './world/trash.js';
@@ -222,6 +222,8 @@ const audio = new AudioEngine();
 const intro = new Intro(station, ship, fx, audio, rig, blackhole);
 const wormhole = new Wormhole(scene);     // the ride through the black hole and every portal
 intro.wormhole = wormhole;
+const wormTube = new WormholeTube(scene, blackhole.uniforms.uR.value);   // the black hole's wormhole, a real funnel
+intro.tube = wormTube;
 dialogue.voice = (who) => audio.chatter(who);
 const campaign = new Campaign();
 const director = new Director(rig);
@@ -340,6 +342,7 @@ function emerge() {
   lens.uniforms.uFlash.value = 0.4;
   state.warp = 1.3;
   wormhole.stop();
+  wormTube.alpha = 0;
   audio.warp(ship.position);
   document.body.classList.add('warping');            // controls fade in once the flash has cleared
   setTimeout(() => document.body.classList.remove('warping'), 650);
@@ -649,7 +652,7 @@ function crossPortal() {
   trash.clearAll();
   // a short ride through the portal's tunnel; the level starts when it ends (see endPortalRide)
   state.tunnel = PORTAL_RIDE;
-  wormhole.start(0.35, PORTAL_RIDE);
+  wormhole.start(0.35, PORTAL_RIDE, { reveal: 0.3 });
   rig.addShake(0.5);
   fx.ring(ship.position, 60, 0.7);
   audio.warp(ship.position);
@@ -1388,6 +1391,7 @@ function frame() {
   rig.update(dt, ship, t);
   if (intro.active) intro.applyCamera(camera, t);
   wormhole.update(dt, t, camera);
+  wormTube.update(t);
   // no hex shield bubble during a ride; put it back afterwards only if the ride hid it
   if (wormhole.active && shield.mesh.visible) { shield.mesh.visible = false; state.rideHidShield = true; }
   else if (!wormhole.active && state.rideHidShield) { state.rideHidShield = false; if (state.mode !== 'dying') shield.mesh.visible = true; }
@@ -1523,7 +1527,7 @@ function frame() {
   blackhole.uniforms.uIntensity.value = 0.32 + 0.68 * near;
   blackhole.uniforms.uDisk.value = 0.7;
   const titleView = mode === 'title';
-  bloom.strength = BLOOM_STRENGTH * (blackhole.object.visible ? 0.3 + 0.45 * near : 1) * (1 - 0.6 * (state.battleDim || 0)) * (titleView ? 0.75 : 1) * (wormhole.active ? 0.4 : 1);   // keep the tunnel's colours crisp
+  bloom.strength = BLOOM_STRENGTH * (blackhole.object.visible ? 0.3 + 0.45 * near : 1) * (1 - 0.6 * (state.battleDim || 0)) * (titleView ? 0.75 : 1) * (wormhole.active || (mode === 'launch' && intro.stage === 'tunnel') ? 0.4 : 1);   // keep the tunnel's colours crisp
   field.material.color.setScalar(titleView || mode === 'launch' ? 0.55 : 1);   // rocks by the station sit in shadow
   sun.update(dt, camera, ship.position, SUN_OCCLUDERS);
 
