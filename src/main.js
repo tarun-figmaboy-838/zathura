@@ -56,6 +56,42 @@ const BOUNDS = { x: 30, y: 11 };
 const PLAYER = { isPlayer: true };
 const $ = (id) => document.getElementById(id);
 
+// Everything the UI shows is ready before Play can be tapped: every image the page and the
+// stylesheet use (buttons, answer capsules, portraits, icons, cockpit and title art) is downloaded
+// and decoded, and every font face is loaded. Started right away, awaited before Play is enabled;
+// capped at 8 s so a flaky network can never lock the player out.
+const UI_FONTS = ['400 64px "Lilita One"', '600 20px "Fredoka"', '700 30px "Fredoka"', '400 16px "Inter"', '600 16px "Inter"',
+  '700 20px "Inter"', '800 12px "Inter"', '700 20px "Orbitron"', '900 20px "Orbitron"'];
+function uiImageUrls() {
+  const urls = new Set([...document.querySelectorAll('img[src]')].map((i) => i.src));
+  for (const f of ['raider', 'warden', 'crew']) urls.add(new URL(`assets/ui/face-${f}.webp`, document.baseURI).href);
+  for (const sheet of document.styleSheets) {
+    let rules;
+    try { rules = sheet.cssRules; } catch { continue; }        // cross-origin (Google Fonts): skip
+    const base = sheet.href || document.baseURI;
+    const walk = (list) => {
+      for (const r of list) {
+        if (r.cssRules) walk(r.cssRules);
+        for (const m of (r.cssText || '').matchAll(/url\(["']?([^"')]+)["']?\)/g)) {
+          if (!m[1].startsWith('data:')) urls.add(new URL(m[1], base).href);
+        }
+      }
+    };
+    walk(rules);
+  }
+  return [...urls];
+}
+const uiReady = (() => {
+  const images = uiImageUrls().map((src) => {
+    const img = new Image();
+    img.src = src;
+    return (img.decode ? img.decode() : new Promise((ok) => { img.onload = ok; })).catch(() => {});
+  });
+  const fonts = document.fonts?.load ? UI_FONTS.map((f) => document.fonts.load(f).catch(() => {})) : [];
+  const all = Promise.all([...images, ...fonts]).then(() => document.fonts?.ready);
+  return Promise.race([all, new Promise((ok) => setTimeout(ok, 8000))]);
+})();
+
 // ------------------------------------------------------------------ world
 const canvas = $('game');
 const renderer = createRenderer(canvas);
@@ -1475,7 +1511,7 @@ function frame() {
   });
   trails.update(camera.position, t);
   // the streaks read as rain in the overhead view, and must not draw over the black hole's shadow
-  dust.object.visible = rig.mode !== 'top' && !(play && battlePhase()) && !(mode === 'launch' && (intro.stage === 'plunge' || intro.stage === 'crossed' || intro.stage === 'tunnel')) && !wormhole.active;
+  dust.object.visible = rig.mode !== 'top' && !(play && battlePhase()) && !(mode === 'launch' && (intro.stage === 'plunge' || intro.stage === 'follow' || intro.stage === 'tunnel')) && !wormhole.active;
   dust.update(camera, _dustVel.copy(ship.velocity).clampLength(0, 650));   // capped: at warp speed they became screen-wide lines
   stars.update(camera, t);
   for (const p of planets) p.update(camera, t);
@@ -1540,12 +1576,10 @@ portal.group.visible = true;   // compile the portal shaders up front
 try { await renderer.compileAsync(scene, camera); } catch { /* optional */ }
 portal.group.visible = false;
 renderer.setAnimationLoop(frame);
+await uiReady;                        // every image and font the UI uses is in (see uiReady)
 $('start').disabled = false;
 $('start').classList.remove('failed');
 $('load-msg').textContent = '';
-if (document.fonts?.load) {
-  for (const f of ['64px "Lilita One"', '600 20px "Fredoka"', '700 30px "Fredoka"', '700 20px "Inter"']) document.fonts.load(f).catch(() => {});
-}
 
 // handy for tuning from the devtools console
 window.game = {

@@ -35,6 +35,8 @@ const T_RETRACT = [2.7, 3.3];
 const T_IGNITE = 3.35;
 const T_BOOST = 3.95;
 const TUNNEL_TIME = 2.6;      // the ride through the wormhole after the horizon
+const FOLLOW_TIME = 0.85;     // the camera chasing the ship through the horizon
+const ONE = new THREE.Vector3(1, 1, 1);
 const RISE = 1.35;          // camera leaves the cockpit and swings out to the release shot
 // captain's eye inside the docked ship (ship space), and the outside shot of the release
 const EYE = new THREE.Vector3(0, 0.95, -2.3);
@@ -79,6 +81,9 @@ export class Intro {
     this.fromTarget = new THREE.Vector3();
     this.fromFov = 50;
     this.holdPos = new THREE.Vector3();
+    this.followFrom = new THREE.Vector3();
+    this.followRoll = 0;
+    this.followT = 0;
     this.dir = new THREE.Vector3(0, 0, -1);
     this.dummy = new THREE.PerspectiveCamera();
     this.cues = new Set();
@@ -196,8 +201,6 @@ export class Intro {
     this.camera(dt, t);
 
     if (this.skipping) this.fade = Math.min(1, this.fade + dt / 0.25);
-    else if (this.stage === 'crossed') this.fade = clamp((t - this.crossT - 0.1) / 0.35, 0, 1);
-    else if (this.stage === 'tunnel') this.fade = Math.max(0, this.fade - dt / 0.35);   // the black opens into the tunnel
     const done = this.skipping ? this.fade >= 1 : this.stage === 'tunnel' && this.tunnelT >= TUNNEL_TIME;
     if (done) {
       this.phase = 'done';
@@ -246,16 +249,22 @@ export class Intro {
       this.dir.copy(toBH);
       this.infall(dt, sp, toBH, R, k);
       if (dist < R * 1.03) {
-        this.stage = 'crossed';
+        this.stage = 'follow';
         this.crossT = t;
-        s.model.visible = false;
+        this.followT = 0;
+        this.followFrom.copy(this.holdPos);
+        this.followRoll = this.roll;
         this.audio.horizon();
       }
-    }
-    if (this.stage === 'crossed') {
-      s.velocity.set(0, 0, 0);
-      if (t - this.crossT > 0.6 && !this.skipping) this.enterTunnel();
-      return;
+    } else if (this.stage === 'follow') {
+      // we follow it in: the ship, still a dark stretched silhouette, keeps falling and the camera
+      // chases it through the horizon; the black fills the view as the bright ring rushes outward
+      this.followT += dt;
+      const k = clamp(this.followT / FOLLOW_TIME, 0, 1);
+      this.speed = lerp(95, 260, k);
+      s.thrust = 0.3;
+      this.distort = 1 - 0.5 * k;
+      if (this.followT >= FOLLOW_TIME && !this.skipping) this.enterTunnel();
     }
     if (this.stage === 'tunnel') {
       // through the wormhole: full burn, a gentle corkscrew, the lens warping with the speed
@@ -267,6 +276,9 @@ export class Intro {
       s.visual.rotation.x = Math.sin(this.tunnelT * 1.3) * 0.05;
       this.distort = 0.45 + 0.15 * Math.sin(this.tunnelT * 3);
       this.rig.addShake(dt * 0.6);
+      s.setRedshift(Math.max(0, 1 - this.tunnelT / 0.5));
+      s.visual.scale.lerp(ONE, 1 - Math.exp(-5 * dt));
+      if (this.tunnelT > 1.0) this.blackhole.object.visible = false;
     }
     s.velocity.copy(this.dir).multiplyScalar(this.speed);
     sp.addScaledVector(s.velocity, dt);
@@ -278,11 +290,10 @@ export class Intro {
     const s = this.ship;
     this.stage = 'tunnel';
     this.tunnelT = 0;
-    s.setRedshift(0);
-    s.visual.scale.set(1, 1, 1);
     s.model.visible = true;
-    this.blackhole.object.visible = false;    // we're through it
-    this.wormhole?.start(1);
+    // the wormhole opens from the centre of the black, where the ship is heading; its first rings
+    // still glow in the accretion disk's gold before turning cyan
+    this.wormhole?.start(1, 0, { reveal: 0.9, heat: 1 });
     this.audio.boostWhoosh();
   }
 
@@ -357,6 +368,15 @@ export class Intro {
         this.fov = lerp(46, this.fov, kb);
       }
       this.shot(_p, _t);
+      return;
+    }
+    if (this.stage === 'follow') {
+      const k = ease(clamp(this.followT / FOLLOW_TIME, 0, 1));
+      _a.copy(sp).addScaledVector(this.dir, -17).addScaledVector(UP, 6.5);           // where the tunnel shot begins
+      _p.copy(this.followFrom).lerp(_a, k);
+      _t.copy(bh).lerp(_b.copy(sp).addScaledVector(this.dir, 60).addScaledVector(UP, 5.5), k);
+      this.fov = lerp(this.fov, 68, 1 - Math.exp(-3 * dt));
+      this.shot(_p, _t, this.followRoll * (1 - k));
       return;
     }
     if (this.stage === 'tunnel') {
