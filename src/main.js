@@ -673,7 +673,7 @@ function onBossHit(part, point, amount = 1) {
   if (res === 'defeated') {
     addScore(5000, boss.corePos);
     hud.banner('WARDEN DOWN', '+5,000', 2.4);
-    dialogue.say(at(enemyLine(WARDEN, 'wardenDown', 1.8), boss.model, boss.corePos.clone()));
+    dialogue.say(focus(at(enemyLine(WARDEN, 'wardenDown', 2.2), boss.model, boss.corePos.clone()), 'boss'));   // the climax gets a close-up
   }
 }
 
@@ -1201,9 +1201,9 @@ function camShip(o) {
   o.fov = 42 / Math.sqrt(Math.min(1, camera.aspect));
 }
 
-// Focus shots: when a craft talks (a raider arriving or laughing at a miss, the Warden, the
-// co-pilot answering from your ship) the camera zooms in on it like the defeat shot, then returns
-// to the battle. The question waits and its timer is held while anyone talks.
+// Focus shots, kept for the moments that matter (most lines play in the battle view): the Warden
+// going down gets a close-up like the defeat shot, then the camera returns. Introductions and the
+// defeat have their own shots.
 const _focus = { pos: new THREE.Vector3(), target: new THREE.Vector3(), up: new THREE.Vector3(0, 1, 0), fov: 50 };
 const focusing = () => {
   const l = dialogue.line;
@@ -1311,8 +1311,8 @@ function quizFire(correct) {
 
 function quizPunish(target) {
   buzz([70, 50, 70]);
-  dialogue.say(target.kind === 'raider' ? focus(at(enemyLine(target.obj.callsign, 'raiderMock', 1.5), target.obj.model, target.obj.position), target.obj)
-    : focus(at(enemyLine(WARDEN, 'wardenMock', 1.5), boss.model, boss.corePos), 'boss'));
+  dialogue.say(target.kind === 'raider' ? at(enemyLine(target.obj.callsign, 'raiderMock', 1.5), target.obj.model, target.obj.position)
+    : at(enemyLine(WARDEN, 'wardenMock', 1.5), boss.model, boss.corePos));
   if (target.kind === 'raider') raiders.punish(target.obj, state.time);
   else boss.punish(state.time, bossCtx);
   audio.alarm();
@@ -1501,14 +1501,14 @@ function updateBanter() {
   for (const r of raiders.list) {
     if (!r.alive || !r.hold || r.taunted || !raiders.arrived(r)) continue;
     r.taunted = true;
-    const lines = [focus(at(enemyLine(r.callsign, 'raiderArrive', 1.3), r.model, r.position), r)];
-    if (Math.random() < 0.35) lines.push(focus(at(crewLine('crewReply', 1.2), ship.model, ship.position), 'ship'));   // the co-pilot answers from your ship
+    const lines = [at(enemyLine(r.callsign, 'raiderArrive', 1.3), r.model, r.position)];
+    if (Math.random() < 0.35) lines.push(at(crewLine('crewReply', 1.2), ship.model, ship.position));   // the co-pilot answers from your ship
     for (const l of lines) l.intro = true;     // the question waits for the opening banter
     dialogue.play(lines);
   }
   if (boss.active && !boss.dying && state.wardenTalk === false) {
     state.wardenTalk = true;
-    dialogue.play(wardenIntro().map((l) => ({ ...focus(at(l, boss.model, boss.corePos), 'boss'), intro: true })));
+    dialogue.play(wardenIntro().map((l) => ({ ...at(l, boss.model, boss.corePos), intro: true })));
   }
 }
 
