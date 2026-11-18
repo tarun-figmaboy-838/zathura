@@ -101,4 +101,4 @@ const line = (who, name, key, hold = 1.5, src = null) => ({
 });
 export const enemyLine = (name, key, hold, src) => line('enemy', name, key, hold, src);
 export const crewLine = (key, hold) => line('crew', CREW, key, hold);
-export const wardenIntro = (src) => POOLS.wardenArrive.map((text) => ({ who: 'enemy', name: WARDEN, text, hold: 1.3, src, face: 'warden', mood: 'taunt' }));
+export const wardenIntro = () => POOLS.wardenArrive.map((text) => ({ who: 'enemy', name: WARDEN, text, hold: 1.3, face: 'warden', mood: 'taunt' }));

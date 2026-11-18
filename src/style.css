@@ -260,6 +260,12 @@ body.narrating .quiz-prompt, body.narrating #banner { opacity: 0 !important; }
 .dialog.bubble .portrait { width: 58px; height: 58px; margin: -24px 0 -4px; }
 .dialog.bubble .name { font-size: 12.5px; margin: -24px 0 4px; padding: 3px 11px 4px; }
 .dialog.bubble .line { font-size: clamp(14px, 1.2vw, 17px); }
+/* phones: a compact bubble (it shares a small screen with the radar) */
+.dialog.bubble.compact { padding: 7px 24px 8px 7px; gap: 0 9px; border-radius: 14px; }
+.dialog.bubble.compact .portrait { width: 42px; height: 42px; margin: -16px 0 -2px; }
+.dialog.bubble.compact .name { font-size: 10.5px; margin: -18px 0 3px; padding: 2px 8px 3px; }
+.dialog.bubble.compact .line { font-size: 13.5px; line-height: 1.22; }
+.dialog.bubble.compact .more { right: 8px; bottom: 6px; }
 /* the tail: one outlined shape that opens into the box (its fill covers the box's border where they
    join), so the bubble and the pointer read as a single piece */
 .dialog .tail { position: absolute; left: var(--tail-x, 50%); width: 32px; height: 30px; margin-left: -16px; display: none; overflow: visible; pointer-events: none; }

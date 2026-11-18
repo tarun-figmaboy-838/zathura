@@ -600,7 +600,7 @@ function onBossHit(part, point, amount = 1) {
   if (res === 'defeated') {
     addScore(5000, boss.corePos);
     hud.banner('WARDEN DOWN', '+5,000', 2.4);
-    dialogue.say(enemyLine(WARDEN, 'wardenDown', 1.8, boss.corePos.clone()));
+    dialogue.say(at(enemyLine(WARDEN, 'wardenDown', 1.8), boss.model, boss.corePos.clone()));
   }
 }
 
@@ -1002,7 +1002,7 @@ function defeatLines() {
   const q = state.lastQ;
   const tip = q ? `Remember: ${RULE_REMINDERS[q.type] || q.hint} Try again!` : 'Hull breached! Dodge the rocks or shoot them first.';
   const lines = [];
-  if (k) lines.push(enemyLine(name, key, 1.6));
+  if (k) lines.push(boss_ ? at(enemyLine(name, key, 1.6), boss.model, boss.corePos) : at(enemyLine(name, key, 1.6), k.obj.model, k.obj.position));
   lines.push({ who: 'crew', name: 'CO-PILOT', text: tip, hold: 2.0, face: 'crew', mood: 'cheer' });
   return lines;
 }
@@ -1194,7 +1194,7 @@ function quizFire(correct) {
 
 function quizPunish(target) {
   buzz([70, 50, 70]);
-  dialogue.say(target.kind === 'raider' ? enemyLine(target.obj.callsign, 'raiderMock', 1.5, target.obj.position) : enemyLine(WARDEN, 'wardenMock', 1.5, boss.corePos));
+  dialogue.say(target.kind === 'raider' ? at(enemyLine(target.obj.callsign, 'raiderMock', 1.5), target.obj.model, target.obj.position) : at(enemyLine(WARDEN, 'wardenMock', 1.5), boss.model, boss.corePos));
   if (target.kind === 'raider') raiders.punish(target.obj, state.time);
   else boss.punish(state.time, bossCtx);
   audio.alarm();
@@ -1225,16 +1225,16 @@ function quizSolved(target, firstTry) {
   if (target.kind === 'raider') {
     const r = target.obj;
     if (r.alive) { raiders.kill(r); raiderDestroyed(r, true); }
-    dialogue.say(enemyLine(r.callsign || 'RAIDER', 'raiderHit', 1.3, r.position.clone()));
+    dialogue.say(at(enemyLine(r.callsign || 'RAIDER', 'raiderHit', 1.3), r.model, r.position.clone()));
   } else {
     if (target.kind === 'turret' && target.obj.alive) onBossHit(target.part, target.pos.clone(), 99);
-    if (target.kind === 'turret') dialogue.say(enemyLine(WARDEN, 'wardenTurret', 1.3, boss.corePos));
+    if (target.kind === 'turret') dialogue.say(at(enemyLine(WARDEN, 'wardenTurret', 1.3), boss.model, boss.corePos));
     // the core always takes exactly three right answers, however many of the volley's shots land
     if (target.kind === 'core' && !boss.dying) {
       const hitsLeft = Math.max(0, 3 - (state.bossSolved - 4) - 1);
       const want = Math.ceil((CORE_HP * hitsLeft) / 3);
       if (boss.coreHp > want) onBossHit(target.part, target.pos.clone(), boss.coreHp - want);
-      if (!boss.dying) dialogue.say(enemyLine(WARDEN, 'wardenCore', 1.3, boss.corePos));
+      if (!boss.dying) dialogue.say(at(enemyLine(WARDEN, 'wardenCore', 1.3), boss.model, boss.corePos));
     }
     state.bossSolved++;
     boss.holdAngle = Math.PI + (Math.random() < 0.5 ? -1 : 1) * (camera.aspect < 1 ? rand(0.4, 0.55) : rand(0.8, 1.05));
@@ -1244,50 +1244,116 @@ function quizSolved(target, firstTry) {
   buzz(20);
 }
 
-// Landscape battles: comms are a speech bubble beside whoever is talking, in the open side space
-// next to the radar (never over the radar, the question bar or the answers). The co-pilot talks
-// from the other side. Phones and defeat close-ups keep the docked box from the CSS.
+// Comms are a speech bubble on the craft that is talking, with its tail pointing at it: the raider
+// or the Warden for enemy lines, your own ship for the co-pilot. Each line picks the spot around the
+// speaker (above or below, slid along) that covers the least of the question, the answers, the
+// HUD, the radar ring and the craft itself, and then follows the craft as it moves. Lines with no
+// speaker on screen (the co-pilot's tip after a defeat) use the docked box from the CSS.
 const dlgEl = $('dialog');
-let lastSpeaker = null;
-function placeComms() {
+const _box = new THREE.Box3(), _sph = new THREE.Sphere();
+const KEEP_OUT = ['quiz-prompt', 'top-right', 'bossbar', 'banner'];
+const comms = { line: null, pick: null, t: 0, out: [] };
+const at = (line, obj, src = obj.position) => Object.assign(line, { obj, src });
+
+function overlap(x, y, w, h, out, circles) {
+  let s = 0;
+  for (const o of out) s += Math.max(0, Math.min(x + w, o.r) - Math.max(x, o.l)) * Math.max(0, Math.min(y + h, o.b) - Math.max(y, o.t));
+  for (const c of circles) {                           // sample the box against each circle
+    let n = 0;
+    for (let i = 0; i < 8; i++) for (let j = 0; j < 4; j++) {
+      const px = x + ((i + 0.5) / 8) * w, py = y + ((j + 0.5) / 4) * h;
+      if ((px - c.x) ** 2 + (py - c.y) ** 2 < c.r * c.r) n++;
+    }
+    s += (n / 32) * w * h * c.w;
+  }
+  return s;
+}
+
+const shown = (o) => { for (; o; o = o.parent) if (!o.visible) return false; return true; };
+const _corner = new THREE.Vector3();
+// the speaker's outline on screen: its model's box projected (a little inset: box corners overshoot
+// the silhouette), or a small mark at its position when the craft is gone (blown up)
+function speakerRect(l, W, H) {
+  if (l.obj && shown(l.obj) && !_box.setFromObject(l.obj).isEmpty()) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let i = 0; i < 8; i++) {
+      _corner.set(i & 1 ? _box.max.x : _box.min.x, i & 2 ? _box.max.y : _box.min.y, i & 4 ? _box.max.z : _box.min.z).project(camera);
+      const x = (_corner.x * 0.5 + 0.5) * W, y = (-_corner.y * 0.5 + 0.5) * H;
+      x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+    }
+    const ix = (x1 - x0) * 0.14, iy = (y1 - y0) * 0.14;
+    return { x0: x0 + ix, y0: y0 + iy, x1: x1 - ix, y1: y1 - iy };
+  }
+  tmp.copy(l.src).project(camera);
+  const cx = (tmp.x * 0.5 + 0.5) * W, cy = (-tmp.y * 0.5 + 0.5) * H;
+  return { x0: cx - 22, y0: cy - 22, x1: cx + 22, y1: cy + 22 };
+}
+
+function placeComms(dt) {
   const l = dialogue.line;
-  const on = l && camera.aspect >= 1 && document.body.classList.contains('battle');
+  const on = l && l.src && (document.body.classList.contains('battle') || state.mode === 'dying');
   if (!on) {
-    if (dlgEl.classList.contains('bubble')) { dlgEl.classList.remove('bubble'); dlgEl.style.cssText = ''; }
+    if (dlgEl.classList.contains('bubble')) { dlgEl.classList.remove('bubble', 'compact'); dlgEl.style.cssText = ''; }
+    comms.line = null;
     return;
   }
   const W = window.innerWidth, H = window.innerHeight;
-  const ringPx = angleOverlay.ringPx || 0.6 * H / 2;
-  const bands = [[16, W / 2 - ringPx - 16], [W / 2 + ringPx + 16, W - 16]];
-  let ex = 0, ey = 0, band;
-  if (l.src) {
-    tmp.copy(l.src).project(camera);
-    ex = (tmp.x * 0.5 + 0.5) * W; ey = (-tmp.y * 0.5 + 0.5) * H;
-    lastSpeaker = ex < W / 2 ? 0 : 1;
-    band = bands[lastSpeaker];
-  } else band = bands[lastSpeaker === 0 ? 1 : 0];   // the crew: the side without the enemy
-  // the box hugs its text, up to the side space's width; place it by its real size
-  const maxW = Math.max(190, Math.min(320, band[1] - band[0]));
   if (!dlgEl.classList.contains('bubble')) dlgEl.classList.add('bubble');
-  dlgEl.style.maxWidth = `${maxW.toFixed(0)}px`;
-  const bw = dlgEl.offsetWidth, bh = dlgEl.offsetHeight;
-  let x, y, tail = '', tailX = 0;
-  const lo = Math.max(12, band[0]), hi = Math.min(W - 12, band[1]) - bw;   // stays in the side space
-  if (l.src) {
-    x = clamp(ex - bw / 2, lo, Math.max(lo, hi));
-    const above = ey > H / 2;
-    y = above ? ey - 0.2 * H - bh : ey + 0.2 * H;  // clear of the craft itself
-    tail = above ? 'down' : 'up';
-    tailX = clamp(ex - x, 22, bw - 22);
-  } else {
-    x = clamp((band[0] + band[1]) / 2 - bw / 2, lo, Math.max(lo, hi));
-    y = H / 2 - bh / 2;
+  if (l !== comms.line) {
+    comms.line = l;
+    comms.pick = null;
+    const narrow = W < 600;                          // phones: a compact bubble, it has less room
+    dlgEl.classList.toggle('compact', narrow);
+    dlgEl.style.maxWidth = `${narrow ? Math.min(250, W - 24) : 300}px`;
   }
-  y = clamp(y, 112, H - 118 - bh);                // between the question bar and the answers
-  dlgEl.dataset.tail = tail;
-  dlgEl.style.left = `${x.toFixed(0)}px`;
-  dlgEl.style.top = `${y.toFixed(0)}px`;
-  dlgEl.style.setProperty('--tail-x', `${tailX.toFixed(0)}px`);
+  const sr = speakerRect(l, W, H);
+  const cx = (sr.x0 + sr.x1) / 2;
+  const bw = dlgEl.offsetWidth, bh = dlgEl.offsetHeight;
+  const TAIL = 22;
+  const spot = (above, f) => {
+    const x = clamp(cx - bw * f, 10, W - 10 - bw);
+    const y = clamp(above ? sr.y0 - TAIL - bh : sr.y1 + TAIL, 8, H - 8 - bh);
+    return { x, y, above, f };
+  };
+  const cost = (p) => {
+    const craft = { l: sr.x0, t: sr.y0, r: sr.x1, b: sr.y1 };
+    const circles = [];
+    if (angleOverlay.on) {
+      tmp.copy(quizCenter).project(camera);
+      circles.push({ x: (tmp.x * 0.5 + 0.5) * W, y: (-tmp.y * 0.5 + 0.5) * H, r: angleOverlay.ringPx || 0, w: 1.2 });
+    }
+    // the question, the answers and the HUD are never covered; the craft hardly; the radar if it must
+    return 8 * overlap(p.x, p.y, bw, bh, comms.out, []) + overlap(p.x, p.y, bw, bh, [], circles) + 3 * overlap(p.x, p.y, bw, bh, [craft], [])
+      + (p.above ? 0 : 40) + Math.abs(p.f - 0.5) * 60;
+  };
+  // choose a spot when the line starts, and look again now and then (switching only for a clearly
+  // better one, so it doesn't jump about)
+  comms.t -= dt;
+  if (!comms.pick || comms.t <= 0) {
+    comms.t = 0.5;
+    comms.out = [];
+    for (const id of KEEP_OUT) {
+      const el = $(id);
+      const r = el && el.getBoundingClientRect();
+      if (r && r.width && getComputedStyle(el).opacity > 0.05) comms.out.push({ l: r.left - 8, t: r.top - 8, r: r.right + 8, b: r.bottom + 8 });
+    }
+    if (quiz.active) {
+      const r = document.querySelector('#quiz .quiz-options').getBoundingClientRect();
+      if (r.width) comms.out.push({ l: r.left - 8, t: r.top - 8, r: r.right + 8, b: r.bottom + 8 });
+    }
+    let best = null, bestCost = Infinity;
+    for (const above of [true, false]) for (const f of [0.5, 0.3, 0.7, 0.15, 0.85]) {
+      const p = spot(above, f), c = cost(p);
+      if (c < bestCost) { bestCost = c; best = p; }
+    }
+    const now = comms.pick ? cost(spot(comms.pick.above, comms.pick.f)) : Infinity;
+    if (!comms.pick || bestCost < now * 0.7) comms.pick = best;
+  }
+  const p = spot(comms.pick.above, comms.pick.f);
+  dlgEl.dataset.tail = p.above ? 'down' : 'up';
+  dlgEl.style.left = `${p.x.toFixed(0)}px`;
+  dlgEl.style.top = `${p.y.toFixed(0)}px`;
+  dlgEl.style.setProperty('--tail-x', `${clamp(cx - p.x, 24, bw - 24).toFixed(0)}px`);
 }
 
 // enemy banter: a raider taunts once it has flown in, the Warden boasts after its introduction
@@ -1296,14 +1362,14 @@ function updateBanter() {
   for (const r of raiders.list) {
     if (!r.alive || !r.hold || r.taunted || !raiders.arrived(r)) continue;
     r.taunted = true;
-    const lines = [enemyLine(r.callsign, 'raiderArrive', 1.3, r.position)];
-    if (Math.random() < 0.35) lines.push(crewLine('crewReply', 1.2));
+    const lines = [at(enemyLine(r.callsign, 'raiderArrive', 1.3), r.model, r.position)];
+    if (Math.random() < 0.35) lines.push(at(crewLine('crewReply', 1.2), ship.model, ship.position));   // the co-pilot answers from your ship
     for (const l of lines) l.intro = true;     // the question waits for the opening banter
     dialogue.play(lines);
   }
   if (boss.active && !boss.dying && state.wardenTalk === false) {
     state.wardenTalk = true;
-    dialogue.play(wardenIntro(boss.corePos).map((l) => ({ ...l, intro: true })));
+    dialogue.play(wardenIntro().map((l) => ({ ...at(l, boss.model, boss.corePos), intro: true })));
   }
 }
 
@@ -1416,7 +1482,7 @@ function frame() {
     });
     if (state.reportT > REPORT_TIME) closeReport();
   }
-  placeComms();
+  placeComms(dt);
   // comms sit in the battle layout (console column / top strip) during battles; a line that is
   // still playing keeps its place until it ends
   const battleUI = play && battlePhase();
