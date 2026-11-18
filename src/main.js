@@ -1301,7 +1301,7 @@ function quizSolved(target, firstTry) {
   if (target.kind === 'raider') {
     const r = target.obj;
     if (r.alive) { raiders.kill(r); raiderDestroyed(r, true); }
-    dialogue.say(at(enemyLine(r.callsign || 'RAIDER', 'raiderHit', 1.3), r.model, r.position.clone()));
+    dialogue.say(at(enemyLine(r.callsign || 'RAIDER', 'raiderHit', 0.9), r.model, r.position.clone()));
   } else {
     if (target.kind === 'turret' && target.obj.alive) onBossHit(target.part, target.pos.clone(), 99);
     if (target.kind === 'turret') dialogue.say(at(enemyLine(WARDEN, 'wardenTurret', 1.3), boss.model, boss.corePos));
@@ -1394,6 +1394,9 @@ function placeComms(dt) {
   }
   const sr = speakerRect(l, W, H);
   const cx = (sr.x0 + sr.x1) / 2;
+  // the speaker off-screen or behind the camera: the bubble goes, rather than sliding into a corner
+  tmp.copy(l.src).project(camera);
+  if (tmp.z > 1 || sr.x1 < 0 || sr.x0 > W || sr.y1 < 0 || sr.y0 > H) { dialogue.clear(); return; }
   const bw = comms.bw, bh = comms.bh;
   const TAIL = 22;
   const spot = (above, f) => {
@@ -1566,6 +1569,9 @@ function frame() {
   }
   if (play) updateBanter();
   if (mode !== 'paused') dialogue.update(dt);
+  // a line spoken by a craft in a battle ends with the battle: once the next journey starts its
+  // craft is gone, and the bubble must not drift over the controls with the wrong face on it
+  if (dialogue.line && dialogue.line.src && mode === 'play' && !battlePhase()) dialogue.clear();
   if (play && state.reportOpen) {
     const before = state.reportT;
     state.reportT += dt;
@@ -1744,9 +1750,11 @@ function frame() {
 // ------------------------------------------------------------------ boot
 dockScene();
 fx.explosion(new THREE.Vector3(0, -5000, 0), 1, null, { scrap: true });
-portal.group.visible = true;   // compile the portal shaders up front
+portal.group.visible = true;   // compile the portal and wormhole shaders up front
+portalTube.mesh.visible = wormTube.mesh.visible = true;
 try { await renderer.compileAsync(scene, camera); } catch { /* optional */ }
 portal.group.visible = false;
+portalTube.mesh.visible = wormTube.mesh.visible = false;
 renderer.setAnimationLoop(frame);
 await uiReady;                        // every image and font the UI uses is in (see uiReady)
 $('start').disabled = false;
