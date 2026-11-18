@@ -297,7 +297,7 @@ function setMode(m) {
 // title screen: the logo always ends above the black hole (where the hole shows depends on the
 // window's shape); its width is capped so its bottom stays clear of the hole's glow
 const titleEl = document.querySelector('.title-logo');
-const TITLE_ASPECT = 1047 / 340;
+const TITLE_ASPECT = 917 / 340;   // the title image's width / height
 const _camUp = new THREE.Vector3();
 let titleFit = 0;
 function fitTitle() {
