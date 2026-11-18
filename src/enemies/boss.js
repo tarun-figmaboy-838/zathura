@@ -37,7 +37,7 @@ function shieldMaterial() {
       uniform float uTime, uFlash, uFade;
       varying vec3 vN; varying vec3 vView; varying vec3 vP;
       void main() {
-        float fres = pow(1.0 - abs(dot(normalize(vN), normalize(vView))), 2.2);
+        float fres = pow(max(0.0, 1.0 - abs(dot(normalize(vN), normalize(vView)))), 2.2);
         vec3 p = normalize(vP);
         float hex = abs(sin(p.x * 18.0 + uTime) * sin(p.y * 18.0) * sin(p.z * 18.0 - uTime));
         float lines = smoothstep(0.85, 1.0, hex);

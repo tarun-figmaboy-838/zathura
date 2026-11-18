@@ -286,7 +286,8 @@ export class AngleOverlay {
     const W = window.innerWidth, H = window.innerHeight;
     // labels are sized in world units, so they keep their place in the picture on any screen
     const pxPerUnit = H / (2 * camera.position.distanceTo(center) * Math.tan((camera.fov * Math.PI) / 360));
-    this.labelRoot.style.setProperty('--u', `${pxPerUnit.toFixed(2)}px`);
+    const uPx = `${pxPerUnit.toFixed(2)}px`;
+    if (uPx !== this.lastU) { this.lastU = uPx; this.labelRoot.style.setProperty('--u', uPx); }
     u.uPx.value = 1 / pxPerUnit;
     this.ringPx = u.uRing.value * pxPerUnit;   // the ring's radius on screen (the comms bubble keeps clear of it)
     const place = (el, yaw, radius, show) => placeAt(el, -Math.sin(yaw) * radius, -Math.cos(yaw) * radius, show);

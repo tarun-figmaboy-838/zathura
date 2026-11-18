@@ -30,17 +30,18 @@ export class SectorGate {
         uniform float uR, uTime, uAlpha, uFlash;
         varying vec2 vP;
         const float TAU = 6.2831853;
+        float sq(float x) { return x * x; }   // never pow() a negative base: NaN spreads via bloom
         void main() {
           float r = length(vP);
           float a = atan(vP.y, vP.x);
           // twelve heavy arc segments
           float s = fract(a / TAU * 12.0 + 0.25);
           float seg = smoothstep(0.03, 0.06, s) * (1.0 - smoothstep(0.94, 0.97, s));
-          float outer = exp(-pow((r - uR) * 1.5, 2.0)) * seg;
-          float rim = exp(-pow((r - uR - 1.6) * 5.0, 2.0)) * 0.45;
+          float outer = exp(-sq((r - uR) * 1.5)) * seg;
+          float rim = exp(-sq((r - uR - 1.6) * 5.0)) * 0.45;
           // rotating dashed inner ring
           float d = fract((a + uTime * 0.5) / TAU * 60.0);
-          float dash = step(0.45, d) * exp(-pow((r - uR * 0.84) * 5.0, 2.0)) * 0.55;
+          float dash = step(0.45, d) * exp(-sq((r - uR * 0.84) * 5.0)) * 0.55;
           // four amber chevrons pointing into the gate
           float q = fract(a / TAU * 4.0 + 0.125) - 0.5;
           float chev = (1.0 - smoothstep(0.012, 0.03, abs(abs(q) * 3.0 - (uR + 3.2 - r) * 0.06)))

@@ -29,6 +29,7 @@ export class Vitals {
       const spill = -this.shield;
       this.shield = 0;
       this.hull = Math.max(0, this.hull - spill * 0.5);
+      if (this.hull <= 0) { this.dead = true; return 'dead'; }
       return 'break';
     }
     this.hull -= amount;

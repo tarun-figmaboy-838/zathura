@@ -43,6 +43,7 @@ export class Radar {
         const float TAU = 6.2831853;
         float angDiff(float a, float b) { float d = a - b; return abs(atan(sin(d), cos(d))); }
         float band(float r, float a, float b, float soft) { return smoothstep(a - soft, a, r) * (1.0 - smoothstep(b, b + soft, r)); }
+        float sq(float x) { return x * x; }   // never pow() a negative base: NaN spreads via bloom
         void main() {
           float r = length(vP);
           if (r < 6.6 || r > uR * 1.6) discard;
@@ -50,7 +51,7 @@ export class Radar {
           float hull = smoothstep(6.6, 7.6, r);
 
           // static ring, inner guide and tick marks every 15 deg (long ones every 90 deg)
-          float ring = exp(-pow((r - uR) * 3.2, 2.0)) + exp(-pow((r - uR * 0.66) * 6.0, 2.0)) * 0.25;
+          float ring = exp(-sq((r - uR) * 3.2)) + exp(-sq((r - uR * 0.66) * 6.0)) * 0.25;
           float seg = ang / TAU * 24.0;
           float dTick = abs(fract(seg + 0.5) - 0.5) * (TAU / 24.0) * r;
           float major = 1.0 - step(0.08, abs(fract(seg / 6.0 + 0.5) - 0.5));
@@ -69,7 +70,7 @@ export class Radar {
 
           // ping travelling outward along the wedge on each shot
           float pr = mix(uR * 1.45, uR * 0.62, uPing);
-          float ping = exp(-pow((r - pr) * 2.2, 2.0)) * (1.0 - smoothstep(0.15, 0.5, dA)) * uPing;
+          float ping = exp(-sq((r - pr) * 2.2)) * (1.0 - smoothstep(0.15, 0.5, dA)) * uPing;
 
           // enemy blips just outside the ring
           vec3 blipCol = vec3(0.0);

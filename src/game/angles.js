@@ -28,6 +28,12 @@ export const HINTS = {
 const range5 = (lo, hi) => { const out = []; for (let v = lo; v <= hi; v += 5) out.push(v); return out; };
 
 // level: optional { answer, options } to use instead of random ones (Angle Hunt's levels)
+// Fisher-Yates, so the right answer isn't always on the same button
+function shuffle(a, r) {
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+
 export function makeQuestion(tYaw, type, r = Math.random, level = null) {
   const s = r() < 0.5 ? 1 : -1;   // turn direction from R to the target
   const answer = level ? level.answer : type === 'complement' ? pick([20, 25, 30, 35, 40, 50, 55, 60, 65, 70], r)
@@ -86,7 +92,7 @@ export function makeQuestion(tYaw, type, r = Math.random, level = null) {
     q.hint2 = `x = 180° − ${b}° − ${c}°`;
     q.explain = `${b}° + ${c}° + ${answer}° = 180°`;
   }
-  q.options = level ? [...level.options] : makeOptions(answer, q.given, type, r, q.given2);
+  q.options = level ? shuffle([...level.options], r) : makeOptions(answer, q.given, type, r, q.given2);
   return q;
 }
 

@@ -48,16 +48,17 @@ export class ShieldFX {
           }
           return sqrt(f2) - sqrt(f1);
         }
+        float sq(float x) { return x * x; }   // never pow() a negative base: NaN spreads via bloom
         void main() {
           vec3 p = normalize(vLocal);
-          float fres = pow(1.0 - abs(dot(normalize(vN), normalize(vView))), 2.0);
+          float fres = pow(max(0.0, 1.0 - abs(dot(normalize(vN), normalize(vView)))), 2.0);
           float edge = 1.0 - smoothstep(0.03, 0.1, cellEdge(p * 7.0));
           float glow = 0.0;
           for (int i = 0; i < ${HITS}; i++) {
             vec4 h = uHits[i];
             if (h.w > 1.6) continue;
             float d = distance(p, h.xyz);
-            float ring = exp(-pow((d - h.w * 2.0) * 8.0, 2.0)) * exp(-h.w * 2.2);
+            float ring = exp(-sq((d - h.w * 2.0) * 8.0)) * exp(-h.w * 2.2);
             float core = exp(-d * d * 18.0) * exp(-h.w * 6.0);
             float spread = exp(-d * d * 3.0) * exp(-h.w * 3.0) * edge;
             glow += ring * (0.5 + edge * 1.5) + core * 2.5 + spread;

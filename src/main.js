@@ -78,6 +78,7 @@ const planets = [
   createPlanet(SUN_DIR, sky.cube, { position: V(2200, 400, -13200), radius: 700, preset: 'desert', tilt: [0.1, 0.8, 0.2] }),
   createPlanet(SUN_DIR, sky.cube, { position: V(-1900, -500, -17000), radius: 950, preset: 'ocean', tilt: [0.3, 1.2, -0.2] }),
 ];
+const SUN_OCCLUDERS = [...planets, blackhole];
 scene.add(stars.object, dust.object, blackhole.object, ...planets.map((p) => p.object));
 
 let shipGltf, rockGltf, raiderGltf, stationGltf, bossGltf;
@@ -323,6 +324,7 @@ function clearCombat() {
   state.doom = 0;
   state.volley = null;
   state.bossSolved = 0;
+  state.deathCause = null;
   for (const a of Object.values(abilities)) { a.t = 0; a.cool = 0; }
 }
 
@@ -335,13 +337,14 @@ function retryLevel() {
   ship.position.set(LANE.x, LANE.y, ship.position.z);
   ship.velocity.set(0, 0, -60);
   state.score = state.levelStartScore;
+  if (state.sectorAtLevel) state.sector = { ...state.sectorAtLevel };
   state.warnedHull = false;
   campaign.start(campaign.level);
   rig.setMode('chase', 0.8);
   setMode('play');
 }
 
-function restartFromStation() {
+function restartFromStation(launchNow = true) {
   clearCombat();
   resetUpgrades();
   state.stars = [];
@@ -360,7 +363,7 @@ function restartFromStation() {
   rig.mode = 'chase';
   rig.t = 1;
   setWhiteout('white', 0);
-  launch();
+  if (launchNow) launch();
 }
 
 function pause() { if (state.mode === 'play') setMode('paused'); }
@@ -376,6 +379,7 @@ function die() {
   quiz.stop();
   director.clear();
   dialogue.clear();
+  state.volley = null;          // the wreck doesn't keep firing
   buzz([120, 60, 200]);
   setMode('dying');
   state.deathTalk = false;
@@ -745,6 +749,8 @@ const campaignCtx = {
       { text: 'Then fly through the portal to start Level 1.', time: 3 },
     ]);
     if (campaign.firstOfGroup) state.sector = { asked: 0, first: 0 };
+    state.levelStartScore = state.score;                   // Retry restarts this level with these points
+    state.sectorAtLevel = { ...state.sector };             // ...and these star stats
   },
   spawnBoss() {
     boss.spawn(ship, state.time, Math.PI + (Math.random() < 0.5 ? -1 : 1) * (camera.aspect < 1 ? rand(0.4, 0.55) : rand(0.8, 1.05)));
@@ -1036,7 +1042,7 @@ $('r-next').addEventListener('click', () => closeReport());
 // pause menu: sound on/off and back to the station
 function updateSoundButton() { $('p-sound').classList.toggle('off', audio.muted); }
 $('p-sound').addEventListener('click', () => { audio.toggleMute(); updateSoundButton(); });
-$('p-home').addEventListener('click', () => { setMode('play'); restartFromStation(); });
+$('p-home').addEventListener('click', () => { restartFromStation(false); setMode('title'); });   // back to the bridge
 
 // ------------------------------------------------------------------ introductions
 // Each new thing is explained once, the first time it appears (see game/director.js).
@@ -1137,7 +1143,7 @@ function updateQuiz(dt, t) {
   quizCenter.y = ship.position.y;
   if (!battlePhase()) {
     if (quiz.active) quiz.stop();
-  } else if (!quiz.active && !director.camera && state.mode === 'play' && !(dialogue.active && dialogue.line.intro)) {
+  } else if (!quiz.active && !director.camera && state.mode === 'play' && !(state.doom > 0) && !(dialogue.active && dialogue.line.intro)) {
     const tgt = nextQuizTarget(dt);
     if (tgt) {
       const dx = tgt.pos.x - quizCenter.x, dz = tgt.pos.z - quizCenter.z;
@@ -1451,7 +1457,7 @@ function frame() {
   rings.mesh.visible = !director.camera;   // lock-on brackets would float oddly in a low close-up
   if (play) updateQuiz(dt, t);
   else angleOverlay.update(dt, t, quizCenter, camera);
-  if (portal.update(dt, t, ship.position)) crossPortal();
+  if (portal.update(dt, t, ship.position) && mode === 'play') crossPortal();
 
   if (vitals.update(dt) && play) { shield.pulse(); audio.shieldUp(); }
   if (abilities.shield.t > 0) shield.pulse();
@@ -1487,7 +1493,7 @@ function frame() {
   const titleView = mode === 'title';
   bloom.strength = BLOOM_STRENGTH * (blackhole.object.visible ? 0.3 + 0.45 * near : 1) * (1 - 0.6 * (state.battleDim || 0)) * (titleView ? 0.75 : 1);
   field.material.color.setScalar(titleView || mode === 'launch' ? 0.55 : 1);   // rocks by the station sit in shadow
-  sun.update(dt, camera, ship.position, [...planets, blackhole]);
+  sun.update(dt, camera, ship.position, SUN_OCCLUDERS);
 
   state.damage = damp(state.damage, 0, 2.5, dt);
   const lowHull = play && vitals.hullFrac < 0.3 ? 0.25 + 0.2 * Math.sin(t * 6) : 0;
