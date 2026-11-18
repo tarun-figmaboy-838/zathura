@@ -294,6 +294,21 @@ function setMode(m) {
   input.active = m === 'play';
 }
 
+// title screen: the logo always ends above the black hole (where the hole shows depends on the
+// window's shape); its width is capped so its bottom stays clear of the hole's glow
+const titleEl = document.querySelector('.title-logo');
+const TITLE_ASPECT = 1047 / 340;
+const _camUp = new THREE.Vector3();
+let titleFit = 0;
+function fitTitle() {
+  const top = titleEl.getBoundingClientRect().top;
+  _camUp.set(0, 1, 0).applyQuaternion(camera.quaternion);
+  tmp.copy(blackhole.position).addScaledVector(_camUp, blackhole.uniforms.uR.value * 2.0).project(camera);
+  const holeTop = (-tmp.y * 0.5 + 0.5) * window.innerHeight;
+  const fit = Math.max(160, (holeTop - top - 14) * TITLE_ASPECT);
+  if (Math.abs(fit - titleFit) > 2) { titleFit = fit; titleEl.style.setProperty('--fit', `${fit.toFixed(0)}px`); }
+}
+
 // full-screen fade layer: white for the black-hole crossing, black for the ending
 function setWhiteout(color, opacity, seconds = 0, easing = 'ease') {
   whiteout.classList.toggle('black', color === 'black');
@@ -1605,6 +1620,7 @@ function frame() {
   }
   rig.update(dt, ship, t);
   if (intro.active) intro.applyCamera(camera, t);
+  if (mode === 'title') fitTitle();
   wormTube.update(t);
   portalTube.update(t);
   // no hex shield bubble during a ride; put it back afterwards only if the ride hid it
