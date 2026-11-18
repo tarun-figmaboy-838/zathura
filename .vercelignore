@@ -1,1 +1,9 @@
+# only what the game loads is deployed: the build scripts, voice tools, docs and local launchers stay in the repo
+blender/
 tools/
+README.md
+PLAN.md
+serve.py
+start.command
+start.bat
+.gitignore

@@ -194,6 +194,4 @@ export class Campaign {
     }
   }
 
-  objective() { return ''; }
-  get progress() { return Math.min(1, this.level / this.levels.length); }
 }

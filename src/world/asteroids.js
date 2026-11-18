@@ -255,13 +255,6 @@ export class AsteroidField {
 
   clearAll() { for (const r of this.rocks) { r.alive = false; r.respawnAt = 0; } }
 
-  // Push every rock out of a sphere (keeps the station and launch lane clear).
-  clearAround(pos, radius) {
-    for (const rock of this.rocks) {
-      if (rock.alive && rock.pos.distanceTo(pos) < radius + rock.radius) this.fieldPosition(rock.pos, pos, radius + 150);
-    }
-  }
-
   // First rock overlapping a sphere (ship collision), or null.
   overlap(pos, radius) {
     for (const rock of this.rocks) {

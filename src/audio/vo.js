@@ -8,8 +8,6 @@ const hash = (s) => {
   return h.toString(16).padStart(8, '0');
 };
 
-export const voKey = hash;   // (for tests)
-
 export class Voice {
   constructor(audio) {
     this.audio = audio;

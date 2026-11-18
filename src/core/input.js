@@ -61,5 +61,4 @@ export class Input {
   get fire() { return this.active && (this.pointerFire || this.virtual.fire || this.any(FIRE)); }
   tap(name) { this.taps.add(name); }
   consume(name) { const had = this.taps.has(name); this.taps.delete(name); return had; }
-  clearTaps() { this.taps.clear(); }
 }

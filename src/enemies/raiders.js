@@ -417,11 +417,6 @@ export class Raiders {
     return true;
   }
 
-  // lead pips: where the turret must aim (from `from`, bolts inheriting shipVel) to hit each raider
-  computePips(from, shipVel, speed) {
-    for (const r of this.list) if (r.alive) intercept(from, shipVel, r.root.position, r.vel, speed, r.pip);
-  }
-
   segmentHit(a, b, out) {
     let best = null;
     let bestD = Infinity;

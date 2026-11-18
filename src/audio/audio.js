@@ -375,7 +375,7 @@ export class AudioEngine {
     this.osc('square', 1500, 1400, 0.05, 0.25, this.out(0.25), t);
   }
 
-  // a star landing on the sector report: each one a step higher
+  // a star lighting up (every 4 levels, and on the victory card): each one a step higher
   star(i) {
     if (!this.ready()) return;
     const t = this.ctx.currentTime;

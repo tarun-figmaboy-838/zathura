@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { addPanelDetail } from '../ship/ship.js';
-import { damp, intercept, rand, segmentPointDistSq, segOut } from '../core/math.js';
+import { intercept, rand, segmentPointDistSq, segOut } from '../core/math.js';
 
 export const TURRET_HP = 10;
 export const CORE_HP = 60;

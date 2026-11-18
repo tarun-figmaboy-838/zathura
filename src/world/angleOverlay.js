@@ -9,7 +9,7 @@ const ease = (x) => { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); };
 //  - the cannon beam: a bright cyan line from the cannon to the ring, exactly where the cannon
 //    points (this is the reference line); its extension through the ship is a faint dotted line
 //  - the line to the enemy (warm red), with a faint dotted extension when the rule needs it
-//  - the given angle (orange arc) and the asked angle "?" (white arc with a gentle ghost sweep);
+//  - the given angle (orange arc) and the asked angle x (white arc);
 //    right-angle questions add the usual little square in the corner; "around a point" adds a third
 //    dotted ray and a second given angle; triangle questions draw the third side with the two given
 //    angles at its corners
@@ -22,7 +22,7 @@ export class AngleOverlay {
       uAxis: { value: 0 }, uT: { value: 0 }, uP: { value: 0 }, uHasP: { value: 0 }, uExtR: { value: 0 }, uExtT: { value: 0 },
       uKnown: { value: new THREE.Vector2() }, uUnknown: { value: new THREE.Vector2() }, uRight: { value: new THREE.Vector2() },
       uKnown2: { value: new THREE.Vector2() }, uTri: { value: new THREE.Vector4() }, uTriOn: { value: 0 }, uTriR: { value: 4 },
-      uDraw: { value: 0 }, uAlpha: { value: 0 }, uSweep: { value: 0 }, uSweepA: { value: 0 }, uTime: { value: 0 },
+      uDraw: { value: 0 }, uAlpha: { value: 0 }, uTime: { value: 0 },
       uAim: { value: new THREE.Vector3() }, uAimOn: { value: 0 }, uResult: { value: 0 }, uFlash: { value: 0 },
     };
     const mat = new THREE.ShaderMaterial({
@@ -42,7 +42,7 @@ export class AngleOverlay {
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }`,
       fragmentShader: /* glsl */ `
-        uniform float uPx, uRing, uTLen, uR, uMax, uAxis, uT, uP, uHasP, uExtR, uExtT, uDraw, uAlpha, uSweep, uSweepA, uTime, uAimOn, uResult, uFlash, uTriOn, uTriR;
+        uniform float uPx, uRing, uTLen, uR, uMax, uAxis, uT, uP, uHasP, uExtR, uExtT, uDraw, uAlpha, uTime, uAimOn, uResult, uFlash, uTriOn, uTriR;
         uniform vec2 uKnown2;
         uniform vec4 uTri;
         uniform vec2 uKnown, uUnknown, uRight;
@@ -278,10 +278,6 @@ export class AngleOverlay {
     u.uAlpha.value = this.on && !this.muted ? Math.min(1, u.uAlpha.value + dt * 4) : Math.max(0, u.uAlpha.value - dt * 5);
     u.uDraw.value = this.on ? ease(this.t / 0.7) : u.uDraw.value;
     u.uFlash.value = Math.max(0, u.uFlash.value - dt * 1.2);
-    // ghost sweep: grow through the asked angle, hold, fade, repeat
-    const cyc = (time % 2.4) / 2.4;
-    u.uSweep.value = ease(cyc / 0.55);
-    u.uSweepA.value = u.uAimOn.value > 0.5 ? 0 : (cyc < 0.8 ? 1 : 1 - (cyc - 0.8) / 0.2) * (this.t > 0.7 ? 1 : 0);
     this.mesh.visible = u.uAlpha.value > 0.003;
 
     const W = window.innerWidth, H = window.innerHeight;

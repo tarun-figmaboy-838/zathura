@@ -24,7 +24,6 @@ import { Turret } from './ship/turret.js';
 import { EngineFX } from './ship/engineFx.js';
 import { Vitals } from './ship/vitals.js';
 import { ShieldFX } from './ship/shield.js';
-import { Radar } from './ship/radar.js';
 import { Projectiles } from './combat/projectiles.js';
 import { Effects, SHIP_CORE } from './combat/fx.js';
 import { Trails } from './combat/trails.js';
@@ -185,7 +184,6 @@ MOUNT_SCALE = ship.nodes.TurretMount.scale.x;
 turret.minPitchFore = -12 * Math.PI / 180;
 const engines = new EngineFX(ship, scene);
 const shield = new ShieldFX(ship);
-const radar = new Radar(ship);
 const vitals = new Vitals();
 const field = new AsteroidField(scene, rockGltf, { managed: true, capacity: 64 });
 const trash = new SpaceTrash(scene);
@@ -278,7 +276,6 @@ const hB = new THREE.Vector3();
 const hC = new THREE.Vector3();
 const crosshair = { x: 0, y: 0 };
 const bufferSize = new THREE.Vector2();
-const blips = [];
 const quizCenter = new THREE.Vector3();
 // 'won' is the beat after a hit: the answer's explanation stays up until it ends
 const battlePhase = () => ['battle', 'boss', 'contact', 'won'].includes(campaign.phase);
@@ -1524,24 +1521,20 @@ function updateBanter() {
   }
 }
 
-// in-world enemy markers: radar blips around the cannon and health rings under each enemy
+// in-world enemy markers: health rings under each enemy
 function updateHolo(t, show) {
-  blips.length = 0;
   rings.begin(t);
   if (show) {
     for (const r of raiders.list) {
       if (!r.alive) continue;
-      blips.push({ angle: bearing(r.position), strength: 1, kind: 0 });
       rings.add(tmp.copy(r.position).setY(r.position.y - 1.2), r.hold ? 5.2 : 7.5, r.hp / r.maxHp, 0);
     }
     for (const w of boss.weakPoints()) {
       const core = w.obj.kind === 'core';
-      blips.push({ angle: bearing(w.pos), strength: 1, kind: 1 });
       rings.add(w.pos, core ? 7.5 : 6.4, core ? boss.coreHp / CORE_HP : boss.turrets[w.obj.index].hp / TURRET_HP, core ? 2 : 1);
     }
   }
   rings.end();
-  radar.setBlips(blips);
 }
 
 // ------------------------------------------------------------------ loop
@@ -1698,8 +1691,6 @@ function frame() {
   }
   state.cannonFlash = Math.max(0, state.cannonFlash - dt * 8);
   ship.setCannonGlow(Math.max(turret.heat, battlePhase() ? 0.55 : 0), state.cannonFlash);
-  // no radar ring on the journeys (it cluttered the view); battles have the angle radar instead
-  radar.mesh.visible = false;
 
   // ---- simulation
   raiderCtx.shipAlive = play && !director.active;
@@ -1824,7 +1815,7 @@ $('load-msg').textContent = '';
 // handy for tuning from the devtools console
 window.game = {
   THREE, scene, camera, renderer, ship, turret, rig, field, fx, raiders, boss, vitals, intro, campaign, state, input, audio, hud, abilities,
-  radar, portal, rings, director, blackhole, planets, quiz, angleOverlay, launch, setMode,
+  portal, rings, director, blackhole, planets, quiz, angleOverlay, launch, setMode,
   debug: {
     fire(on) { input.virtual.fire = on; },
     key(code, on) { if (on) input.keys.add(code); else input.keys.delete(code); },

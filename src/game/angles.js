@@ -119,9 +119,3 @@ function makeOptions(answer, given, type, r, given2 = 0) {
   return all;
 }
 
-// question type for a sector (0-based) and question number (1-based): each sector teaches its own
-// rule; the boss sector opens with triangles and then mixes everything
-export function typeForSector(level, index = 1, r = Math.random) {
-  if (level < 4) return QUESTION_TYPES[level];
-  return index <= 2 || r() < 0.4 ? 'triangle' : pick(QUESTION_TYPES, r);
-}

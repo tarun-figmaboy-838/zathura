@@ -6,7 +6,7 @@ and the title and button art designed in Figma.
 The game opens on the bridge of your gunship, looking out through the windshield. Press Play and the
 camera leaves the cockpit to watch the ship released from the Haven-9 station, then it dives into a black
 hole. On the far side there are **12 levels**, taken from *Angle Hunt* (angle-game.vercel.app): before
-every level the ship makes a short letterboxed journey through an asteroid belt and flies through the
+every level the ship makes a short playable journey through an asteroid belt and flies through the
 level's portal. The levels come in three sectors of four; each sector ends with a meteor field and a
 quick look at the stars earned. After the third sector comes the boss, the
 Warden carrier, and then you jump home.

@@ -69,8 +69,9 @@ angle, angles around a point, angles in a triangle), ready for later levels.
 index.html              page, HUD, menus, on-screen controls
 src/main.js             boot, game loop, combat, introductions, stars
 src/core/               renderer, post-processing, input, camera rig
-src/world/              sky, stars, sun, planets, black hole, asteroids, portal, angle radar, holograms
-src/ship/               ship, turret, engines, shield, radar ring
+src/world/              sky, stars, sun, planets, black hole, asteroids, portal, wormhole, space junk,
+                        angle radar, lock-on rings
+src/ship/               ship, turret, engines, shield
 src/enemies/            raiders, the Warden
 src/combat/             projectiles, explosions, trails
 src/game/               intro (cockpit + launch + black hole), campaign (levels), angle questions,
