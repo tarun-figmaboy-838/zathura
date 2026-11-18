@@ -151,15 +151,10 @@
   </div>
 
   <div id="victory" class="screen modal hidden" role="dialog" aria-modal="true" aria-label="Journey complete">
-    <div class="panel small">
+    <div class="panel small victory">
       <h2>Victory</h2>
-      <div class="results">
-        <div><span>Score</span><b id="v-score">0</b></div>
-        <div><span>Best</span><b id="v-best">0</b></div>
-      </div>
-      <div class="v-total"><span class="stars mini"><i class="on"></i></span><b id="v-total">0/15</b></div>
-      <div class="sector-stars" id="v-stars"></div>
-      <div class="new-best hidden" id="v-newbest">New best</div>
+      <div class="stars big" id="v-stars"><i></i><i></i><i></i></div>
+      <div class="v-score"><b id="v-score">0</b><span id="v-best">Best 0</span></div>
       <div class="modal-actions">
         <button id="again" class="img-btn big" aria-label="Fly again"><img src="assets/ui/btn-retry.png" alt="" draggable="false" /></button>
       </div>
@@ -171,20 +166,11 @@
     <div class="portrait"><img src="assets/ui/face-raider.webp" alt="" draggable="false" /></div>
     <div class="talk"><b class="name"></b><p class="line"></p></div>
     <i class="more" aria-hidden="true"></i>
+    <svg class="tail" viewBox="0 -3 32 30" aria-hidden="true"><path class="ink" d="M1,0 L16,26.5 L31,0 Z" /><path class="fill" d="M6.6,-3 L16,15.5 L25.4,-3 Z" /><path class="rim" d="M6,-1 L16,18 L26,-1" /></svg>
   </div>
 
-  <div id="report" class="screen modal hidden" role="dialog" aria-modal="true" aria-label="Sector complete">
-    <div class="panel small report">
-      <h2 id="r-title">Sector 1</h2>
-      <div class="stars big" id="r-stars"><i></i><i></i><i></i></div>
-      <div class="results">
-        <div><span>First try</span><b id="r-first">0/0</b></div>
-        <div><span>Bonus</span><b id="r-bonus">+0</b></div>
-      </div>
-      <div class="upgrades" id="r-upgrades"></div>
-      <button id="r-next" class="next-btn" type="button" disabled><img src="assets/ui/btn-next.png" alt="" draggable="false" /><span>Next</span></button>
-    </div>
-  </div>
+  <!-- ============================== every 4 levels: just the stars earned, then the game flies on -->
+  <div id="report" class="stars-pop" aria-hidden="true"><div class="stars" id="r-stars"><i></i><i></i><i></i></div></div>
 
   <div id="whiteout"></div>
   <script type="module" src="src/main.js"></script>

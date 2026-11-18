@@ -206,7 +206,7 @@ const state = {
   damage: 0, smokeT: 0, warnedHull: false, shieldHintT: 0, cannonFlash: 0, manualT: 0, manualYaw: 0, locked: null,
   finaleSpeed: 0, shipScale: 1, aiming: false, jumped: false, crossT: 0,
   volley: null, timeScale: 1, bossHoldT: 0, bossSolved: 0,
-  sector: { asked: 0, first: 0 }, stars: [], reportOpen: false, upgrades: [],
+  sector: { asked: 0, first: 0 }, stars: [], reportOpen: false, reportT: 0,
 };
 const abilities = {
   lock: { dur: 5, cd: 12, t: 0, cool: 0 },
@@ -346,9 +346,8 @@ function retryLevel() {
 
 function restartFromStation(launchNow = true) {
   clearCombat();
-  resetUpgrades();
   state.stars = [];
-  closeReport(true);
+  closeReport();
   vitals.reset();
   turret.reset();
   shield.mesh.visible = true;
@@ -457,12 +456,17 @@ function finaleUpdate(dt) {
 function victory() {
   const newBest = saveBest();
   $('v-score').textContent = state.score.toLocaleString('en-US');
-  $('v-best').textContent = state.best.toLocaleString('en-US');
-  $('v-newbest').classList.toggle('hidden', !newBest);
+  const best = $('v-best');
+  best.textContent = newBest ? 'New best' : `Best ${state.best.toLocaleString('en-US')}`;
+  best.classList.toggle('new-best', newBest);
+  // one rating for the whole run: the average of the stars earned every 4 levels
+  const groups = campaign.count;
   const total = state.stars.reduce((a, b) => a + (b || 0), 0);
-  $('v-total').textContent = `${total}/${campaign.count * 3}`;
-  $('v-stars').innerHTML = Array.from({ length: campaign.count }, (_, i) =>
-    `<div><span>${i + 1}</span><em class="stars mini">${[0, 1, 2].map((k) => `<i class="${k < (state.stars[i] || 0) ? 'on' : ''}"></i>`).join('')}</em></div>`).join('');
+  const rating = Math.max(1, Math.round(total / groups));
+  $('v-stars').querySelectorAll('i').forEach((el, i) => {
+    el.className = '';
+    if (i < rating) setTimeout(() => { el.className = 'on'; audio.star(i); }, 700 + i * 320);
+  });
   setMode('victory');
   setWhiteout('black', 1);
   void whiteout.offsetWidth;
@@ -789,7 +793,7 @@ const campaignCtx = {
     const bonus = 500 * (level + 1) + Math.round(vitals.hull) * 5;
     state.score += bonus;
     state.levelStartScore = state.score;
-    openReport(level, bonus);
+    openReport(level);
   },
   reportOpen: () => state.reportOpen,
 };
@@ -958,86 +962,31 @@ function buzz(pattern) {
   try { navigator.vibrate?.(pattern); } catch { /* not supported */ }
 }
 
-// ------------------------------------------------------------------ sector report + upgrades
-const BASE = {
-  fire: turret.fireInterval, hull: vitals.maxHull, shield: vitals.maxShield,
-  regen: vitals.regenRate, delay: vitals.regenDelay, lockDur: abilities.lock.dur, lockCd: abilities.lock.cd,
-};
-const HULL_ICON = '<svg viewBox="0 0 24 24"><path d="M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7z" /></svg>';
-const UPGRADES = [
-  { id: 'cannon', name: 'Rapid cannon', img: 'btn-fire.png', apply() { turret.fireInterval *= 0.8; } },
-  { id: 'shield', name: 'Shield +30', img: 'btn-shield.png', apply() { vitals.maxShield += 30; vitals.shield = vitals.maxShield; } },
-  { id: 'hull', name: 'Hull +30', icon: HULL_ICON, apply() { vitals.maxHull += 30; vitals.hull = vitals.maxHull; } },
-  { id: 'lock', name: 'Lock-on +2s', img: 'btn-lock.png', apply() { abilities.lock.dur += 2; abilities.lock.cd = Math.max(6, abilities.lock.cd - 2); } },
-  { id: 'recharge', name: 'Fast recharge', img: 'btn-retry.png', apply() { vitals.regenRate *= 1.4; vitals.regenDelay *= 0.75; } },
-];
-
-function resetUpgrades() {
-  turret.fireInterval = BASE.fire;
-  vitals.maxHull = BASE.hull;
-  vitals.maxShield = BASE.shield;
-  vitals.regenRate = BASE.regen;
-  vitals.regenDelay = BASE.delay;
-  abilities.lock.dur = BASE.lockDur;
-  abilities.lock.cd = BASE.lockCd;
-  state.upgrades = [];
-}
-
+// ------------------------------------------------------------------ stars
 // stars: every target hit on the first try = 3, at least 60% = 2, otherwise 1
 function starsFor(s) {
   if (!s.asked || s.first >= s.asked) return 3;
   return s.first / s.asked >= 0.6 ? 2 : 1;
 }
 
-function openReport(level, bonus) {
-  const s = state.sector;
-  const stars = starsFor(s);
+// every 4 levels: the stars earned pop in over the action (no card, numbers or buttons), then the
+// game flies on by itself; the victory screen gives the run its overall rating
+const REPORT_TIME = 2.6;
+function openReport(level) {
+  const stars = starsFor(state.sector);
   state.stars[level] = Math.max(state.stars[level] || 0, stars);
-  $('r-title').textContent = `Sector ${level + 1}`;
-  $('r-first').textContent = `${s.first}/${s.asked}`;
-  $('r-bonus').textContent = `+${bonus.toLocaleString('en-US')}`;
-  $('r-stars').querySelectorAll('i').forEach((el, i) => {
-    el.className = '';
-    if (i < stars) setTimeout(() => { el.className = 'on'; audio.star(i); }, 450 + i * 320);
-  });
-  // one upgrade per sector (none after the last one)
-  const box = $('r-upgrades');
-  const next = $('r-next');
-  box.innerHTML = '';
-  const last = level >= campaign.count - 1;
-  box.classList.toggle('hidden', last);
-  next.disabled = !last;
-  if (!last) {
-    const offer = UPGRADES.slice().sort(() => Math.random() - 0.5).slice(0, 3);
-    for (const up of offer) {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'upg';
-      b.innerHTML = `<span class="ico">${up.img ? `<img src="assets/ui/${up.img}" alt="" draggable="false" />` : up.icon}</span><b>${up.name}</b>`;
-      b.addEventListener('click', () => {
-        if (b.disabled) return;
-        up.apply();
-        state.upgrades.push(up.id);
-        box.querySelectorAll('.upg').forEach((o) => { o.disabled = true; o.classList.toggle('chosen', o === b); });
-        next.disabled = false;
-        audio.uiConfirm();
-        next.focus();
-      });
-      box.appendChild(b);
-    }
-  }
-  $('report').classList.remove('hidden');
+  state.reportStars = stars;
+  $('r-stars').querySelectorAll('i').forEach((el) => { el.className = ''; });
+  $('report').classList.add('show');
   state.reportOpen = true;
-  audio.shieldUp();
+  state.reportT = 0;
 }
 
-function closeReport(silent = false) {
+function closeReport() {
   if (!state.reportOpen) return;
-  $('report').classList.add('hidden');
+  $('report').classList.remove('show');
   state.reportOpen = false;
-  if (!silent) audio.uiConfirm();
 }
-$('r-next').addEventListener('click', () => closeReport());
 
 // pause menu: sound on/off and back to the station
 function updateSoundButton() { $('p-sound').classList.toggle('off', audio.muted); }
@@ -1383,6 +1332,15 @@ function frame() {
   }
   if (play) updateBanter();
   if (mode !== 'paused') dialogue.update(dt);
+  if (play && state.reportOpen) {
+    const before = state.reportT;
+    state.reportT += dt;
+    $('r-stars').querySelectorAll('i').forEach((el, i) => {
+      const at = 0.35 + i * 0.32;
+      if (i < state.reportStars && before < at && state.reportT >= at) { el.className = 'on'; audio.star(i); }
+    });
+    if (state.reportT > REPORT_TIME) closeReport();
+  }
   placeComms();
   // comms sit in the battle layout (console column / top strip) during battles; a line that is
   // still playing keeps its place until it ends
@@ -1549,7 +1507,9 @@ renderer.setAnimationLoop(frame);
 $('start').disabled = false;
 $('start').classList.remove('failed');
 $('load-msg').textContent = '';
-if (document.fonts?.load) document.fonts.load('64px "Lilita One"').catch(() => {});
+if (document.fonts?.load) {
+  for (const f of ['64px "Lilita One"', '600 20px "Fredoka"', '700 30px "Fredoka"', '700 20px "Inter"']) document.fonts.load(f).catch(() => {});
+}
 
 // handy for tuning from the devtools console
 window.game = {

@@ -8,7 +8,7 @@ camera leaves the cockpit to watch the ship released from the Haven-9 station, t
 hole. On the far side there are **12 levels**, taken from *Angle Hunt* (angle-game.vercel.app): before
 every level the ship makes a short letterboxed journey through an asteroid belt and flies through the
 level's portal. The levels come in three sectors of four; each sector ends with a meteor field and a
-report (stars for first-try answers, and an upgrade to pick). After the third sector comes the boss, the
+quick look at the stars earned. After the third sector comes the boss, the
 Warden carrier, and then you jump home.
 
 Music is synthesized live and changes with the action (cruise, battle, boss).
@@ -44,8 +44,8 @@ the co-pilot reminds you of the rule.
 | M1–M4 | Mastery: the same two rules with new random angles every run |
 | Warden | Its 4 turrets, then its core (3 hits); every target is a mastery question |
 
-Stars per sector: every target hit on the first try = 3 stars, at least 60% = 2, otherwise 1.
-Upgrades: rapid cannon, shield +30, hull +30, lock-on +2 s, fast recharge (three are offered each time).
+Every 4 levels the stars you earned pop up for a moment (every target hit on the first try = 3,
+at least 60% = 2, otherwise 1); the victory screen rates the whole run out of 3 stars.
 
 ## Play
 

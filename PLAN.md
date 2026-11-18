@@ -27,7 +27,7 @@ Built with **Three.js** (rendering and game, ES modules, no build step) and **he
 4. **12 levels** from *Angle Hunt* (angle-game.vercel.app), in three sectors of four:
    - before every level: a short playable journey (steer, shoot rocks and space junk), ending in a portal
    - the level: one raider flies in and holds position; answer its angle question to destroy it
-   - end of each sector: a meteor field (aim and fire), then the sector report
+   - end of each sector: a meteor field (aim and fire), then the stars earned pop up for a moment
 5. **The Warden** (boss): 4 turrets, then its core (3 hits), every target an angle question.
 6. **Ending**: the ship jumps home; the victory screen shows stars for every sector.
 
@@ -54,8 +54,6 @@ angle, angles around a point, angles in a triangle), ready for later levels.
 ## 4. Progress and rewards
 
 - **Stars** per sector: all first-try = 3, at least 60% = 2, otherwise 1 (max 12 per run).
-- **Upgrades** after each sector (pick 1 of 3): rapid cannon, shield +30, hull +30, lock-on +2 s,
-  fast recharge. A new run from the station resets them.
 - **Best score** is saved on the device.
 
 ## 5. Tech
@@ -67,8 +65,8 @@ angle, angles around a point, angles in a triangle), ready for later levels.
 ## 6. File layout
 
 ```
-index.html              page, HUD, menus, report, on-screen controls
-src/main.js             boot, game loop, combat, introductions, report and upgrades
+index.html              page, HUD, menus, on-screen controls
+src/main.js             boot, game loop, combat, introductions, stars
 src/core/               renderer, post-processing, input, camera rig
 src/world/              sky, stars, sun, planets, black hole, asteroids, portal, angle radar, holograms
 src/ship/               ship, turret, engines, shield, radar ring
