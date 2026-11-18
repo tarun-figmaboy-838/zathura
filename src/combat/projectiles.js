@@ -86,7 +86,8 @@ export class Projectiles {
 
   setViewport(scale) { this.headMat.uniforms.uScale.value = scale; }
 
-  spawn(pos, dir, inheritVel, speed = 560, damage = 1) {
+  // ghost: a shot that cannot hit ships (a wrong answer's volley must never land by accident)
+  spawn(pos, dir, inheritVel, speed = 560, damage = 1, ghost = false) {
     const p = this.list[this.cursor];
     this.cursor = (this.cursor + 1) % this.list.length;
     p.alive = true;
@@ -96,6 +97,7 @@ export class Projectiles {
     p.life = this.o.life;
     p.traveled = 0;
     p.damage = damage;
+    p.ghost = ghost;
   }
 
   clear() {
@@ -118,7 +120,7 @@ export class Projectiles {
       p.pos.addScaledVector(p.vel, dt);
       p.traveled += p.vel.length() * dt;
       p.life -= dt;
-      const target = p.life > 0 ? hitTest(p.prev, p.pos, _hit) : null;
+      const target = p.life > 0 ? hitTest(p.prev, p.pos, _hit, p) : null;
       if (target) onHit(target, _hit, p);
       if (p.life <= 0 || target) {
         p.alive = false;

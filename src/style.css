@@ -249,6 +249,50 @@ body.narrating .quiz-prompt, body.narrating #banner { opacity: 0 !important; }
 .results b { font: 400 28px var(--font-game); letter-spacing: 0.02em; }
 .new-best { font-size: 13px; font-weight: 800; color: var(--ok); letter-spacing: 0.08em; text-transform: uppercase; }
 
+/* ---------------------------------------------------------------- stars, sector report, upgrades */
+.stars { display: inline-flex; gap: 8px; filter: drop-shadow(0 2px 0 var(--ink)) drop-shadow(0 0 1.5px var(--ink)); }
+.stars i { display: block; width: 46px; aspect-ratio: 1; background: rgba(40, 52, 86, 0.9);
+  clip-path: polygon(50% 0, 61.8% 35.4%, 100% 35.4%, 69.1% 57.3%, 80.9% 92.7%, 50% 70.8%, 19.1% 92.7%, 30.9% 57.3%, 0 35.4%, 38.2% 35.4%); }
+.stars i.on { background: linear-gradient(180deg, #fff6b0, #ffd23f 45%, #ff9d1c); animation: star-pop 0.45s var(--spring) both; }
+.stars.big i { width: 58px; }
+.stars.big i:nth-child(2) { translate: 0 -10px; width: 66px; }
+.stars.mini { gap: 2px; filter: drop-shadow(0 1px 0 var(--ink)); }
+.stars.mini i { width: 15px; }
+@keyframes star-pop { from { scale: 0.2; rotate: -40deg; } 70% { scale: 1.25; } to { scale: 1; rotate: 0deg; } }
+.panel.report { width: min(400px, 100%); }
+.upgrades { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; }
+.upg { display: grid; justify-items: center; gap: 6px; padding: 12px 6px 10px; border-radius: 16px; cursor: pointer;
+  background: rgba(255, 255, 255, 0.06); border: 2px solid rgba(111, 227, 255, 0.35); color: #fff;
+  font: 600 13px/1.15 'Fredoka', 'Inter', sans-serif; transition: transform 0.15s var(--spring), border-color 0.15s, background 0.15s, opacity 0.2s; }
+.upg .ico { width: 48px; height: 48px; display: grid; place-items: center; }
+.upg .ico img { width: 100%; height: 100%; }
+.upg .ico svg { width: 36px; height: 36px; fill: #fff; filter: drop-shadow(0 0 6px rgba(111, 227, 255, 0.8)); }
+@media (hover: hover) { .upg:hover:not(:disabled) { transform: translateY(-3px); border-color: var(--accent); background: rgba(111, 227, 255, 0.12); } }
+.upg:disabled { cursor: default; opacity: 0.4; }
+.upg.chosen { opacity: 1; border-color: #6dff9c; background: rgba(77, 255, 136, 0.14); transform: scale(1.06); }
+.next-btn { position: relative; width: 190px; aspect-ratio: 420 / 152; padding: 0; border: 0; background: none; cursor: pointer;
+  display: grid; place-items: center; transition: transform 0.16s var(--spring), filter 0.2s, opacity 0.2s; }
+.next-btn img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+.next-btn span { position: relative; font: 700 26px/1 'Fredoka', 'Inter', sans-serif; color: #fff; transform: translateY(-3%);
+  text-shadow: 0 2px 0 #0c3a8c, 1.5px 0 0 #0c3a8c, -1.5px 0 0 #0c3a8c, 0 -1.5px 0 #0c3a8c; }
+.next-btn:disabled { filter: grayscale(0.8) brightness(0.65); opacity: 0.6; cursor: default; }
+@media (hover: hover) { .next-btn:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.08); } }
+.next-btn:not(:disabled) { animation: breathe 1.8s ease-in-out infinite; }
+.v-total { display: flex; align-items: center; gap: 8px; font: 400 26px var(--font-game); color: #ffe066; text-shadow: var(--ink-outline); }
+.v-total .stars.mini i { width: 26px; }
+.sector-stars { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; width: 100%; }
+.sector-stars div { display: grid; justify-items: center; gap: 3px; padding: 7px 2px; border-radius: 10px; background: rgba(255, 255, 255, 0.05); }
+.sector-stars span { font: 400 13px var(--font-game); color: var(--muted); }
+
+/* pause menu: round ink sound button */
+.round-btn { width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center; cursor: pointer; padding: 0;
+  background: radial-gradient(circle at 50% 35%, #ffffff, #dfe7f2); border: 3px solid #0b1f3f; box-shadow: 0 4px 0 #0b1f3f;
+  transition: transform 0.15s var(--spring); }
+.round-btn svg { width: 30px; height: 30px; fill: #0b1f3f; stroke: #0b1f3f; }
+.round-btn .off, .round-btn.off .on { display: none; }
+.round-btn.off .off { display: block; }
+.round-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #0b1f3f; }
+
 /* ---------------------------------------------------------------- small screens */
 @media (max-width: 760px), (max-aspect-ratio: 4/5) {
   .title-logo { width: 90vw; top: calc(6vh + env(safe-area-inset-top)); }

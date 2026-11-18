@@ -38,6 +38,7 @@ export class AudioEngine {
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
 
     this.buildLoops();
+    this.buildMusic();
   }
 
   toggleMute() {
@@ -334,6 +335,131 @@ export class AudioEngine {
     this.osc('square', 150, 120, 0.2, 0.5, f, t + 0.16);
   }
 
+  // a star landing on the sector report: each one a step higher
+  star(i) {
+    if (!this.ready()) return;
+    const t = this.ctx.currentTime;
+    const o = this.out(0.3);
+    const f = [784, 988, 1319][i] || 1319;
+    this.osc('triangle', f, f, 0.35, 0.55, o, t);
+    this.osc('sine', f * 2, f * 2, 0.25, 0.2, o, t + 0.04);
+  }
+
+  // ------------------------------------------------------------------ music
+  // A small synthesized soundtrack, scheduled a little ahead of time on the audio clock.
+  // Moods add or remove layers: calm (pad), cruise (+ arpeggio, soft bass), battle (+ kick,
+  // faster arpeggio), boss (+ hats, driving bass); paused ducks it, off fades it out.
+  buildMusic() {
+    const ctx = this.ctx;
+    this.music = ctx.createGain();
+    this.music.gain.value = 0;
+    this.music.connect(this.master);
+    const bus = (v) => { const g = ctx.createGain(); g.gain.value = v; g.connect(this.music); return g; };
+    this.mPad = bus(0);
+    this.mArp = bus(0);
+    this.mBass = bus(0);
+    this.mDrum = bus(0);
+    this.mPadFilter = ctx.createBiquadFilter();
+    this.mPadFilter.type = 'lowpass';
+    this.mPadFilter.frequency.value = 900;
+    this.mPadFilter.connect(this.mPad);
+    this.step = 0;
+    this.nextStep = ctx.currentTime + 0.1;
+    this.mood = '';
+    this.setMood('calm');
+  }
+
+  setMood(mood) {
+    if (!this.ctx || mood === this.mood) return;
+    this.mood = mood;
+    const t = this.ctx.currentTime;
+    const L = {
+      calm: [0.55, 0.0, 0.0, 0.0, 0.32], cruise: [0.5, 0.35, 0.3, 0.0, 0.34], battle: [0.45, 0.45, 0.5, 0.55, 0.36],
+      boss: [0.4, 0.5, 0.6, 0.7, 0.4], paused: [0.4, 0.0, 0.0, 0.0, 0.12], off: [0, 0, 0, 0, 0],
+    }[mood] || [0, 0, 0, 0, 0];
+    [this.mPad, this.mArp, this.mBass, this.mDrum, this.music].forEach((g, i) => g.gain.setTargetAtTime(L[i], t, 0.6));
+  }
+
+  updateMusic() {
+    if (!this.ready() || !this.music) return;
+    const ctx = this.ctx;
+    const bpm = this.mood === 'boss' ? 112 : 98;
+    const dt = 60 / bpm / 4;                       // sixteenth notes
+    // A minor: Am, F, C, G, one bar each
+    const CHORDS = [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]];
+    const hz = (m) => 440 * Math.pow(2, (m - 69) / 12);
+    if (this.nextStep < ctx.currentTime - 0.2) this.nextStep = ctx.currentTime + 0.05;   // after a stall
+    while (this.nextStep < ctx.currentTime + 0.2) {
+      const t = this.nextStep;
+      const s = this.step % 16;
+      const chord = CHORDS[Math.floor(this.step / 16) % 4];
+      if (s === 0) for (const m of chord) this.voice('sawtooth', hz(m), dt * 16, 0.05, this.mPadFilter, t, 1.2, hz(m) * 1.004);
+      const busy = this.mood === 'battle' || this.mood === 'boss';
+      if (busy || s % 2 === 0) {
+        const n = chord[(this.step >> (busy ? 0 : 1)) % 3] + 12 + (s % 8 === 6 ? 12 : 0);
+        this.voice('triangle', hz(n), dt * 1.6, 0.09, this.mArp, t, 0.005);
+      }
+      if (s === 0 || s === 6 || s === 8 || (this.mood === 'boss' && (s === 3 || s === 11 || s === 14))) {
+        this.voice('sawtooth', hz(chord[0] - 24), dt * 2.2, 0.16, this.mBass, t, 0.01);
+      }
+      if (s % 4 === 0 && (s % 8 === 0 || this.mood === 'boss')) this.kick(t);
+      if (this.mood === 'boss' && s % 2 === 1) this.hat(t);
+      this.step++;
+      this.nextStep += dt;
+    }
+  }
+
+  voice(type, f, dur, peak, dest, t, attack = 0.01, detune = 0) {
+    const ctx = this.ctx;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(peak, t + Math.min(attack, dur * 0.5));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    const f1 = ctx.createBiquadFilter();
+    f1.type = 'lowpass';
+    f1.frequency.value = type === 'sawtooth' ? 1400 : 5000;
+    g.connect(dest);
+    f1.connect(g);
+    const oscs = [f, detune].filter(Boolean).map((fr) => {
+      const o = ctx.createOscillator();
+      o.type = type;
+      o.frequency.value = fr;
+      o.connect(f1);
+      o.start(t);
+      o.stop(t + dur + 0.05);
+      return o;
+    });
+    oscs[0].onended = () => g.disconnect();
+  }
+
+  kick(t) {
+    const ctx = this.ctx;
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.frequency.setValueAtTime(130, t);
+    o.frequency.exponentialRampToValueAtTime(42, t + 0.14);
+    g.gain.setValueAtTime(0.5, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+    o.connect(g).connect(this.mDrum);
+    o.start(t);
+    o.stop(t + 0.25);
+    o.onended = () => g.disconnect();
+  }
+
+  hat(t) {
+    const n = this.noiseSrc();
+    const f = this.ctx.createBiquadFilter();
+    f.type = 'highpass';
+    f.frequency.value = 7000;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.12, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+    n.connect(f).connect(g).connect(this.mDrum);
+    n.start(t, Math.random());
+    n.stop(t + 0.07);
+    n.onended = () => g.disconnect();
+  }
+
   uiConfirm() {
     if (!this.ready()) return;
     const t = this.ctx.currentTime;
@@ -419,6 +545,7 @@ export class AudioEngine {
   }
 
   update(camera, ship, turret, alive) {
+    this.updateMusic();
     this.camPos.copy(camera.position);
     _inv.copy(camera.quaternion).invert();
     if (!this.ctx) return;

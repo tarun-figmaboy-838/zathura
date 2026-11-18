@@ -8,22 +8,31 @@
 //  opposite   two lines cross at the ship; the angle opposite "?" is given   (? = given)
 //  linear     R and its extension form a straight line; the angle next to "?" is given   (? = 180 - given)
 //  complement R and a perpendicular P form a right angle; the other part is given   (? = 90 - given)
+//  point      R, T and a third ray X go all the way round; the other two angles are given (? = 360 - b - c)
+//  triangle   the ship, a point on R and a point on T make a triangle; its other two angles are
+//             given (? = 180 - b - c)
 
 const DEG = Math.PI / 180;
 const pick = (arr, r) => arr[Math.floor(r() * arr.length)];
 
-export const QUESTION_TYPES = ['opposite', 'linear', 'complement'];
+export const QUESTION_TYPES = ['opposite', 'linear', 'complement', 'point', 'triangle'];
 
 export const HINTS = {
   opposite: 'Opposite angles are equal',
   linear: 'Angles on a straight line add up to 180°',
   complement: 'The two parts add up to 90°',
+  point: 'Angles around a point add up to 360°',
+  triangle: 'Angles in a triangle add up to 180°',
 };
 
-export function makeQuestion(tYaw, type, r = Math.random) {
+const range5 = (lo, hi) => { const out = []; for (let v = lo; v <= hi; v += 5) out.push(v); return out; };
+
+// level: optional { answer, options } to use instead of random ones (Angle Hunt's levels)
+export function makeQuestion(tYaw, type, r = Math.random, level = null) {
   const s = r() < 0.5 ? 1 : -1;   // turn direction from R to the target
-  const answer = type === 'complement'
-    ? pick([20, 25, 30, 35, 40, 50, 55, 60, 65, 70], r)
+  const answer = level ? level.answer : type === 'complement' ? pick([20, 25, 30, 35, 40, 50, 55, 60, 65, 70], r)
+    : type === 'triangle' ? pick(range5(40, 110), r)
+    : type === 'point' ? pick([...range5(40, 70), ...range5(110, 150)], r)
     : pick([25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 110, 115, 120, 125, 130, 135, 140, 145, 150, 155], r);
   const A = answer * DEG;
   const rYaw = tYaw - s * A;
@@ -33,32 +42,66 @@ export function makeQuestion(tYaw, type, r = Math.random) {
     q.known = { from: rYaw + Math.PI, sweep: s * A };
     q.prompt = `Find ?  It is opposite the ${q.given}° angle`;
     q.hint2 = `So ? = ${q.given}°`;
+    q.explain = `Opposite angles are equal: ${answer}°`;
   } else if (type === 'linear') {
     q.given = 180 - answer;
     q.known = { from: tYaw, sweep: s * (Math.PI - A) };
     q.prompt = `Find ?  It makes a straight line with ${q.given}°`;
     q.hint2 = `? = 180° − ${q.given}°`;
-  } else {
+    q.explain = `${q.given}° + ${answer}° = 180°`;
+  } else if (type === 'complement') {
     q.given = 90 - answer;
     q.pYaw = rYaw + s * Math.PI / 2;
     q.known = { from: tYaw, sweep: s * (Math.PI / 2 - A) };
     q.prompt = `Find ?  With ${q.given}° it makes 90°`;
     q.hint2 = `? = 90° − ${q.given}°`;
+    q.explain = `${q.given}° + ${answer}° = 90°`;
+  } else if (type === 'point') {
+    // going on round from T: angle b to a third ray X, then angle c back to R
+    const rest = 360 - answer;
+    const b = pick(range5(Math.max(60, rest - 175), Math.min(175, rest - 60)), r);
+    const c = rest - b;
+    q.given = b;
+    q.given2 = c;
+    q.pYaw = tYaw + s * b * DEG;                                   // the third ray, dotted
+    q.known = { from: tYaw, sweep: s * b * DEG };
+    q.known2 = { from: q.pYaw, sweep: s * c * DEG };
+    q.prompt = `Find ?  ${b}°, ${c}° and ? go all the way round`;
+    q.hint2 = `? = 360° − ${b}° − ${c}°`;
+    q.explain = `${b}° + ${c}° + ${answer}° = 360°`;
+  } else {
+    // triangle: corners at the ship (angle ?), P on the cannon line (b), Q on the enemy line (c);
+    // keep it close to isosceles so it always reads clearly
+    const rest = 180 - answer;
+    let b, c, tries = 0;
+    do {
+      b = pick(range5(30, rest - 30), r);
+      c = rest - b;
+    } while (tries++ < 20 && (Math.sin(c * DEG) / Math.sin(b * DEG) > 1.35 || Math.sin(c * DEG) / Math.sin(b * DEG) < 0.74));
+    q.given = b;
+    q.given2 = c;
+    q.tri = { b, c };
+    q.known = { from: 0, sweep: 0 };                               // drawn at the other corners
+    q.prompt = `Find ?  The triangle's angles make 180°`;
+    q.hint2 = `? = 180° − ${b}° − ${c}°`;
+    q.explain = `${b}° + ${c}° + ${answer}° = 180°`;
   }
-  q.options = makeOptions(answer, q.given, type, r);
+  q.options = level ? [...level.options] : makeOptions(answer, q.given, type, r, q.given2);
   return q;
 }
 
 // three wrong answers: the usual mistakes first, then near misses. Every wrong value is at
 // least 20 degrees from the answer, so a wrong shot always visibly misses the target.
-function makeOptions(answer, given, type, r) {
+function makeOptions(answer, given, type, r, given2 = 0) {
   const wrong = [];
   const ok = (v) => v >= 5 && v <= 175 && Math.abs(v - answer) >= 20 && wrong.every((w) => Math.abs(w - v) >= 10);
   // every option is a multiple of 5, like the real answer, so no option gives itself away
   const add = (v) => { v = Math.round(v / 5) * 5; if (wrong.length < 3 && ok(v)) wrong.push(v); };
   const mistakes = type === 'opposite' ? [180 - answer, 90 - answer]
     : type === 'linear' ? [given, Math.abs(90 - given), 90 - answer]
-    : [given, 180 - answer, 90 + answer];
+    : type === 'complement' ? [given, 180 - answer, 90 + answer]
+    : type === 'point' ? [Math.abs(180 - given - given2), 360 - given - given2 - 90, given]   // forgot it is 360, not 180
+    : [given + given2, 180 - given, 180 - given2];                                         // triangle
   for (const v of mistakes) add(v);
   const near = [20, -20, 30, -30, 45, -45, 60, -60].sort(() => r() - 0.5);
   for (const d of near) add(answer + d);
@@ -70,8 +113,9 @@ function makeOptions(answer, given, type, r) {
   return all;
 }
 
-// question type for a sector (0-based); later sectors mix all three
-export function typeForSector(level, r = Math.random) {
-  if (level < QUESTION_TYPES.length) return QUESTION_TYPES[level];
-  return pick(QUESTION_TYPES, r);
+// question type for a sector (0-based) and question number (1-based): each sector teaches its own
+// rule; the boss sector opens with triangles and then mixes everything
+export function typeForSector(level, index = 1, r = Math.random) {
+  if (level < 4) return QUESTION_TYPES[level];
+  return index <= 2 || r() < 0.4 ? 'triangle' : pick(QUESTION_TYPES, r);
 }

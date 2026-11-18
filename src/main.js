@@ -16,7 +16,7 @@ import { Portal } from './world/portal.js';
 import { AngleOverlay } from './world/angleOverlay.js';
 import { AngleQuiz } from './game/quiz.js';
 import { Director } from './game/director.js';
-import { makeQuestion, typeForSector } from './game/angles.js';
+import { makeQuestion } from './game/angles.js';
 import { Ship, addPanelDetail } from './ship/ship.js';
 import { Turret } from './ship/turret.js';
 import { EngineFX } from './ship/engineFx.js';
@@ -29,7 +29,7 @@ import { Trails } from './combat/trails.js';
 import { Raiders } from './enemies/raiders.js';
 import { Boss, TURRET_HP, CORE_HP } from './enemies/boss.js';
 import { Intro } from './game/intro.js';
-import { Campaign } from './game/campaign.js';
+import { Campaign, masteryLevel, answerOf } from './game/campaign.js';
 import { AudioEngine } from './audio/audio.js';
 import { Hud } from './ui/hud.js';
 import { Controls } from './ui/controls.js';
@@ -149,7 +149,10 @@ const audio = new AudioEngine();
 const intro = new Intro(station, ship, fx, audio, rig, blackhole);
 const campaign = new Campaign();
 const director = new Director(rig);
-const seen = new Set();          // what has been introduced already (this session)
+// what has been introduced already: remembered on this device, so returning players skip it
+const SEEN_KEY = 'driftbound.seen';
+const seen = new Set((() => { try { return JSON.parse(localStorage.getItem(SEEN_KEY)) || []; } catch { return []; } })());
+const saveSeen = () => { try { localStorage.setItem(SEEN_KEY, JSON.stringify([...seen])); } catch { /* storage unavailable */ } };
 const quiz = new AngleQuiz(angleOverlay, {
   audio,
   fire: (correct) => quizFire(correct),
@@ -166,6 +169,7 @@ const state = {
   damage: 0, smokeT: 0, warnedHull: false, shieldHintT: 0, cannonFlash: 0, manualT: 0, manualYaw: 0, locked: null,
   finaleSpeed: 0, shipScale: 1, aiming: false, jumped: false, crossT: 0,
   volley: null, timeScale: 1, bossHoldT: 0, bossSolved: 0,
+  sector: { asked: 0, first: 0 }, stars: [], reportOpen: false, upgrades: [],
 };
 const abilities = {
   lock: { dur: 5, cd: 12, t: 0, cool: 0 },
@@ -185,7 +189,8 @@ const crosshair = { x: 0, y: 0 };
 const bufferSize = new THREE.Vector2();
 const blips = [];
 const quizCenter = new THREE.Vector3();
-const battlePhase = () => campaign.phase === 'battle' || campaign.phase === 'boss' || campaign.phase === 'contact';
+// 'won' is the beat after a hit: the answer's explanation stays up until it ends
+const battlePhase = () => ['battle', 'boss', 'contact', 'won'].includes(campaign.phase);
 const whiteout = $('whiteout');
 function setMode(m) {
   state.mode = m;
@@ -301,6 +306,9 @@ function retryLevel() {
 
 function restartFromStation() {
   clearCombat();
+  resetUpgrades();
+  state.stars = [];
+  closeReport(true);
   vitals.reset();
   turret.reset();
   shield.mesh.visible = true;
@@ -309,6 +317,7 @@ function restartFromStation() {
   state.shipScale = 1;
   ship.root.scale.setScalar(1);
   campaign.phase = 'idle';
+  campaign.newRun();
   campaign.level = 0;
   dockScene();
   rig.mode = 'chase';
@@ -323,6 +332,7 @@ function resume() { if (state.mode === 'paused') setMode('play'); }
 function die() {
   quiz.stop();
   director.clear();
+  buzz([120, 60, 200]);
   setMode('dying');
   ship.model.visible = false;
   shield.mesh.visible = false;
@@ -344,7 +354,7 @@ function saveBest() {
 function gameOver() {
   saveBest();
   $('go-score').textContent = state.score.toLocaleString('en-US');
-  $('go-level').textContent = campaign.level + 1;
+  $('go-level').textContent = campaign.L.label;
   setMode('gameover');
 }
 
@@ -398,6 +408,10 @@ function victory() {
   $('v-score').textContent = state.score.toLocaleString('en-US');
   $('v-best').textContent = state.best.toLocaleString('en-US');
   $('v-newbest').classList.toggle('hidden', !newBest);
+  const total = state.stars.reduce((a, b) => a + (b || 0), 0);
+  $('v-total').textContent = `${total}/${campaign.count * 3}`;
+  $('v-stars').innerHTML = Array.from({ length: campaign.count }, (_, i) =>
+    `<div><span>${i + 1}</span><em class="stars mini">${[0, 1, 2].map((k) => `<i class="${k < (state.stars[i] || 0) ? 'on' : ''}"></i>`).join('')}</em></div>`).join('');
   setMode('victory');
   setWhiteout('black', 1);
   void whiteout.offsetWidth;
@@ -430,19 +444,21 @@ function raiderDestroyed(r, byPlayer) {
   audio.explosion(pos, 1.6);
   rig.addShake(Math.min(0.7, 50 / Math.max(pos.distanceTo(camera.position), 20)));
   campaign.destroyed++;
-  if (byPlayer) addScore(100 + 25 * campaign.level, pos);
+  if (byPlayer) addScore(100 + 25 * campaign.L.group, pos);
 }
 
-function playerHitTest(a, b, out) {
+// bolt.ghost: a wrong answer's shot, which flies past ships (it can still break rocks)
+function playerHitTest(a, b, out, bolt) {
+  const ghost = bolt && bolt.ghost;
   let best = null;
   let bestD = Infinity;
-  const r = raiders.segmentHit(a, b, hA);
+  const r = ghost ? null : raiders.segmentHit(a, b, hA);
   if (r) { best = r; bestD = a.distanceToSquared(hA); out.copy(hA); }
   const rock = field.segmentHit(a, b, hB);
   if (rock && a.distanceToSquared(hB) < bestD) { best = rock; bestD = a.distanceToSquared(hB); out.copy(hB); }
   const deco = scenery.segmentHit(a, b, hB);
   if (deco && a.distanceToSquared(hB) < bestD) { best = deco; bestD = a.distanceToSquared(hB); out.copy(hB); }
-  const part = boss.segmentHit(a, b, hC);
+  const part = ghost ? null : boss.segmentHit(a, b, hC);
   if (part && a.distanceToSquared(hC) < bestD) { best = part; out.copy(hC); }
   return best;
 }
@@ -500,7 +516,7 @@ function onPlayerBolt(target, point, bolt) {
   if (rock.owner === scenery) addScore(10, rock.pos);
   else if (!rock.fragment) {
     campaign.destroyed++;
-    addScore(30 + 10 * campaign.level, rock.pos);
+    addScore(30 + 10 * campaign.L.group, rock.pos);
   } else addScore(10, rock.pos);
 }
 
@@ -515,7 +531,7 @@ function crossPortal() {
   fx.ring(ship.position, 60, 0.7);
   audio.warp(ship.position);
   audio.boostWhoosh();
-  hud.banner(`SECTOR ${campaign.level + 1}`, '', 2.2);
+  hud.banner(campaign.L.boss ? 'THE WARDEN' : campaign.L.title, '', 2.2);
 }
 
 // ------------------------------------------------------------------ scenery belt
@@ -579,6 +595,7 @@ function playerDamage(amount, point) {
     if (res === 'break') { audio.shieldDown(); hud.alert('Shields down', 'danger'); }
   } else if (res === 'hull') {
     fx.hullHit(point, tmp.copy(point).sub(ship.position).normalize());
+    buzz(40);
     audio.hullHit();
     state.damage = Math.min(1, state.damage + 0.55);
     rig.addShake(0.35);
@@ -637,11 +654,13 @@ const campaignCtx = {
   ship, raiders, field, boss,
   portalPassed: () => state.portalPassed,
   sector(level) {
-    portal.show(tmp.set(LANE.x, LANE.y, ship.position.z - (campaign.journeyTime - 0.4) * 123), level + 1, campaign.count, campaign.L.name);
+    const L = campaign.L;
+    portal.show(tmp.set(LANE.x, LANE.y, ship.position.z - (campaign.journeyTime - 0.4) * 123), L.boss ? 'FINAL' : L.title, L.name);
     state.portalPassed = false;
     for (let i = 0; i < 46; i++) spawnScenery(rand(90, 900));
     audio.waveHorn();
-    introduce('portal', [{ time: 2.2 }, { text: `Fly through the portal into Sector ${level + 1}.`, time: 3.2 }]);
+    introduce('portal', [{ time: 2.2 }, { text: 'Fly through the portal to start Level 1.', time: 3.2 }]);
+    if (campaign.firstOfGroup) state.sector = { asked: 0, first: 0 };
   },
   spawnBoss() {
     boss.spawn(ship, state.time, Math.PI + (Math.random() < 0.5 ? -1 : 1) * (camera.aspect < 1 ? rand(0.4, 0.55) : rand(0.8, 1.05)));
@@ -674,9 +693,9 @@ const campaignCtx = {
     const bonus = 500 * (level + 1) + Math.round(vitals.hull) * 5;
     state.score += bonus;
     state.levelStartScore = state.score;
-    hud.banner(`SECTOR ${level + 1} COMPLETE`, `+${bonus.toLocaleString('en-US')}`, 2.6);
-    audio.shieldUp();
+    openReport(level, bonus);
   },
+  reportOpen: () => state.reportOpen,
 };
 
 // nearest live target for lock-on: raiders in battle, meteoroids ahead otherwise
@@ -796,29 +815,126 @@ function computeAim() {
   return 'pointer';
 }
 
+// ------------------------------------------------------------------ feel
+// a short vibration on phones that support it (hits, wrong answers)
+function buzz(pattern) {
+  try { navigator.vibrate?.(pattern); } catch { /* not supported */ }
+}
+
+// ------------------------------------------------------------------ sector report + upgrades
+const BASE = {
+  fire: turret.fireInterval, hull: vitals.maxHull, shield: vitals.maxShield,
+  regen: vitals.regenRate, delay: vitals.regenDelay, lockDur: abilities.lock.dur, lockCd: abilities.lock.cd,
+};
+const HULL_ICON = '<svg viewBox="0 0 24 24"><path d="M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7z" /></svg>';
+const UPGRADES = [
+  { id: 'cannon', name: 'Rapid cannon', img: 'btn-fire.png', apply() { turret.fireInterval *= 0.8; } },
+  { id: 'shield', name: 'Shield +30', img: 'btn-shield.png', apply() { vitals.maxShield += 30; vitals.shield = vitals.maxShield; } },
+  { id: 'hull', name: 'Hull +30', icon: HULL_ICON, apply() { vitals.maxHull += 30; vitals.hull = vitals.maxHull; } },
+  { id: 'lock', name: 'Lock-on +2s', img: 'btn-lock.png', apply() { abilities.lock.dur += 2; abilities.lock.cd = Math.max(6, abilities.lock.cd - 2); } },
+  { id: 'recharge', name: 'Fast recharge', img: 'btn-retry.png', apply() { vitals.regenRate *= 1.4; vitals.regenDelay *= 0.75; } },
+];
+
+function resetUpgrades() {
+  turret.fireInterval = BASE.fire;
+  vitals.maxHull = BASE.hull;
+  vitals.maxShield = BASE.shield;
+  vitals.regenRate = BASE.regen;
+  vitals.regenDelay = BASE.delay;
+  abilities.lock.dur = BASE.lockDur;
+  abilities.lock.cd = BASE.lockCd;
+  state.upgrades = [];
+}
+
+// stars: every target hit on the first try = 3, at least 60% = 2, otherwise 1
+function starsFor(s) {
+  if (!s.asked || s.first >= s.asked) return 3;
+  return s.first / s.asked >= 0.6 ? 2 : 1;
+}
+
+function openReport(level, bonus) {
+  const s = state.sector;
+  const stars = starsFor(s);
+  state.stars[level] = Math.max(state.stars[level] || 0, stars);
+  $('r-title').textContent = `Sector ${level + 1}`;
+  $('r-first').textContent = `${s.first}/${s.asked}`;
+  $('r-bonus').textContent = `+${bonus.toLocaleString('en-US')}`;
+  $('r-stars').querySelectorAll('i').forEach((el, i) => {
+    el.className = '';
+    if (i < stars) setTimeout(() => { el.className = 'on'; audio.star(i); }, 450 + i * 320);
+  });
+  // one upgrade per sector (none after the last one)
+  const box = $('r-upgrades');
+  const next = $('r-next');
+  box.innerHTML = '';
+  const last = level >= campaign.count - 1;
+  box.classList.toggle('hidden', last);
+  next.disabled = !last;
+  if (!last) {
+    const offer = UPGRADES.slice().sort(() => Math.random() - 0.5).slice(0, 3);
+    for (const up of offer) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'upg';
+      b.innerHTML = `<span class="ico">${up.img ? `<img src="assets/ui/${up.img}" alt="" draggable="false" />` : up.icon}</span><b>${up.name}</b>`;
+      b.addEventListener('click', () => {
+        if (b.disabled) return;
+        up.apply();
+        state.upgrades.push(up.id);
+        box.querySelectorAll('.upg').forEach((o) => { o.disabled = true; o.classList.toggle('chosen', o === b); });
+        next.disabled = false;
+        audio.uiConfirm();
+        next.focus();
+      });
+      box.appendChild(b);
+    }
+  }
+  $('report').classList.remove('hidden');
+  state.reportOpen = true;
+  audio.shieldUp();
+}
+
+function closeReport(silent = false) {
+  if (!state.reportOpen) return;
+  $('report').classList.add('hidden');
+  state.reportOpen = false;
+  if (!silent) audio.uiConfirm();
+}
+$('r-next').addEventListener('click', () => closeReport());
+
+// pause menu: sound on/off and back to the station
+function updateSoundButton() { $('p-sound').classList.toggle('off', audio.muted); }
+$('p-sound').addEventListener('click', () => { audio.toggleMute(); updateSoundButton(); });
+$('p-home').addEventListener('click', () => { setMode('play'); restartFromStation(); });
+
 // ------------------------------------------------------------------ introductions
 // Each new thing is explained once, the first time it appears (see game/director.js).
 function introduce(key, steps) {
   if (seen.has(key)) return;
   seen.add(key);
+  saveSeen();
   director.play(steps);
 }
 
 const RULES = {
-  opposite: 'Rule: opposite angles are equal.',
-  linear: 'New rule: a straight line makes 180°.',
+  opposite: 'New rule: vertically opposite angles are equal.',
+  linear: 'Rule: angles on a straight line add up to 180°.',
   complement: 'New rule: a right angle makes 90°.',
+  point: 'New rule: angles around a point make 360°.',
+  triangle: "New rule: a triangle's angles make 180°.",
 };
 function introduceQuestion(q) {
   const steps = [];
   const first = !seen.has('battle');
   if (first) {
     seen.add('battle');
+    saveSeen();
     steps.push({ text: 'This bright line is your cannon.', cam: camCannon, time: 2.6 });
     steps.push({ text: 'Turn it by the angle ? to hit the target.', focus: ['.ang-label.unknown'], time: 2.8 });
   }
   if (!seen.has(q.type)) {
     seen.add(q.type);
+    saveSeen();
     steps.push({ text: RULES[q.type], cam: camDiagram, time: 2.8 });
   }
   if (first) steps.push({ text: 'Tap the right angle!', focus: ['.quiz-options'], time: 2.4 });
@@ -870,7 +986,7 @@ function camDiagram(o) {
 function nextQuizTarget(dt) {
   if (campaign.phase === 'battle') {
     for (const r of raiders.list) {
-      if (r.alive && r.hold && raiders.arrived(r)) return { kind: 'raider', obj: r, pos: r.position, index: campaign.spawned, total: campaign.L.raiders };
+      if (r.alive && r.hold && raiders.arrived(r)) return { kind: 'raider', obj: r, pos: r.position, index: campaign.level + 1, total: campaign.total };
     }
     return null;
   }
@@ -894,7 +1010,9 @@ function updateQuiz(dt, t) {
     if (tgt) {
       const dx = tgt.pos.x - quizCenter.x, dz = tgt.pos.z - quizCenter.z;
       const dist = Math.hypot(dx, dz);
-      const q = makeQuestion(Math.atan2(-dx, -dz), typeForSector(campaign.level));
+      const lv = campaign.L.boss ? masteryLevel() : campaign.L;
+      const q = makeQuestion(Math.atan2(-dx, -dz), lv.rule, Math.random, { answer: answerOf(lv), options: lv.options });
+      state.sector.asked++;
       // the radar ring must fit between the question box and the answer buttons on any screen
       const camH = (108 * rig.topZoom) / Math.pow(Math.min(1, camera.aspect), 0.62);
       const halfH = camH * Math.tan((52 * Math.PI) / 360);
@@ -910,11 +1028,12 @@ function updateQuiz(dt, t) {
 
 function quizFire(correct) {
   const kind = quiz.target.kind;
-  state.volley = { n: 5, next: state.time, damage: kind === 'raider' ? 3 : 4 };
+  state.volley = { n: 5, next: state.time, damage: kind === 'raider' ? 3 : 4, ghost: !correct };
   if (!correct) rig.addShake(0.1);
 }
 
 function quizPunish(target) {
+  buzz([70, 50, 70]);
   if (target.kind === 'raider') raiders.punish(target.obj, state.time);
   else boss.punish(state.time, bossCtx);
   audio.alarm();
@@ -928,11 +1047,18 @@ function quizSolved(target, firstTry) {
     if (r.alive) { raiders.kill(r); raiderDestroyed(r, true); }
   } else {
     if (target.kind === 'turret' && target.obj.alive) onBossHit(target.part, target.pos.clone(), 99);
+    // the core always takes exactly three right answers, however many of the volley's shots land
+    if (target.kind === 'core' && !boss.dying) {
+      const hitsLeft = Math.max(0, 3 - (state.bossSolved - 4) - 1);
+      const want = Math.ceil((CORE_HP * hitsLeft) / 3);
+      if (boss.coreHp > want) onBossHit(target.part, target.pos.clone(), boss.coreHp - want);
+    }
     state.bossSolved++;
     boss.holdAngle = Math.PI + (Math.random() < 0.5 ? -1 : 1) * (camera.aspect < 1 ? rand(0.4, 0.55) : rand(0.8, 1.05));
     state.bossHoldT = 0;
   }
-  if (firstTry) addScore(50, tmp.copy(target.pos).add(V(0, 0, -9)));
+  if (firstTry) { addScore(50, tmp.copy(target.pos).add(V(0, 0, -9))); state.sector.first++; }
+  buzz(20);
 }
 
 // in-world enemy markers: radar blips around the cannon and health rings under each enemy
@@ -970,7 +1096,7 @@ function frame() {
   const play = mode === 'play';
 
   if (input.consume('pause')) { if (play) pause(); else if (mode === 'paused') resume(); }
-  if (input.consume('mute')) hud.alert(audio.toggleMute() ? 'Sound off' : 'Sound on', 'info', 1.2);
+  if (input.consume('mute')) { hud.alert(audio.toggleMute() ? 'Sound off' : 'Sound on', 'info', 1.2); updateSoundButton(); }
   if (input.consume('lock')) activate('lock');
   if (input.consume('shield')) activate('shield');
   for (const a of Object.values(abilities)) { a.t = Math.max(0, a.t - dt); a.cool = Math.max(0, a.cool - dt); }
@@ -1039,7 +1165,7 @@ function frame() {
     turret.overheated = false;
     if (turret.tryFire(t, shot)) {
       fired = true;
-      playerBolts.spawn(shot.position, shot.direction, ship.velocity, BOLT_SPEED, state.volley.damage);
+      playerBolts.spawn(shot.position, shot.direction, ship.velocity, BOLT_SPEED, state.volley.damage, state.volley.ghost);
       fx.muzzle(shot.position, shot.direction, ship.velocity);
       audio.cannon();
       rig.addShake(0.12);
@@ -1138,6 +1264,9 @@ function frame() {
   enemyBolts.setViewport(pxScale);
   bossBolts.setViewport(pxScale);
 
+  audio.setMood(mode === 'paused' ? 'paused' : mode === 'gameover' || mode === 'dying' ? 'off'
+    : mode !== 'play' ? 'calm' : campaign.phase === 'boss' ? 'boss' : battlePhase() ? 'battle'
+    : campaign.phase === 'journey' ? 'calm' : 'cruise');
   audio.update(camera, ship, turret, flying);
   // the system cursor is hidden only while the aiming crosshair replaces it (cruise and meteor
   // fields); everywhere else (title, intro, angle battles, menus) the normal pointer shows

@@ -5,29 +5,36 @@ and the title and button art designed in Figma.
 
 The game opens on the bridge of your gunship, looking out through the windshield. Press Play and the
 camera leaves the cockpit to watch the ship released from the Haven-9 station, then it dives into a black
-hole. On the far side, fight through five sectors: each starts with a short letterboxed journey through
-an asteroid belt that ends by flying through the sector's portal, then an angle battle against the
-raiders, then a meteor field. Sector 5 ends with a boss, the Warden carrier, and then you
-jump home.
+hole. On the far side there are **12 levels**, taken from *Angle Hunt* (angle-game.vercel.app): before
+every level the ship makes a short letterboxed journey through an asteroid belt and flies through the
+level's portal. The levels come in three sectors of four; each sector ends with a meteor field and a
+report (stars for first-try answers, and an upgrade to pick). After the third sector comes the boss, the
+Warden carrier, and then you jump home.
+
+Music is synthesized live and changes with the action (cruise, battle, boss).
 
 The first time something new appears (the portal, a raider, the battle radar, each angle rule, the
 meteor field and its buttons, the boss) the game introduces it: one short line in the narration box,
-with a drone camera shot that zooms in on it and back out. Tap the line to skip ahead.
+with a drone camera shot that zooms in on it and back out. Tap the line to skip ahead. The game remembers
+what it has introduced, so returning players skip it.
 
 ## Angle battles
 
-Each raider flies in, holds position and keeps firing short bursts at you, so think fast. A radar
-ring is drawn around your ship: a bright beam shows where your cannon points, a red line runs to the
-enemy, and there is one marked angle and a **?** angle. Pick the value of
-**?** and the cannon turns by that angle: the right answer lands on the enemy and destroys it; a wrong
-one misses, the enemy fires back, and the narration box shows the rule (after a second miss, the working).
+Each level is one raider: it flies in, holds position and keeps firing short bursts at you, so think
+fast. A radar ring is drawn around your ship: a bright beam shows where your cannon points, a red line
+runs to the enemy, and there is one marked angle and a **?** angle. Pick the value of **?** and the
+cannon turns by that angle: the right answer lands on the enemy and destroys it, and the narration box
+shows the working (for example "76° + 104° = 180°"). A wrong answer misses, the enemy fires back, and the
+narration box shows the rule (after a second miss, the working).
 
-| Sector | Rule |
+| Levels | Rules (Angle Hunt) |
 |---|---|
-| 1 | Opposite angles are equal |
-| 2 | Angles on a straight line add up to 180° |
-| 3 | The two parts of a right angle add up to 90° |
-| 4–5 | All three mixed; in sector 5 the targets are the Warden's 4 turrets, then its core (3 hits) |
+| L1–L8 | Hand-made: linear pairs (angles on a straight line add up to 180°) and vertically opposite angles (equal) |
+| M1–M4 | Mastery: the same two rules with new random angles every run |
+| Warden | Its 4 turrets, then its core (3 hits); every target is a mastery question |
+
+Stars per sector: every target hit on the first try = 3 stars, at least 60% = 2, otherwise 1.
+Upgrades: rapid cannon, shield +30, hull +30, lock-on +2 s, fast recharge (three are offered each time).
 
 ## Play
 
@@ -63,7 +70,7 @@ leaves out the Blender scripts and local launchers.
 | Lock-on: auto-aim for 5 s | – | E | Lock button |
 | Shield: block all damage for 4 s | – | Q | Shield button |
 | Skip the intro | click | Space / Enter / Esc | Skip button |
-| Pause / mute | – | Esc / M | Pause button |
+| Pause / mute | – | Esc / M | Pause button (the pause menu also has sound on/off and back to the station) |
 
 In the meteor fields the radar ring around the ship shows where the cannon points and lights up while
 you fire; the ring around the Fire button shows the cannon's heat.

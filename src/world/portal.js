@@ -105,7 +105,7 @@ export class Portal {
     this.t = 0;
   }
 
-  draw(index, total, name) {
+  draw(top, name) {
     const g = this.canvas.getContext('2d');
     const W = this.canvas.width, H = this.canvas.height;
     g.clearRect(0, 0, W, H);
@@ -122,15 +122,15 @@ export class Portal {
     g.shadowBlur = 16;
     g.fillStyle = '#9ff0ff';
     g.font = '400 46px "Lilita One", sans-serif';
-    g.fillText(`SECTOR ${index} / ${total}`, W / 2, 80);
+    g.fillText(top, W / 2, 80);
     g.fillStyle = '#ffffff';
     g.font = '400 92px "Lilita One", sans-serif';
     g.fillText(name.toUpperCase(), W / 2, 168, W - 80);
     this.texture.needsUpdate = true;
   }
 
-  show(pos, index, total, name) {
-    this.draw(index, total, name);
+  show(pos, top, name) {
+    this.draw(top, name);
     this.group.position.copy(pos);
     this.group.visible = true;
     this.state = 'in';

@@ -1,19 +1,81 @@
 import { rand } from '../core/math.js';
 
-export const LEVELS = [
-  { name: 'Drift Lanes', raiders: 3, maxAlive: 2, skill: 0, meteors: 6, journey: 13 },
-  { name: 'Ion Reach', raiders: 4, maxAlive: 3, skill: 1, meteors: 8 },
-  { name: 'Nebula Gate', raiders: 5, maxAlive: 3, skill: 2, meteors: 10 },
-  { name: 'Shattered Belt', raiders: 6, maxAlive: 4, skill: 3, meteors: 12 },
-  { name: 'The Warden', raiders: 0, maxAlive: 0, skill: 4, meteors: 14, boss: true },
+// The levels come from Angle Hunt (angle-game.vercel.app): eight hand-made levels, then four
+// "mastery" levels built the same way. Every level is one target: a known angle, a rule and four
+// answers (the right one plus Angle Hunt's traps: the known angle itself, 180°, 360° − answer,
+// ±10°, double the known angle).
+//   linear    a linear pair: the two angles on a straight line add up to 180°   (? = 180 − known)
+//   opposite  vertically opposite angles are equal                             (? = known)
+const HUNT = [
+  { known: 76, rule: 'linear', options: [76, 104, 114, 80] },
+  { known: 68, rule: 'opposite', options: [68, 112, 136, 180] },
+  { known: 118, rule: 'linear', options: [62, 118, 180, 242] },
+  { known: 43, rule: 'linear', options: [43, 137, 180, 223] },
+  { known: 113, rule: 'opposite', options: [67, 113, 180, 226] },
+  { known: 152, rule: 'linear', options: [28, 152, 180, 332] },
+  { known: 47, rule: 'opposite', options: [47, 94, 133, 180] },
+  { known: 91, rule: 'linear', options: [89, 91, 180, 271] },
 ];
+export const RULE_NAMES = { linear: 'Linear pair', opposite: 'Opposite angles' };
 
-// Phase timings / speeds. Each sector: fly through its gate → raiders appear (top view) →
-// targets cleared → meteor field (chase view) → sector complete. After the last one: the jump home.
+function shuffle(list, r) {
+  const a = [...list];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(r() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// Angle Hunt's mastery generator: a random rule, a known angle of 25–155° (never right at 90°)
+// and the same kinds of trap answers
+export function masteryLevel(r = Math.random) {
+  const rule = r() < 0.5 ? 'linear' : 'opposite';
+  let known = 25 + Math.floor(r() * 131);
+  if (Math.abs(known - 90) < 3) known += 7;
+  const ans = rule === 'linear' ? 180 - known : known;
+  const traps = [known, 180 - known, 180, 360 - ans, ans + 10, ans - 10, known * 2]
+    .filter((p) => p > 0 && p < 360 && Math.abs(p - ans) >= 4);
+  const set = [ans];
+  for (const p of shuffle(traps, r)) {
+    if (set.length >= 4) break;
+    if (set.every((f) => Math.abs(f - p) >= 4)) set.push(p);
+  }
+  for (let h = ans + 20; set.length < 4; h += 17) if (h < 360 && set.every((p) => Math.abs(p - h) >= 4)) set.push(h);
+  return { known, rule, options: shuffle(set, r) };
+}
+
+// the answer of a level: the angle the cannon must turn from its line onto the target
+export const answerOf = (lv) => (lv.rule === 'linear' ? 180 - lv.known : lv.known);
+
+// The run: 12 levels in three sectors of four, then the Warden. A short journey through the
+// asteroid belt and a portal comes before every level; each sector ends with a meteor field and
+// the sector report (stars + an upgrade).
+function buildLevels() {
+  const levels = [];
+  const add = (q, i, group) => levels.push({
+    ...q,
+    label: group < 2 ? `L${i + 1}` : `M${i - 7}`,
+    title: group < 2 ? `LEVEL ${i + 1}` : `MASTERY ${i - 7}`,
+    name: RULE_NAMES[q.rule],
+    group,
+    groupEnd: i % 4 === 3,
+    skill: group,
+    meteors: [8, 10, 12][group],
+    journey: i === 0 ? 13 : 7,
+  });
+  HUNT.forEach((q, i) => add(q, i, Math.floor(i / 4)));
+  for (let i = 8; i < 12; i++) add(masteryLevel(), i, 2);
+  levels.push({ label: 'BOSS', title: 'FINAL', name: 'The Warden', boss: true, group: 3, groupEnd: true, skill: 4, meteors: 0, journey: 8 });
+  return levels;
+}
+
+// Phase timings / speeds
 const PHASES = {
   journey: { view: 'chase', speed: 125, steer: false },   // autopilot to the portal
   contact: { view: 'top', speed: 16, steer: false },
   battle: { view: 'top', speed: 16, steer: false },
+  won: { view: 'top', speed: 16, steer: false },          // a beat after the hit, then the next journey
   boss: { view: 'top', speed: 12, steer: false },
   cleared: { view: 'chase', speed: 80, steer: true },
   meteors: { view: 'chase', speed: 85, steer: true },
@@ -27,13 +89,18 @@ export class Campaign {
     this.level = 0;
     this.phase = 'idle';
     this.t = 0;
+    this.newRun();
   }
 
-  get L() { return LEVELS[this.level]; }
+  // fresh mastery levels for every run
+  newRun() { this.levels = buildLevels(); }
+
+  get L() { return this.levels[this.level]; }
   get cfg() { return PHASES[this.phase]; }
-  get count() { return LEVELS.length; }
-  // seconds of cruising before the battle (the first sector is a longer scenic journey)
-  get journeyTime() { return this.L.journey ?? 8; }
+  get count() { return 4; }                               // sectors: L1–L4, L5–L8, M1–M4, the Warden
+  get total() { return this.levels.length - 1; }          // angle levels (12)
+  get journeyTime() { return this.L.journey ?? 7; }
+  get firstOfGroup() { return this.level === 0 || this.levels[this.level - 1].group !== this.L.group; }
 
   start(level) {
     this.level = level;
@@ -51,7 +118,7 @@ export class Campaign {
   }
 
   // ctx: { raiders, field, ship, boss, sector(level), announce(title, sub), spawnBoss(),
-  //        spawnRaider(pos, lookAt, skill), spawnMeteor(pos, size, vel), levelComplete(level) }
+  //        spawnRaider(skill), spawnMeteor(pos, size, vel), levelComplete(group), portalPassed(), reportOpen() }
   update(dt, ctx) {
     this.t += dt;
     const L = this.L;
@@ -59,10 +126,8 @@ export class Campaign {
     switch (this.phase) {
       case 'journey':
         if (!this.announced) { this.announced = true; ctx.sector(this.level); }
-        // the sector starts once the ship has flown through the portal
-        if ((ctx.portalPassed && ctx.portalPassed()) || this.t > this.journeyTime + 3) {
-          this.enter('contact');
-        }
+        // the level starts once the ship has flown through the portal
+        if ((ctx.portalPassed && ctx.portalPassed()) || this.t > this.journeyTime + 3) this.enter('contact');
         break;
       case 'contact':
         if (this.t > 1.4) {
@@ -75,26 +140,32 @@ export class Campaign {
           ctx.announce('WARDEN DOWN', '');
         }
         break;
-      case 'battle': {
-        // angle battle: one raider at a time, each one is a question
+      case 'battle':
+        // one target per level: it is the question
         if (ctx.raiders.count > 0) break;
-        if (this.spawned < L.raiders) {
+        if (this.spawned < 1) {
           this.spawnT -= dt;
-          if (this.spawnT <= 0) {
-            ctx.spawnRaider(L.skill, this.spawned);
-            this.spawned++;
-            this.spawnT = 1.0;
-          }
-        } else {
-          this.enter('cleared');
-          ctx.announce('CLEAR', '');
+          if (this.spawnT <= 0) { ctx.spawnRaider(L.skill); this.spawned++; }
+        } else this.enter('won');
+        break;
+      case 'won':
+        // a beat to read the worked answer, then the next journey (or the sector's meteor field)
+        if (this.t > 1.6) {
+          if (L.groupEnd) {
+            this.enter('cleared');
+            ctx.announce('CLEAR', '');
+          } else this.start(this.level + 1);
         }
         break;
-      }
       case 'cleared':
         if (this.t > 2.4) {
-          this.enter('meteors');
-          ctx.announce('METEOR FIELD', '');
+          if (L.meteors) {
+            this.enter('meteors');
+            ctx.announce('METEOR FIELD', '');
+          } else {
+            this.enter('complete');
+            ctx.levelComplete(L.group);
+          }
         }
         break;
       case 'meteors':
@@ -108,12 +179,13 @@ export class Campaign {
         }
         if (this.spawned >= L.meteors && ctx.field.liveCount === 0 && this.t > 2) {
           this.enter('complete');
-          ctx.levelComplete(this.level);
+          ctx.levelComplete(L.group);
         }
         break;
       case 'complete':
-        if (this.t > 3.2) {
-          if (this.level < LEVELS.length - 1) this.start(this.level + 1);
+        // wait for the player to close the sector report (stars + upgrade)
+        if (this.t > 1.2 && !(ctx.reportOpen && ctx.reportOpen())) {
+          if (this.level < this.levels.length - 1) this.start(this.level + 1);
           else this.enter('finale');
         }
         break;
@@ -122,34 +194,6 @@ export class Campaign {
     }
   }
 
-  // short objective line for the HUD ('' hides it)
-  objective(boss) {
-    const L = this.L;
-    switch (this.phase) {
-      case 'contact':
-      case 'battle': return L.boss ? 'Turrets 0/4' : `Raiders ${this.destroyed}/${L.raiders}`;
-      case 'boss':
-        if (!boss || boss.phase === 'turrets') return `Turrets ${4 - (boss ? boss.turretsLeft : 4)}/4`;
-        return 'Destroy the core';
-      case 'meteors': return `Meteors ${this.destroyed}/${L.meteors}`;
-      default: return '';
-    }
-  }
-
-  // 0..1 along the whole 5-level route (for the journey bar)
-  get progress() {
-    const L = this.L;
-    const p = {
-      journey: Math.min(1, this.t / this.journeyTime) * 0.25,
-      contact: 0.25,
-      battle: 0.25 + 0.35 * (this.destroyed / Math.max(1, L.raiders)),
-      boss: 0.25 + 0.35 * (1 - (this.bossIntegrity ?? 1)),
-      cleared: 0.6,
-      meteors: 0.6 + 0.35 * Math.min(1, (this.destroyed + this.missed) / L.meteors),
-      complete: 1,
-      finale: 1,
-      idle: 0,
-    }[this.phase];
-    return Math.min(1, (this.level + p) / LEVELS.length);
-  }
+  objective() { return ''; }
+  get progress() { return Math.min(1, this.level / this.levels.length); }
 }

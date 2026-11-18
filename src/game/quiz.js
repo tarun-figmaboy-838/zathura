@@ -95,7 +95,7 @@ export class AngleQuiz {
           b.classList.add('correct');
           b.querySelector('img').src = 'assets/ui/opt-ok.png';
           // confirm in the narration box: "? = 55°" takes the place of "Find ?"
-          this.say(`? = ${q.answer}°  ${q.prompt.split('  ').slice(1).join(' ')}`, 'ok');
+          this.say(q.explain ? `Correct!  ${q.explain}` : `? = ${q.answer}°`, 'ok');
           this.ctx.audio.correct();
           this.ctx.solved(this.target, this.tries === 0);
         } else {

@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { clamp } from '../core/math.js';
 
 const _p = new THREE.Vector3();
-const DIR = (yaw, out) => out.set(-Math.sin(yaw), 0, -Math.cos(yaw));
 const ease = (x) => { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); };
 
 // The battle radar drawn on the plane around the ship's cannon, kept deliberately clean:
@@ -11,7 +10,9 @@ const ease = (x) => { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); };
 //    points (this is the reference line); its extension through the ship is a faint dotted line
 //  - the line to the enemy (warm red), with a faint dotted extension when the rule needs it
 //  - the given angle (orange arc) and the asked angle "?" (white arc with a gentle ghost sweep);
-//    right-angle questions add the usual little square in the corner
+//    right-angle questions add the usual little square in the corner; "around a point" adds a third
+//    dotted ray and a second given angle; triangle questions draw the third side with the two given
+//    angles at its corners
 //  - after an answer: a beam that turns by the picked angle and lights green (hit) or red (miss)
 // Numbers are crisp HTML labels placed in world units.
 export class AngleOverlay {
@@ -20,6 +21,7 @@ export class AngleOverlay {
       uRing: { value: 31 }, uTLen: { value: 27 }, uR: { value: 13 }, uMax: { value: 34 },
       uAxis: { value: 0 }, uT: { value: 0 }, uP: { value: 0 }, uHasP: { value: 0 }, uExtR: { value: 0 }, uExtT: { value: 0 },
       uKnown: { value: new THREE.Vector2() }, uUnknown: { value: new THREE.Vector2() }, uRight: { value: new THREE.Vector2() },
+      uKnown2: { value: new THREE.Vector2() }, uTri: { value: new THREE.Vector4() }, uTriOn: { value: 0 }, uTriR: { value: 4 },
       uDraw: { value: 0 }, uAlpha: { value: 0 }, uSweep: { value: 0 }, uSweepA: { value: 0 }, uTime: { value: 0 },
       uAim: { value: new THREE.Vector3() }, uAimOn: { value: 0 }, uResult: { value: 0 }, uFlash: { value: 0 },
     };
@@ -40,7 +42,9 @@ export class AngleOverlay {
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }`,
       fragmentShader: /* glsl */ `
-        uniform float uRing, uTLen, uR, uMax, uAxis, uT, uP, uHasP, uExtR, uExtT, uDraw, uAlpha, uSweep, uSweepA, uTime, uAimOn, uResult, uFlash;
+        uniform float uRing, uTLen, uR, uMax, uAxis, uT, uP, uHasP, uExtR, uExtT, uDraw, uAlpha, uSweep, uSweepA, uTime, uAimOn, uResult, uFlash, uTriOn, uTriR;
+        uniform vec2 uKnown2;
+        uniform vec4 uTri;
         uniform vec2 uKnown, uUnknown, uRight;
         uniform vec3 uAim;
         varying vec2 vP;
@@ -52,6 +56,12 @@ export class AngleOverlay {
           return d / abs(arc.y);
         }
         float inside(float k, float upto) { return step(0.0, k) * step(k, upto); }
+        float segDist(vec2 p, vec2 a, vec2 b) { vec2 ab = b - a; float t = clamp(dot(p - a, ab) / dot(ab, ab), 0.0, 1.0); return length(p - a - ab * t); }
+        // inside the (smaller) angle between unit directions a and b, seen from the corner
+        float wedge(vec2 w, vec2 a, vec2 b) {
+          float s = sign(a.x * b.y - a.y * b.x);
+          return step(0.0, (a.x * w.y - a.y * w.x) * s) * step(0.0, (w.x * b.y - w.y * b.x) * s);
+        }
         float gauss(float x) { return exp(-x * x); }   // never pow() a negative base: NaN would spread via bloom
         void over(inout vec4 acc, vec3 c, float a) { a = clamp(a, 0.0, 1.0); acc.rgb = mix(acc.rgb, c, a); acc.a += a * (1.0 - acc.a); }
         // (perpendicular distance, position along) for the line through the centre at angle a
@@ -100,6 +110,26 @@ export class AngleOverlay {
           over(acc, orange, 0.15 * inside(kk, uDraw) * step(5.0, r) * (1.0 - smoothstep(uR - 0.4, uR, r)));
           over(acc, uCol * 1.4, inside(ku, uDraw) * gauss((r - uR) / 0.34));
           over(acc, orange * 1.5, inside(kk, uDraw) * gauss((r - uR) / 0.34));
+          // second given angle (angles around a point)
+          float kk2 = arcPos(ang, uKnown2);
+          over(acc, orange, 0.15 * inside(kk2, uDraw) * step(5.0, r) * (1.0 - smoothstep(uR - 0.4, uR, r)));
+          over(acc, orange * 1.5, inside(kk2, uDraw) * gauss((r - uR) / 0.34));
+          // triangle: the third side, the given angles at its two far corners, white corner knobs
+          if (uTriOn > 0.5) {
+            vec2 P = uTri.xy, Q = uTri.zw;
+            over(acc, white * 1.2, (1.0 - smoothstep(0.16, 0.32, segDist(vP, P, Q))) * uDraw);
+            vec2 wp = vP - P, wq = vP - Q;
+            float inP = wedge(wp, normalize(-P), normalize(Q - P));
+            float inQ = wedge(wq, normalize(-Q), normalize(P - Q));
+            float lp = length(wp), lq = length(wq);
+            over(acc, orange, 0.2 * inP * (1.0 - smoothstep(uTriR - 0.4, uTriR, lp)) * uDraw);
+            over(acc, orange, 0.2 * inQ * (1.0 - smoothstep(uTriR - 0.4, uTriR, lq)) * uDraw);
+            over(acc, orange * 1.5, inP * gauss((lp - uTriR) / 0.3) * uDraw);
+            over(acc, orange * 1.5, inQ * gauss((lq - uTriR) / 0.3) * uDraw);
+            float knob = min(lp, lq);
+            over(acc, vec3(0.05, 0.25, 0.48), (1.0 - smoothstep(0.85, 1.05, knob)) * uDraw);
+            over(acc, white * 1.3, (1.0 - smoothstep(0.55, 0.72, knob)) * uDraw);
+          }
           // right-angle questions: the textbook square in the corner between the two dotted/solid lines
           if (abs(uRight.y) > 0.01) {
             vec2 ax = dirOf(uRight.x), ay = dirOf(uRight.x + sign(uRight.y) * 1.5707963);
@@ -155,6 +185,9 @@ export class AngleOverlay {
       return d;
     };
     this.lbKnown = make('ang-label known');
+    this.lbKnown2 = make('ang-label known');
+    this.triP = new THREE.Vector2();
+    this.triQ = new THREE.Vector2();
     this.lbUnknown = make('ang-label unknown', '?');
     this.center = new THREE.Vector3();
     this.q = null;
@@ -169,14 +202,33 @@ export class AngleOverlay {
     this.t = 0;
     u.uRing.value = len;
     u.uTLen.value = tLen;
-    u.uExtR.value = q.type === 'complement' ? 0 : 1;   // straight line / opposite angles need it
+    u.uExtR.value = q.type === 'opposite' || q.type === 'linear' ? 1 : 0;   // the straight line through the ship
     u.uExtT.value = q.type === 'opposite' ? 1 : 0;
-    u.uR.value = arcR;
     u.uAxis.value = q.rYaw;
     u.uT.value = q.tYaw;
     u.uHasP.value = q.pYaw !== undefined ? 1 : 0;
     u.uP.value = q.pYaw ?? 0;
     u.uKnown.value.set(q.known.from, q.known.sweep);
+    u.uKnown2.value.set(q.known2 ? q.known2.from : 0, q.known2 ? q.known2.sweep : 0);
+    this.lbKnown2.textContent = q.given2 ? `${q.given2}°` : '';
+    u.uTriOn.value = q.tri ? 1 : 0;
+    if (q.tri) {
+      // law of sines: VP / sin(c) = VQ / sin(b); the triangle fills most of the radar
+      const D = Math.PI / 180;
+      let vq = len * 0.82;
+      let vp = (vq * Math.sin(q.tri.c * D)) / Math.sin(q.tri.b * D);
+      const k = Math.min(1, (len * 0.9) / Math.max(vp, vq));
+      vp *= k; vq *= k;
+      this.triP.set(-Math.sin(q.rYaw) * vp, -Math.cos(q.rYaw) * vp);
+      this.triQ.set(-Math.sin(q.tYaw) * vq, -Math.cos(q.tYaw) * vq);
+      u.uTri.value.set(this.triP.x, this.triP.y, this.triQ.x, this.triQ.y);
+      u.uTriR.value = Math.min(5.5, 0.28 * Math.min(vp, vq));
+      // keep the "?" arc at the ship well inside the triangle
+      const pq = this.triP.distanceTo(this.triQ);
+      const h = (vp * vq * Math.sin(q.answer * D)) / pq;
+      arcR = Math.min(arcR, h * 0.55);
+    }
+    u.uR.value = arcR;
     u.uUnknown.value.set(q.unknown.from, q.unknown.sweep);
     // only right-angle questions get a marker (the square); a straight line needs none
     u.uRight.value.set(q.rYaw, q.type === 'complement' ? q.s : 0);
@@ -233,9 +285,11 @@ export class AngleOverlay {
     // labels are sized in world units, so they keep their place in the picture on any screen
     const pxPerUnit = H / (2 * camera.position.distanceTo(center) * Math.tan((camera.fov * Math.PI) / 360));
     this.labelRoot.style.setProperty('--u', `${pxPerUnit.toFixed(2)}px`);
-    const place = (el, yaw, radius, show) => {
+    const place = (el, yaw, radius, show) => placeAt(el, -Math.sin(yaw) * radius, -Math.cos(yaw) * radius, show);
+    // x/z: world offset from the centre of the radar
+    const placeAt = (el, x, z, show) => {
       if (!show || !this.q || u.uAlpha.value < 0.05) { el.style.display = 'none'; return; }
-      DIR(yaw, _p).multiplyScalar(radius).add(center).project(camera);
+      _p.set(center.x + x, center.y, center.z + z).project(camera);
       el.style.display = 'block';
       el.style.opacity = Math.min(1, u.uAlpha.value * 1.2) * (this.t > 0.5 ? 1 : 0);
       // left/top (not transform) so the label's own pulse animation can't move it
@@ -246,8 +300,23 @@ export class AngleOverlay {
     const R = u.uR.value;
     if (q) {
       // each number sits just outside its own arc, on the arc's middle
-      place(this.lbKnown, q.known.from + q.known.sweep / 2, R * 1.3, true);
       place(this.lbUnknown, q.unknown.from + q.unknown.sweep / 2, R * 1.3, u.uResult.value <= 0.5);
+      if (q.tri) {
+        // triangle: each given angle sits inside its corner, along the corner's bisector
+        const corner = (el, A, B) => {
+          const ax = -A.x, az = -A.y, la = Math.hypot(ax, az);
+          const bx = B.x - A.x, bz = B.y - A.y, lb = Math.hypot(bx, bz);
+          let mx = ax / la + bx / lb, mz = az / la + bz / lb;
+          const lm = Math.hypot(mx, mz) || 1;
+          const d = u.uTriR.value + 2.6;
+          placeAt(el, A.x + (mx / lm) * d, A.y + (mz / lm) * d, true);
+        };
+        corner(this.lbKnown, this.triP, this.triQ);
+        corner(this.lbKnown2, this.triQ, this.triP);
+      } else {
+        place(this.lbKnown, q.known.from + q.known.sweep / 2, R * 1.3, true);
+        place(this.lbKnown2, q.known2 ? q.known2.from + q.known2.sweep / 2 : 0, R * 1.3, !!q.known2);
+      }
     }
   }
 }

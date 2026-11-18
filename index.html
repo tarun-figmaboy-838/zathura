@@ -120,7 +120,12 @@
     <div class="panel small">
       <h2>Paused</h2>
       <div class="modal-actions">
+        <button id="p-sound" class="round-btn" type="button" aria-label="Sound on or off">
+          <svg class="on" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z" /><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke-width="2" stroke-linecap="round" /></svg>
+          <svg class="off" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z" /><path d="M16.5 9.5l5 5M21.5 9.5l-5 5" fill="none" stroke-width="2" stroke-linecap="round" /></svg>
+        </button>
         <button id="resume" class="img-btn big" aria-label="Resume"><img src="assets/ui/btn-play.png" alt="" draggable="false" /></button>
+        <button id="p-home" class="img-btn" aria-label="Restart from the station"><img src="assets/ui/btn-home.png" alt="" draggable="false" /></button>
       </div>
     </div>
   </div>
@@ -130,7 +135,7 @@
       <h2>Destroyed</h2>
       <div class="results">
         <div><span>Score</span><b id="go-score">0</b></div>
-        <div><span>Sector</span><b id="go-level">1</b></div>
+        <div><span>Level</span><b id="go-level">L1</b></div>
       </div>
       <div class="modal-actions">
         <button id="restart" class="img-btn" aria-label="Restart from the station"><img src="assets/ui/btn-home.png" alt="" draggable="false" /></button>
@@ -146,6 +151,8 @@
         <div><span>Score</span><b id="v-score">0</b></div>
         <div><span>Best</span><b id="v-best">0</b></div>
       </div>
+      <div class="v-total"><span class="stars mini"><i class="on"></i></span><b id="v-total">0/15</b></div>
+      <div class="sector-stars" id="v-stars"></div>
       <div class="new-best hidden" id="v-newbest">New best</div>
       <div class="modal-actions">
         <button id="again" class="img-btn big" aria-label="Fly again"><img src="assets/ui/btn-retry.png" alt="" draggable="false" /></button>
@@ -154,6 +161,19 @@
   </div>
 
   <div id="letterbox" aria-hidden="true"></div>
+  <div id="report" class="screen modal hidden" role="dialog" aria-modal="true" aria-label="Sector complete">
+    <div class="panel small report">
+      <h2 id="r-title">Sector 1</h2>
+      <div class="stars big" id="r-stars"><i></i><i></i><i></i></div>
+      <div class="results">
+        <div><span>First try</span><b id="r-first">0/0</b></div>
+        <div><span>Bonus</span><b id="r-bonus">+0</b></div>
+      </div>
+      <div class="upgrades" id="r-upgrades"></div>
+      <button id="r-next" class="next-btn" type="button" disabled><img src="assets/ui/btn-next.png" alt="" draggable="false" /><span>Next</span></button>
+    </div>
+  </div>
+
   <div id="whiteout"></div>
   <script type="module" src="src/main.js"></script>
 </body>
