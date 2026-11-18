@@ -11,6 +11,7 @@ import { createPlanet } from './world/planet.js';
 import { createBlackHole } from './world/blackhole.js';
 import { AsteroidField } from './world/asteroids.js';
 import { createDust } from './world/dust.js';
+import { Wormhole } from './world/wormhole.js';
 import { TargetRings } from './world/holo.js';
 import { Portal } from './world/portal.js';
 import { SpaceTrash } from './world/trash.js';
@@ -183,6 +184,8 @@ const hud = new Hud();
 const dialogue = new Dialogue();
 const audio = new AudioEngine();
 const intro = new Intro(station, ship, fx, audio, rig, blackhole);
+const wormhole = new Wormhole(scene);     // the ride through the black hole and every portal
+intro.wormhole = wormhole;
 dialogue.voice = (who) => audio.chatter(who);
 const campaign = new Campaign();
 const director = new Director(rig);
@@ -300,6 +303,7 @@ function emerge() {
   setWhiteout('white', 0, 0.7, 'cubic-bezier(0.15, 0.75, 0.3, 1)');
   lens.uniforms.uFlash.value = 0.4;
   state.warp = 1.3;
+  wormhole.stop();
   audio.warp(ship.position);
   document.body.classList.add('warping');            // controls fade in once the flash has cleared
   setTimeout(() => document.body.classList.remove('warping'), 650);
@@ -329,6 +333,8 @@ function clearCombat() {
   state.volley = null;
   state.bossSolved = 0;
   state.deathCause = null;
+  state.tunnel = 0;
+  wormhole.stop();
   for (const a of Object.values(abilities)) { a.t = 0; a.cool = 0; }
 }
 
@@ -407,6 +413,8 @@ function gameOver() {
   saveBest();
   $('go-title').textContent = state.deathCause === 'time' ? "Time's up!" : 'Destroyed';
   state.deathCause = null;
+  state.tunnel = 0;
+  wormhole.stop();
   $('go-score').textContent = state.score.toLocaleString('en-US');
   $('go-level').textContent = campaign.L.label;
   setMode('gameover');
@@ -596,15 +604,29 @@ function onPlayerBolt(target, point, bolt) {
 // flying through a sector portal: a flash of light, and the sector begins
 function crossPortal() {
   state.portalPassed = true;
-  setWhiteout('white', 0.6);
+  setWhiteout('white', 0.45);
   void whiteout.offsetWidth;
-  setWhiteout('white', 0, 0.4, 'cubic-bezier(0.1, 0.7, 0.3, 1)');
-  lens.uniforms.uFlash.value = 0.35;
-  state.warp = 1;                        // a lens warp that settles as the ship comes out
+  setWhiteout('white', 0, 0.3, 'cubic-bezier(0.1, 0.7, 0.3, 1)');
+  lens.uniforms.uFlash.value = 0.3;
+  state.warp = 0.8;
+  field.clearAll();
+  trash.clearAll();
+  // a short ride through the portal's tunnel; the level starts when it ends (see endPortalRide)
+  state.tunnel = PORTAL_RIDE;
+  wormhole.start(0.35, PORTAL_RIDE);
   rig.addShake(0.5);
   fx.ring(ship.position, 60, 0.7);
   audio.warp(ship.position);
   audio.boostWhoosh();
+}
+
+const PORTAL_RIDE = 1.2;
+function endPortalRide() {
+  setWhiteout('white', 0.7);
+  void whiteout.offsetWidth;
+  setWhiteout('white', 0, 0.45, 'cubic-bezier(0.1, 0.7, 0.3, 1)');
+  state.warp = 1;
+  rig.addShake(0.3);
   hud.banner(campaign.L.boss ? 'THE WARDEN' : campaign.L.title, '', 2.2);
 }
 
@@ -1329,6 +1351,10 @@ function frame() {
   }
   rig.update(dt, ship, t);
   if (intro.active) intro.applyCamera(camera, t);
+  wormhole.update(dt, t, camera);
+  // no hex shield bubble during a ride; put it back afterwards only if the ride hid it
+  if (wormhole.active && shield.mesh.visible) { shield.mesh.visible = false; state.rideHidShield = true; }
+  else if (!wormhole.active && state.rideHidShield) { state.rideHidShield = false; if (state.mode !== 'dying') shield.mesh.visible = true; }
   controls.setMode((play ? campaign.cfg.view === 'top' : rig.mode === 'top') ? 'top' : 'chase');
   // defeat: after the blast, a drone shot pushes in on the enemy while the comms play
   if (mode === 'dying') {
@@ -1355,7 +1381,8 @@ function frame() {
 
   // ---- campaign + aiming + firing
   if (play) {
-    campaign.update(dt, campaignCtx);
+    if (state.tunnel > 0) { if ((state.tunnel -= dt) <= 0) { state.tunnel = 0; endPortalRide(); } }
+    else campaign.update(dt, campaignCtx);
     if (campaign.phase === 'cleared' && !seen.has('meteors')) {
       introduce('meteors', [
         { text: 'Meteor field! LOCK aims for you. SHIELD blocks hits.', focus: ['#controls .act.lock', '#controls .act.shield'], time: 3.2 },
@@ -1448,7 +1475,7 @@ function frame() {
   });
   trails.update(camera.position, t);
   // the streaks read as rain in the overhead view, and must not draw over the black hole's shadow
-  dust.object.visible = rig.mode !== 'top' && !(play && battlePhase()) && !(mode === 'launch' && (intro.stage === 'plunge' || intro.stage === 'crossed'));
+  dust.object.visible = rig.mode !== 'top' && !(play && battlePhase()) && !(mode === 'launch' && (intro.stage === 'plunge' || intro.stage === 'crossed' || intro.stage === 'tunnel')) && !wormhole.active;
   dust.update(camera, _dustVel.copy(ship.velocity).clampLength(0, 650));   // capped: at warp speed they became screen-wide lines
   stars.update(camera, t);
   for (const p of planets) p.update(camera, t);
@@ -1460,7 +1487,7 @@ function frame() {
   blackhole.uniforms.uIntensity.value = 0.32 + 0.68 * near;
   blackhole.uniforms.uDisk.value = 0.7;
   const titleView = mode === 'title';
-  bloom.strength = BLOOM_STRENGTH * (blackhole.object.visible ? 0.3 + 0.45 * near : 1) * (1 - 0.6 * (state.battleDim || 0)) * (titleView ? 0.75 : 1);
+  bloom.strength = BLOOM_STRENGTH * (blackhole.object.visible ? 0.3 + 0.45 * near : 1) * (1 - 0.6 * (state.battleDim || 0)) * (titleView ? 0.75 : 1) * (wormhole.active ? 0.4 : 1);   // keep the tunnel's colours crisp
   field.material.color.setScalar(titleView || mode === 'launch' ? 0.55 : 1);   // rocks by the station sit in shadow
   sun.update(dt, camera, ship.position, SUN_OCCLUDERS);
 

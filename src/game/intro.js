@@ -34,6 +34,7 @@ const T_LIFT = [2.15, 3.3];
 const T_RETRACT = [2.7, 3.3];
 const T_IGNITE = 3.35;
 const T_BOOST = 3.95;
+const TUNNEL_TIME = 2.6;      // the ride through the wormhole after the horizon
 const RISE = 1.35;          // camera leaves the cockpit and swings out to the release shot
 // captain's eye inside the docked ship (ship space), and the outside shot of the release
 const EYE = new THREE.Vector3(0, 0.95, -2.3);
@@ -196,8 +197,9 @@ export class Intro {
 
     if (this.skipping) this.fade = Math.min(1, this.fade + dt / 0.25);
     else if (this.stage === 'crossed') this.fade = clamp((t - this.crossT - 0.1) / 0.35, 0, 1);
-    const blackBeat = this.skipping || t - this.crossT > 0.7;
-    if (this.fade >= 1 && blackBeat) {
+    else if (this.stage === 'tunnel') this.fade = Math.max(0, this.fade - dt / 0.35);   // the black opens into the tunnel
+    const done = this.skipping ? this.fade >= 1 : this.stage === 'tunnel' && this.tunnelT >= TUNNEL_TIME;
+    if (done) {
       this.phase = 'done';
       return 'emerge';
     }
@@ -252,12 +254,36 @@ export class Intro {
     }
     if (this.stage === 'crossed') {
       s.velocity.set(0, 0, 0);
+      if (t - this.crossT > 0.6 && !this.skipping) this.enterTunnel();
       return;
+    }
+    if (this.stage === 'tunnel') {
+      // through the wormhole: full burn, a gentle corkscrew, the lens warping with the speed
+      this.tunnelT += dt;
+      this.speed = 900;
+      s.thrust = 0.6;          // engines on, but gently: the boost beams and full glow flooded the frame
+      s.boost = 0;
+      s.visual.rotation.z = Math.sin(this.tunnelT * 1.8) * 0.2;
+      s.visual.rotation.x = Math.sin(this.tunnelT * 1.3) * 0.05;
+      this.distort = 0.45 + 0.15 * Math.sin(this.tunnelT * 3);
+      this.rig.addShake(dt * 0.6);
     }
     s.velocity.copy(this.dir).multiplyScalar(this.speed);
     sp.addScaledVector(s.velocity, dt);
     _m.lookAt(sp, _w.copy(sp).add(this.dir), UP);
     s.root.quaternion.slerp(_q.setFromRotationMatrix(_m), 1 - Math.exp(-5 * dt));
+  }
+
+  enterTunnel() {
+    const s = this.ship;
+    this.stage = 'tunnel';
+    this.tunnelT = 0;
+    s.setRedshift(0);
+    s.visual.scale.set(1, 1, 1);
+    s.model.visible = true;
+    this.blackhole.object.visible = false;    // we're through it
+    this.wormhole?.start(1);
+    this.audio.boostWhoosh();
   }
 
   // glowing disk matter streaming past the ship and spiralling into the hole
@@ -331,6 +357,15 @@ export class Intro {
         this.fov = lerp(46, this.fov, kb);
       }
       this.shot(_p, _t);
+      return;
+    }
+    if (this.stage === 'tunnel') {
+      const right = _v.crossVectors(this.dir, UP).normalize();
+      // above and behind, so the ship sits low in the frame and the tunnel's far end shows over it
+      _p.copy(sp).addScaledVector(this.dir, -17).addScaledVector(UP, 6.5).addScaledVector(right, Math.sin(this.tunnelT * 0.9) * 1.2);
+      _t.copy(sp).addScaledVector(this.dir, 60).addScaledVector(UP, 5.5);
+      this.fov = lerp(this.fov, 68, 1 - Math.exp(-3 * dt));
+      this.shot(_p, _t, Math.sin(this.tunnelT * 0.8) * 0.12);
       return;
     }
     // plunge: ride close behind the falling ship so its redshift and stretch are clearly seen,
