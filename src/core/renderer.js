@@ -27,7 +27,7 @@ const LensShader = {
     uAspect: { value: 1 },
     uSun: { value: new THREE.Vector2(0.5, 0.5) },
     uSunVis: { value: 0 },
-    uAberration: { value: 0.006 },
+    uAberration: { value: 0.0035 },
     uGrain: { value: 0.03 },
     uFlash: { value: 0 },
     uDamage: { value: 0 },

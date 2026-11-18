@@ -15,6 +15,7 @@ import { TargetRings } from './world/holo.js';
 import { Portal } from './world/portal.js';
 import { AngleOverlay } from './world/angleOverlay.js';
 import { AngleQuiz } from './game/quiz.js';
+import { Director } from './game/director.js';
 import { makeQuestion, typeForSector } from './game/angles.js';
 import { Ship, addPanelDetail } from './ship/ship.js';
 import { Turret } from './ship/turret.js';
@@ -147,6 +148,8 @@ const hud = new Hud();
 const audio = new AudioEngine();
 const intro = new Intro(station, ship, fx, audio, rig, blackhole);
 const campaign = new Campaign();
+const director = new Director(rig);
+const seen = new Set();          // what has been introduced already (this session)
 const quiz = new AngleQuiz(angleOverlay, {
   audio,
   fire: (correct) => quizFire(correct),
@@ -237,7 +240,7 @@ function launch() {
 
 // the ship comes out of the black hole on the far side and the first sector begins
 function emerge() {
-  lens.uniforms.uAberration.value = 0.006;
+  lens.uniforms.uAberration.value = 0.0035;
   setWorld('route');
   field.clearAll();
   ship.reset();
@@ -275,6 +278,7 @@ function clearCombat() {
   scenery.clearAll();
   portal.hide();
   quiz.stop();
+  director.clear();
   state.volley = null;
   state.bossSolved = 0;
   for (const a of Object.values(abilities)) { a.t = 0; a.cool = 0; }
@@ -318,6 +322,7 @@ function resume() { if (state.mode === 'paused') setMode('play'); }
 
 function die() {
   quiz.stop();
+  director.clear();
   setMode('dying');
   ship.model.visible = false;
   shield.mesh.visible = false;
@@ -636,6 +641,7 @@ const campaignCtx = {
     state.portalPassed = false;
     for (let i = 0; i < 46; i++) spawnScenery(rand(90, 900));
     audio.waveHorn();
+    introduce('portal', [{ time: 2.2 }, { text: `Fly through the portal into Sector ${level + 1}.`, time: 3.2 }]);
   },
   spawnBoss() {
     boss.spawn(ship, state.time, Math.PI + (Math.random() < 0.5 ? -1 : 1) * (camera.aspect < 1 ? rand(0.4, 0.55) : rand(0.8, 1.05)));
@@ -644,6 +650,10 @@ const campaignCtx = {
     state.bossHoldT = 0;
     state.bossSolved = 0;
     audio.alarm();
+    introduce('boss', [
+      { text: 'The Warden is here!', cam: camBoss, time: 2.6 },
+      { text: 'Break its 4 turrets, then hit its core.', cam: camBoss, time: 2.8 },
+    ]);
   },
   announce(title, sub) { hud.banner(title, sub, 2.2); audio.waveHorn(); },
   spawnRaider(skill) {
@@ -657,6 +667,7 @@ const campaignCtx = {
     r.hold = off;
     fx.warp(pos, tmp.copy(ship.position).sub(pos).normalize());
     audio.warp(pos);
+    introduce('raider', [{ text: 'Raider incoming! It shoots at your ship.', cam: camRaider(r), time: 2.6 }]);
   },
   spawnMeteor(p, size, v) { field.spawn(V(p.x, p.y, p.z), size, V(v.x, v.y, v.z)); },
   levelComplete(level) {
@@ -785,6 +796,75 @@ function computeAim() {
   return 'pointer';
 }
 
+// ------------------------------------------------------------------ introductions
+// Each new thing is explained once, the first time it appears (see game/director.js).
+function introduce(key, steps) {
+  if (seen.has(key)) return;
+  seen.add(key);
+  director.play(steps);
+}
+
+const RULES = {
+  opposite: 'Rule: opposite angles are equal.',
+  linear: 'New rule: a straight line makes 180°.',
+  complement: 'New rule: a right angle makes 90°.',
+};
+function introduceQuestion(q) {
+  const steps = [];
+  const first = !seen.has('battle');
+  if (first) {
+    seen.add('battle');
+    steps.push({ text: 'This bright line is your cannon.', cam: camCannon, time: 2.6 });
+    steps.push({ text: 'Turn it by the angle ? to hit the target.', focus: ['.ang-label.unknown'], time: 2.8 });
+  }
+  if (!seen.has(q.type)) {
+    seen.add(q.type);
+    steps.push({ text: RULES[q.type], cam: camDiagram, time: 2.8 });
+  }
+  if (first) steps.push({ text: 'Tap the right angle!', focus: ['.quiz-options'], time: 2.4 });
+  if (steps.length) director.play(steps);
+}
+
+// drone shots (pos / target / up / fov filled every frame; the rig blends in and out)
+const _cA = new THREE.Vector3();
+const _cB = new THREE.Vector3();
+// low and close, beside the raider's nose, as it flies in and brakes
+// narrow (portrait) screens: the drone backs off so the whole subject stays in frame
+const dronePull = () => Math.pow(Math.max(1, 1.1 / camera.aspect), 0.65);
+const camRaider = (r) => (o) => {
+  const k = dronePull();
+  _cA.copy(ship.position).sub(r.position).setY(0).normalize();          // raider -> ship
+  _cB.set(_cA.z, 0, -_cA.x);                                            // its side
+  o.pos.copy(r.position).addScaledVector(_cA, 7 * k).addScaledVector(_cB, 12 * k).add(tmp.set(0, 6 * k, 0));
+  o.target.copy(r.position).lerp(ship.position, camera.aspect < 1 ? 0 : 0.12);
+  o.up.set(0, 1, 0);
+  o.fov = 42 / Math.sqrt(Math.min(1, camera.aspect));   // wider lens on portrait screens
+};
+// the boss: a wide close-up from in front of it, the player's ship small beyond
+function camBoss(o) {
+  _cA.copy(ship.position).sub(boss.position).setY(0).normalize();
+  _cB.set(_cA.z, 0, -_cA.x);
+  const k = dronePull();
+  o.pos.copy(boss.position).addScaledVector(_cA, 30 * k).addScaledVector(_cB, 16 * k).add(tmp.set(0, 20 * k, 0));
+  o.target.copy(boss.position).lerp(ship.position, camera.aspect < 1 ? 0 : 0.15);
+  o.up.set(0, 1, 0);
+  o.fov = 50;
+}
+// straight down onto the ship's cannon, close
+function camCannon(o) {
+  o.pos.copy(quizCenter).add(tmp.set(0, 36 * rig.topZoom, 8 * rig.topZoom));
+  o.target.copy(quizCenter);
+  o.up.set(0, 1, 0);
+  o.fov = 52;
+}
+// a closer look at the angle diagram
+function camDiagram(o) {
+  o.pos.copy(quizCenter).add(tmp.set(0, 72 * rig.topZoom, 12 * rig.topZoom));
+  o.target.copy(quizCenter);
+  o.up.set(0, 1, 0);
+  o.fov = 52;
+}
+
 // ------------------------------------------------------------------ angle battles
 // the next thing to ask about: the hovering raider, or (boss) a turret, then the core
 function nextQuizTarget(dt) {
@@ -809,7 +889,7 @@ function updateQuiz(dt, t) {
   quizCenter.y = ship.position.y;
   if (!battlePhase()) {
     if (quiz.active) quiz.stop();
-  } else if (!quiz.active) {
+  } else if (!quiz.active && !director.camera) {
     const tgt = nextQuizTarget(dt);
     if (tgt) {
       const dx = tgt.pos.x - quizCenter.x, dz = tgt.pos.z - quizCenter.z;
@@ -819,9 +899,11 @@ function updateQuiz(dt, t) {
       const camH = (108 * rig.topZoom) / Math.pow(Math.min(1, camera.aspect), 0.62);
       const halfH = camH * Math.tan((52 * Math.PI) / 360);
       const ringMax = Math.min(halfH * 0.66, halfH * camera.aspect * 0.9);
-      quiz.ask(tgt, q, tgt.index, tgt.total, { len: Math.min(dist + 4.8, ringMax), tLen: dist, arcR: 12 * rig.topZoom });
+      quiz.ask(tgt, q, tgt.index, tgt.total, { len: Math.min(dist + 4.8, ringMax), tLen: dist, arcR: 14.5 * rig.topZoom });
+      introduceQuestion(q);
     }
   }
+  if (director.active && quiz.busy) director.clear();      // answering ends the walkthrough
   quiz.update(dt, turret.yaw);
   angleOverlay.update(dt, t, quizCenter, camera);
 }
@@ -897,7 +979,7 @@ function frame() {
     const ev = intro.update(dt, t);
     // crossing the horizon goes black; emerge() then bursts out into white light
     if (mode === 'launch') setWhiteout('black', intro.fade);
-    lens.uniforms.uAberration.value = 0.006 + 0.012 * intro.distort * intro.distort;
+    lens.uniforms.uAberration.value = 0.0035 + 0.012 * intro.distort * intro.distort;
     if (ev === 'emerge') emerge();
   }
 
@@ -922,15 +1004,26 @@ function frame() {
   ship.update(dt, input, t, false);
 
   // ---- camera
-  if (play) rig.setMode(campaign.cfg.view);
+  director.update(dt);
+  if (play) {
+    if (director.camera) rig.setMode('drone', 0.95);      // drone shot: zoom in on what is introduced
+    else rig.setMode(campaign.cfg.view, 1.15);            // ...and back out
+  }
   rig.update(dt, ship, t);
   if (intro.active) intro.applyCamera(camera, t);
-  controls.setMode(rig.mode === 'top' ? 'top' : 'chase');
+  controls.setMode((play ? campaign.cfg.view === 'top' : rig.mode === 'top') ? 'top' : 'chase');
   if (mode === 'dying' && state.modeT > 2.6) gameOver();
 
   // ---- campaign + aiming + firing
   if (play) {
     campaign.update(dt, campaignCtx);
+    if (campaign.phase === 'cleared' && !seen.has('meteors')) {
+      introduce('meteors', [
+        { text: 'Meteor field ahead! Steer with ◀ ▶', focus: ['#controls .pad'], time: 2.8 },
+        { text: 'Hold FIRE to blast the meteors.', focus: ['#controls .act.fire'], time: 2.6 },
+        { text: 'LOCK aims for you. SHIELD blocks hits.', focus: ['#controls .act.lock', '#controls .act.shield'], time: 3.0 },
+      ]);
+    }
     if (campaign.phase === 'finale') startFinale();
   }
   if (play) {
@@ -976,10 +1069,10 @@ function frame() {
   });
 
   // ---- simulation
-  raiderCtx.shipAlive = play;
+  raiderCtx.shipAlive = play && !director.active;
   raiderCtx.arena = campaign.phase === 'battle' || campaign.phase === 'contact' || campaign.phase === 'boss';
   if (play || mode === 'dying') raiders.update(dt, t, raiderCtx);
-  bossCtx.shipAlive = play;
+  bossCtx.shipAlive = play && !director.active;
   if (play || mode === 'dying') boss.update(dt, t, bossCtx);
   campaign.bossIntegrity = boss.active ? boss.integrity : 0;
   rig.topZoom = campaign.phase === 'boss' ? 1.65 : 1;
@@ -991,6 +1084,7 @@ function frame() {
   scenery.update(dt, t, ship.position, camera.position);
   if (play && dt > 0) collideShip();
   updateHolo(t, play || mode === 'dying');
+  rings.mesh.visible = !director.camera;   // lock-on brackets would float oddly in a low close-up
   if (play) updateQuiz(dt, t);
   else angleOverlay.update(dt, t, quizCenter, camera);
   if (portal.update(dt, t, ship.position)) crossPortal();
@@ -1018,6 +1112,7 @@ function frame() {
     trails.push(wingTrails[i], ship.nodes[n].getWorldPosition(tmp), t);
   });
   trails.update(camera.position, t);
+  dust.object.visible = rig.mode !== 'top' && !(play && battlePhase());   // the streaks read as rain in the overhead view
   dust.update(camera, ship.velocity);
   stars.update(camera, t);
   for (const p of planets) p.update(camera, t);
@@ -1080,7 +1175,7 @@ if (document.fonts?.load) document.fonts.load('64px "Lilita One"').catch(() => {
 // handy for tuning from the devtools console
 window.game = {
   THREE, scene, camera, renderer, ship, turret, rig, field, fx, raiders, boss, vitals, intro, campaign, state, input, audio, hud, abilities,
-  radar, portal, rings, blackhole, planets, quiz, angleOverlay, launch, setMode,
+  radar, portal, rings, director, blackhole, planets, quiz, angleOverlay, launch, setMode,
   debug: {
     fire(on) { input.virtual.fire = on; },
     key(code, on) { if (on) input.keys.add(code); else input.keys.delete(code); },

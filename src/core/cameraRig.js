@@ -9,6 +9,7 @@ const TOP_HEIGHT = 108;
 //  chase  – behind and above the ship, looking down the route
 //  top    – straight down on the ship (nose pointing up the screen) for cannon battles
 //  hold   – a parked drone that keeps `focus` in frame (the ending jump)
+//  drone  – a shot driven from outside (game/director.js: introductions)
 export class CameraRig {
   constructor(camera) {
     this.camera = camera;
@@ -25,6 +26,10 @@ export class CameraRig {
     this.topZoom = 1;  // >1 pulls the top view higher (boss fight)
     this.zoom = 1;
     this.holdFov = 50;
+    this.dronePos = new THREE.Vector3();
+    this.droneTarget = new THREE.Vector3();
+    this.droneUp = new THREE.Vector3(0, 1, 0);
+    this.droneFov = 50;
   }
 
   setMode(mode, dur = 1.3) {
@@ -51,6 +56,11 @@ export class CameraRig {
       d.up.set(0, 0, -1);
       d.lookAt(p.x, p.y, p.z);
       out.fov = 52;
+    } else if (this.mode === 'drone') {
+      d.position.copy(this.dronePos);
+      d.up.copy(this.droneUp);
+      d.lookAt(this.droneTarget);
+      out.fov = this.droneFov;
     } else if (this.mode === 'hold') {
       d.position.copy(this.plungePos);
       d.up.set(0, 1, 0);

@@ -10,7 +10,8 @@ const ease = (x) => { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); };
 //  - the cannon beam: a bright cyan line from the cannon to the ring, exactly where the cannon
 //    points (this is the reference line); its extension through the ship is a faint dotted line
 //  - the line to the enemy (warm red), with a faint dotted extension when the rule needs it
-//  - the given angle (orange arc) and the asked angle "?" (white arc with a gentle ghost sweep)
+//  - the given angle (orange arc) and the asked angle "?" (white arc with a gentle ghost sweep);
+//    right-angle questions add the usual little square in the corner
 //  - after an answer: a beam that turns by the picked angle and lights green (hit) or red (miss)
 // Numbers are crisp HTML labels placed in world units.
 export class AngleOverlay {
@@ -68,7 +69,7 @@ export class AngleOverlay {
           if (r > uMax) discard;
           float ang = atan(-vP.x, -vP.y);
           vec3 cyan = vec3(0.4, 0.92, 1.0);
-          vec3 enemy = vec3(1.0, 0.36, 0.22);
+          vec3 enemy = vec3(1.0, 0.2, 0.13);
           vec3 orange = vec3(1.0, 0.64, 0.18);
           vec3 white = vec3(1.0);
           vec3 good = vec3(0.35, 1.0, 0.5);
@@ -82,9 +83,9 @@ export class AngleOverlay {
           float t30 = abs(fract(ang / TAU * 12.0 + 0.5) - 0.5) * (TAU / 12.0) * r;
           over(acc, cyan, 0.5 * (1.0 - smoothstep(0.06, 0.14, t10)) * step(ring - 0.9, r) * step(r, ring));
           over(acc, cyan, 0.8 * (1.0 - smoothstep(0.08, 0.16, t30)) * step(ring - 1.8, r) * step(r, ring));
-          // slow radar sweep: a thin, faint line (never a wedge that could read as an angle)
-          float sw = mod(uTime * 0.9 - ang, TAU) * r;
-          over(acc, cyan, 0.16 * exp(-sw * 0.9) * step(4.0, r) * (1.0 - smoothstep(ring - 0.5, ring, r)));
+          // slow radar sweep, confined to the rim band so it never crosses the angle diagram
+          float sw = mod(uTime * 0.9 - ang, TAU);
+          over(acc, cyan, 0.5 * exp(-sw * 3.0) * smoothstep(ring - 2.6, ring - 1.8, r) * step(r, ring));
 
           // dotted extensions and the perpendicular (only the ones the rule needs)
           if (uExtR > 0.5) over(acc, cyan, 0.7 * dotted(lineCoord(vP, uAxis + 3.14159265), 5.0, ring - 0.6));
@@ -95,12 +96,19 @@ export class AngleOverlay {
           float ku = arcPos(ang, uUnknown);
           float kk = arcPos(ang, uKnown);
           vec3 uCol = mix(white, good, step(0.5, uResult) * max(uFlash, 0.6));
-          over(acc, uCol, 0.1 * inside(ku, uDraw) * step(5.0, r) * (1.0 - smoothstep(uR - 0.4, uR, r)));
-          over(acc, orange, 0.12 * inside(kk, uDraw) * step(5.0, r) * (1.0 - smoothstep(uR - 0.4, uR, r)));
-          over(acc, uCol * 1.4, inside(ku, uDraw) * gauss((r - uR) / 0.32));
-          over(acc, orange * 1.5, inside(kk, uDraw) * gauss((r - uR) / 0.36));
-          float kr = arcPos(ang, uRight);
-          over(acc, white, 0.55 * inside(kr, uDraw) * gauss((r - uR * 1.6) / 0.22));
+          over(acc, uCol, 0.15 * inside(ku, uDraw) * step(5.0, r) * (1.0 - smoothstep(uR - 0.4, uR, r)));
+          over(acc, orange, 0.15 * inside(kk, uDraw) * step(5.0, r) * (1.0 - smoothstep(uR - 0.4, uR, r)));
+          over(acc, uCol * 1.4, inside(ku, uDraw) * gauss((r - uR) / 0.34));
+          over(acc, orange * 1.5, inside(kk, uDraw) * gauss((r - uR) / 0.34));
+          // right-angle questions: the textbook square in the corner between the two dotted/solid lines
+          if (abs(uRight.y) > 0.01) {
+            vec2 ax = dirOf(uRight.x), ay = dirOf(uRight.x + sign(uRight.y) * 1.5707963);
+            vec2 sq = vec2(dot(vP, ax), dot(vP, ay));
+            float S = uR * 0.62;
+            float e1 = (1.0 - smoothstep(0.16, 0.3, abs(sq.x - S))) * step(0.0, sq.y) * step(sq.y, S);
+            float e2 = (1.0 - smoothstep(0.16, 0.3, abs(sq.y - S))) * step(0.0, sq.x) * step(sq.x, S);
+            over(acc, white * 1.3, max(e1, e2) * uDraw);
+          }
           // ghost sweep through "?": shows which turn to name
           float sweepIn = inside(ku, uSweep);
           over(acc, white, 0.16 * uSweepA * sweepIn * step(5.0, r) * (1.0 - smoothstep(uR - 0.4, uR, r)));
@@ -148,7 +156,6 @@ export class AngleOverlay {
     };
     this.lbKnown = make('ang-label known');
     this.lbUnknown = make('ang-label unknown', '?');
-    this.lbRight = make('ang-label right');
     this.center = new THREE.Vector3();
     this.q = null;
     this.t = 0;
@@ -171,8 +178,8 @@ export class AngleOverlay {
     u.uP.value = q.pYaw ?? 0;
     u.uKnown.value.set(q.known.from, q.known.sweep);
     u.uUnknown.value.set(q.unknown.from, q.unknown.sweep);
-    u.uRight.value.set(q.whole ? q.whole.from : 0, q.whole ? q.whole.sweep : 0);
-    this.lbRight.textContent = q.whole ? q.whole.label : '';
+    // only right-angle questions get a marker (the square); a straight line needs none
+    u.uRight.value.set(q.rYaw, q.type === 'complement' ? q.s : 0);
     u.uAimOn.value = 0;
     u.uResult.value = 0;
     u.uFlash.value = 0;
@@ -238,14 +245,9 @@ export class AngleOverlay {
     const q = this.q;
     const R = u.uR.value;
     if (q) {
-      place(this.lbKnown, q.known.from + q.known.sweep / 2, R * 1.38, true);
-      place(this.lbUnknown, q.unknown.from + q.unknown.sweep / 2, R * 1.38, u.uResult.value <= 0.5);
-      // the whole-angle label (180° / 90°) sits at whichever end of its arc is further from the target
-      if (q.whole) {
-        const aT = Math.abs(q.answer * Math.PI / 180);
-        const f = Math.abs(Math.abs(q.whole.sweep) * 0.08 - aT) > Math.abs(Math.abs(q.whole.sweep) * 0.92 - aT) ? 0.08 : 0.92;
-        place(this.lbRight, q.whole.from + q.whole.sweep * f, R * 1.6 + 2.6, true);
-      } else place(this.lbRight, 0, 0, false);
+      // each number sits just outside its own arc, on the arc's middle
+      place(this.lbKnown, q.known.from + q.known.sweep / 2, R * 1.3, true);
+      place(this.lbUnknown, q.unknown.from + q.unknown.sweep / 2, R * 1.3, u.uResult.value <= 0.5);
     }
   }
 }

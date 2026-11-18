@@ -62,7 +62,6 @@ export class Campaign {
         // the sector starts once the ship has flown through the portal
         if ((ctx.portalPassed && ctx.portalPassed()) || this.t > this.journeyTime + 3) {
           this.enter('contact');
-          if (L.boss) ctx.announce('WARDEN INBOUND', '');
         }
         break;
       case 'contact':

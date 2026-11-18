@@ -10,6 +10,10 @@ an asteroid belt that ends by flying through the sector's portal, then an angle 
 raiders, then a meteor field. Sector 5 ends with a boss, the Warden carrier, and then you
 jump home.
 
+The first time something new appears (the portal, a raider, the battle radar, each angle rule, the
+meteor field and its buttons, the boss) the game introduces it: one short line in the narration box,
+with a drone camera shot that zooms in on it and back out. Tap the line to skip ahead.
+
 ## Angle battles
 
 Each raider flies in, holds position and keeps firing short bursts at you, so think fast. A radar
@@ -70,7 +74,7 @@ you fire; the ring around the Fire button shows the cannon's heat.
 index.html        page, HUD and on-screen controls
 src/              game code (Three.js ES modules)
 assets/models/    ship, raider, boss, station and asteroid models (.glb)
-assets/ui/        title and button art (made with Figma AI, background removed)
+assets/ui/        title, cockpit and button art (Figma: answer capsules from the POLYGON kit, the rest made with Figma AI)
 blender/          the Python scripts that generate every model
 PLAN.md           design plan and milestones
 ```

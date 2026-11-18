@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>Driftbound</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Lilita+One&family=Orbitron:wght@700;900&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Inter:wght@400;500;600;700;800&family=Lilita+One&family=Orbitron:wght@700;900&display=swap" />
   <link rel="stylesheet" href="src/style.css" />
   <script>
     // If start-up fails, say why on the title screen instead of spinning forever.
@@ -82,6 +82,9 @@
       </button>
     </div>
   </div>
+
+  <!-- ============================== introductions: one short line at a time (tap to skip ahead) -->
+  <div id="narrate" class="narrate" role="status" aria-live="polite"><span class="text"></span></div>
 
   <!-- ============================== angle battle: question, hint and answer options -->
   <div id="quiz" class="hidden">

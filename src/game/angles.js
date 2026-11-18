@@ -28,8 +28,6 @@ export function makeQuestion(tYaw, type, r = Math.random) {
   const A = answer * DEG;
   const rYaw = tYaw - s * A;
   const q = { type, s, answer, tYaw, rYaw, unknown: { from: rYaw, sweep: s * A }, hint: HINTS[type] };
-  // q.whole: the full angle the two parts make (180° straight line, 90° right angle), drawn as
-  // a thin outer arc so the rule is visible in the picture
   if (type === 'opposite') {
     q.given = answer;
     q.known = { from: rYaw + Math.PI, sweep: s * A };
@@ -38,14 +36,12 @@ export function makeQuestion(tYaw, type, r = Math.random) {
   } else if (type === 'linear') {
     q.given = 180 - answer;
     q.known = { from: tYaw, sweep: s * (Math.PI - A) };
-    q.whole = { from: rYaw, sweep: s * Math.PI, label: '180°' };
     q.prompt = `Find ?  It makes a straight line with ${q.given}°`;
     q.hint2 = `? = 180° − ${q.given}°`;
   } else {
     q.given = 90 - answer;
     q.pYaw = rYaw + s * Math.PI / 2;
     q.known = { from: tYaw, sweep: s * (Math.PI / 2 - A) };
-    q.whole = { from: rYaw, sweep: s * Math.PI / 2, label: '90°' };
     q.prompt = `Find ?  With ${q.given}° it makes 90°`;
     q.hint2 = `? = 90° − ${q.given}°`;
   }
@@ -58,9 +54,10 @@ export function makeQuestion(tYaw, type, r = Math.random) {
 function makeOptions(answer, given, type, r) {
   const wrong = [];
   const ok = (v) => v >= 5 && v <= 175 && Math.abs(v - answer) >= 20 && wrong.every((w) => Math.abs(w - v) >= 10);
-  const add = (v) => { v = Math.round(v); if (wrong.length < 3 && ok(v)) wrong.push(v); };
+  // every option is a multiple of 5, like the real answer, so no option gives itself away
+  const add = (v) => { v = Math.round(v / 5) * 5; if (wrong.length < 3 && ok(v)) wrong.push(v); };
   const mistakes = type === 'opposite' ? [180 - answer, 90 - answer]
-    : type === 'linear' ? [given, 90 - answer, answer + given / 2]
+    : type === 'linear' ? [given, Math.abs(90 - given), 90 - answer]
     : [given, 180 - answer, 90 + answer];
   for (const v of mistakes) add(v);
   const near = [20, -20, 30, -30, 45, -45, 60, -60].sort(() => r() - 0.5);
