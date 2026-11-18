@@ -22,6 +22,9 @@ wormhole: a real 3D funnel anchored where it opens (inside the hole, behind the 
 opening as the ship approaches. Swirling gas, light streaks and sparks rush past, and the light at
 the far end swells until it carries the ship out (`src/world/wormhole.js`).
 
+The ending: after the Warden a giant portal opens; the ship races into it and vanishes like a time
+jump, the portal implodes behind it, and the victory screen rates the run out of 3 stars.
+
 ## Angle battles
 
 Each level is one raider: it flies in, holds position and keeps firing short bursts at you. Every
@@ -35,8 +38,9 @@ and the question card shows the working (for example "76° + 104° = 180°"). A 
 enemy fires back, and the card shows the rule (after a second miss, the working).
 
 Layout: the question bar on top, the radar in the middle and the answers along the bottom (one row on
-landscape screens, 2×2 on phones). On landscape screens the enemy flies in from the side and its comms
-appear as a speech bubble beside it; on phones the comms sit in the top corner.
+landscape screens, 2×2 on phones). Comms are a speech bubble on the craft that is talking (the raider,
+the Warden, or your own ship for the co-pilot), placed so it never covers the question, the answers or
+the score; phones get a compact bubble.
 
 Enemies talk back, like comms chatter in an arcade shooter, in a game-style dialogue box with character
 portraits (made with Figma AI) that act out each line: each raider gets a silly callsign, taunts

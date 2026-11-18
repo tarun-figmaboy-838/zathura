@@ -50,7 +50,7 @@ export const answerOf = (lv) => (lv.rule === 'linear' ? 180 - lv.known : lv.know
 
 // The run: 12 levels in three sectors of four, then the Warden. A short journey through the
 // asteroid belt and a portal comes before every level; each sector ends with a meteor field and
-// the sector report (stars + an upgrade).
+// a short look at the stars earned.
 function buildLevels() {
   const levels = [];
   const add = (q, i, group) => levels.push({
@@ -183,7 +183,7 @@ export class Campaign {
         }
         break;
       case 'complete':
-        // wait for the player to close the sector report (stars + upgrade)
+        // wait for the stars moment to finish (it closes by itself)
         if (this.t > 1.2 && !(ctx.reportOpen && ctx.reportOpen())) {
           if (this.level < this.levels.length - 1) this.start(this.level + 1);
           else this.enter('finale');

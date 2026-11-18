@@ -352,7 +352,7 @@ body.narrating .quiz-prompt, body.narrating #banner { opacity: 0 !important; }
 .stars-pop .stars i { width: clamp(60px, 7vw, 86px); }
 .stars-pop .stars i:nth-child(2) { width: clamp(72px, 8.6vw, 104px); translate: 0 -16px; }
 
-/* ---------------------------------------------------------------- stars, sector report, upgrades */
+/* ---------------------------------------------------------------- stars */
 .stars { display: inline-flex; gap: 8px; filter: drop-shadow(0 2px 0 var(--ink)) drop-shadow(0 0 1.5px var(--ink)); }
 .stars i { display: block; width: 46px; aspect-ratio: 1; background: rgba(40, 52, 86, 0.9);
   clip-path: polygon(50% 0, 61.8% 35.4%, 100% 35.4%, 69.1% 57.3%, 80.9% 92.7%, 50% 70.8%, 19.1% 92.7%, 30.9% 57.3%, 0 35.4%, 38.2% 35.4%); }
@@ -362,7 +362,6 @@ body.narrating .quiz-prompt, body.narrating #banner { opacity: 0 !important; }
 .stars.mini { gap: 2px; filter: drop-shadow(0 1px 0 var(--ink)); }
 .stars.mini i { width: 15px; }
 @keyframes star-pop { from { scale: 0.2; rotate: -40deg; } 70% { scale: 1.25; } to { scale: 1; rotate: 0deg; } }
-@media (hover: hover) { 
 /* pause menu: round ink sound button */
 .round-btn { width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center; cursor: pointer; padding: 0;
   background: radial-gradient(circle at 50% 35%, #ffffff, #dfe7f2); border: 3px solid #0b1f3f; box-shadow: 0 4px 0 #0b1f3f;
@@ -387,13 +386,13 @@ body.narrating .quiz-prompt, body.narrating #banner { opacity: 0 !important; }
   body.quiz-on #banner { top: 104px; }
   .quiz-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
   .opt { width: min(44vw, 230px); }
-  body.battle .dialog { left: calc(8px + env(safe-area-inset-left)); top: calc(10px + env(safe-area-inset-top)); bottom: auto;
+  body.battle .dialog:not(.bubble) { left: calc(8px + env(safe-area-inset-left)); top: calc(10px + env(safe-area-inset-top)); bottom: auto;
     width: max-content; max-width: calc(100vw - 156px); translate: 0 -12px; padding: 8px 24px 9px 8px; gap: 0 10px; border-radius: 15px; }
-  body.battle .dialog.show { translate: 0 0; }
-  body.battle .dialog .portrait { width: 46px; height: 46px; margin: 0; align-self: center; box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--rim), 0 0 0 6px #060a1c; }
-  body.battle .dialog .name { font-size: 11px; margin: 0 0 3px; padding: 2px 9px 3px; }
-  body.battle .dialog .line { font-size: 14px; line-height: 1.25; }
-  body.battle .dialog .more { right: 9px; bottom: 7px; }
+  body.battle .dialog:not(.bubble).show { translate: 0 0; }
+  body.battle .dialog:not(.bubble) .portrait { width: 46px; height: 46px; margin: 0; align-self: center; box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--rim), 0 0 0 6px #060a1c; }
+  body.battle .dialog:not(.bubble) .name { font-size: 11px; margin: 0 0 3px; padding: 2px 9px 3px; }
+  body.battle .dialog:not(.bubble) .line { font-size: 14px; line-height: 1.25; }
+  body.battle .dialog:not(.bubble) .more { right: 9px; bottom: 7px; }
   body.battle.talking #bossbar { opacity: 0; }
 }
 @media (pointer: coarse) { .act kbd { display: none; } }

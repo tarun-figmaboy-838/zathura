@@ -380,6 +380,7 @@ function clearCombat() {
 
 function retryLevel() {
   clearCombat();
+  setWhiteout('white', 0);
   vitals.reset();
   turret.reset();
   ship.model.visible = true;
@@ -395,6 +396,8 @@ function retryLevel() {
 }
 
 function restartFromStation(launchNow = true) {
+  victoryTimers.forEach(clearTimeout);
+  victoryTimers.length = 0;
   clearCombat();
   state.stars = [];
   closeReport();
@@ -429,6 +432,11 @@ function die() {
   director.clear();
   dialogue.clear();
   state.volley = null;          // the wreck doesn't keep firing
+  state.tunnel = 0;             // and any portal ride ends
+  portalTube.alpha = 0;
+  portalTube.exit = 0;
+  state.rideHidShield = false;
+  setWhiteout('white', 0);
   buzz([120, 60, 200]);
   setMode('dying');
   state.deathTalk = false;
@@ -567,7 +575,10 @@ function finaleUpdate(dt) {
   }
 }
 
+const victoryTimers = [];
 function victory() {
+  victoryTimers.forEach(clearTimeout);
+  victoryTimers.length = 0;
   const newBest = saveBest();
   $('v-score').textContent = state.score.toLocaleString('en-US');
   const best = $('v-best');
@@ -579,7 +590,7 @@ function victory() {
   const rating = Math.max(1, Math.round(total / groups));
   $('v-stars').querySelectorAll('i').forEach((el, i) => {
     el.className = '';
-    if (i < rating) setTimeout(() => { el.className = 'on'; audio.star(i); }, 700 + i * 320);
+    if (i < rating) victoryTimers.push(setTimeout(() => { el.className = 'on'; audio.star(i); }, 700 + i * 320));
   });
   setMode('victory');
   setWhiteout('black', 1);
@@ -1370,10 +1381,14 @@ function placeComms(dt) {
     const narrow = W < 600;                          // phones: a compact bubble, it has less room
     dlgEl.classList.toggle('compact', narrow);
     dlgEl.style.maxWidth = `${narrow ? Math.min(250, W - 24) : 300}px`;
+    // its size can't change within a line (the untyped rest is laid out from the start)
+    comms.bw = dlgEl.offsetWidth;
+    comms.bh = dlgEl.offsetHeight;
+    comms.drawn = '';
   }
   const sr = speakerRect(l, W, H);
   const cx = (sr.x0 + sr.x1) / 2;
-  const bw = dlgEl.offsetWidth, bh = dlgEl.offsetHeight;
+  const bw = comms.bw, bh = comms.bh;
   const TAIL = 22;
   const spot = (above, f) => {
     const x = clamp(cx - bw * f, 10, W - 10 - bw);
@@ -1415,10 +1430,14 @@ function placeComms(dt) {
     if (!comms.pick || bestCost < now * 0.7) comms.pick = best;
   }
   const p = spot(comms.pick.above, comms.pick.f);
-  dlgEl.dataset.tail = p.above ? 'down' : 'up';
-  dlgEl.style.left = `${p.x.toFixed(0)}px`;
-  dlgEl.style.top = `${p.y.toFixed(0)}px`;
-  dlgEl.style.setProperty('--tail-x', `${clamp(cx - p.x, 24, bw - 24).toFixed(0)}px`);
+  const x = p.x.toFixed(0), y = p.y.toFixed(0), tx = clamp(cx - p.x, 24, bw - 24).toFixed(0), tail = p.above ? 'down' : 'up';
+  const key = `${x},${y},${tx},${tail}`;
+  if (key === comms.drawn) return;
+  comms.drawn = key;
+  dlgEl.dataset.tail = tail;
+  dlgEl.style.left = `${x}px`;
+  dlgEl.style.top = `${y}px`;
+  dlgEl.style.setProperty('--tail-x', `${tx}px`);
 }
 
 // enemy banter: a raider taunts once it has flown in, the Warden boasts after its introduction
@@ -1637,11 +1656,11 @@ function frame() {
   if (play) updateQuiz(dt, t);
   else angleOverlay.update(dt, t, quizCenter, camera);
   if (portal.state === 'in' && mode === 'play') portalTube.alpha = 0.85 * clamp(1 - (ship.position.z - portal.group.position.z - 30) / 240, 0, 1);
-  if (portal.update(dt, t, ship.position) && mode === 'play') crossPortal();
+  if (portal.update(dt, t, ship.position) && state.mode === 'play') crossPortal();   // live mode: it may have died this frame
 
   if (vitals.update(dt) && play) { shield.pulse(); audio.shieldUp(); }
   if (abilities.shield.t > 0) shield.pulse();
-  if (mode === 'launch') shield.mesh.visible = ship.redshift < 0.02;
+  if (mode === 'launch' && !riding()) shield.mesh.visible = ship.redshift < 0.02;
   shield.update(dt, vitals.shieldFrac);
   if (play && vitals.hullFrac < 0.45 && (state.smokeT -= dt) <= 0) {
     state.smokeT = 0.05;

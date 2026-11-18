@@ -29,7 +29,8 @@ Built with **Three.js** (rendering and game, ES modules, no build step) and **he
    - the level: one raider flies in and holds position; answer its angle question to destroy it
    - end of each sector: a meteor field (aim and fire), then the stars earned pop up for a moment
 5. **The Warden** (boss): 4 turrets, then its core (3 hits), every target an angle question.
-6. **Ending**: the ship jumps home; the victory screen shows stars for every sector.
+6. **Ending**: a giant portal opens; the ship races into it and vanishes like a time jump, the portal
+   implodes, and the victory screen rates the whole run out of 3 stars.
 
 ## 3. Levels (Angle Hunt)
 

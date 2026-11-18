@@ -203,6 +203,7 @@ export class Intro {
     this.camera(dt, t);
 
     if (this.skipping) this.fade = Math.min(1, this.fade + dt / 0.25);
+    if (this.skipping && this.stage === 'tunnel') this.white = Math.max(this.white || 0, this.fade);   // skip in the tunnel: fade to its white
     const done = this.skipping ? this.fade >= 1 : this.stage === 'tunnel' && this.tunnelT >= TUNNEL_TIME;
     if (done) {
       this.phase = 'done';
