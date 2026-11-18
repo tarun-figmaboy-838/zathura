@@ -1,7 +1,7 @@
 import { rand } from '../core/math.js';
 
 export const LEVELS = [
-  { name: 'Drift Lanes', raiders: 3, maxAlive: 2, skill: 0, meteors: 6 },
+  { name: 'Drift Lanes', raiders: 3, maxAlive: 2, skill: 0, meteors: 6, journey: 13 },
   { name: 'Ion Reach', raiders: 4, maxAlive: 3, skill: 1, meteors: 8 },
   { name: 'Nebula Gate', raiders: 5, maxAlive: 3, skill: 2, meteors: 10 },
   { name: 'Shattered Belt', raiders: 6, maxAlive: 4, skill: 3, meteors: 12 },
@@ -11,7 +11,7 @@ export const LEVELS = [
 // Phase timings / speeds. Each sector: fly through its gate → raiders appear (top view) →
 // targets cleared → meteor field (chase view) → sector complete. After the last one: the jump home.
 const PHASES = {
-  journey: { view: 'chase', speed: 125, steer: true },
+  journey: { view: 'chase', speed: 125, steer: false },   // autopilot to the portal
   contact: { view: 'top', speed: 16, steer: false },
   battle: { view: 'top', speed: 16, steer: false },
   boss: { view: 'top', speed: 12, steer: false },
@@ -32,6 +32,8 @@ export class Campaign {
   get L() { return LEVELS[this.level]; }
   get cfg() { return PHASES[this.phase]; }
   get count() { return LEVELS.length; }
+  // seconds of cruising before the battle (the first sector is a longer scenic journey)
+  get journeyTime() { return this.L.journey ?? 8; }
 
   start(level) {
     this.level = level;
@@ -57,10 +59,10 @@ export class Campaign {
     switch (this.phase) {
       case 'journey':
         if (!this.announced) { this.announced = true; ctx.sector(this.level); }
-        if (this.t > 6.5) {
+        // the sector starts once the ship has flown through the portal
+        if ((ctx.portalPassed && ctx.portalPassed()) || this.t > this.journeyTime + 3) {
           this.enter('contact');
-          if (L.boss) ctx.announce('WARDEN INBOUND', 'Destroy the 4 turrets');
-          else ctx.announce('HOSTILES', '');
+          if (L.boss) ctx.announce('WARDEN INBOUND', '');
         }
         break;
       case 'contact':
@@ -139,7 +141,7 @@ export class Campaign {
   get progress() {
     const L = this.L;
     const p = {
-      journey: Math.min(1, this.t / 6.5) * 0.25,
+      journey: Math.min(1, this.t / this.journeyTime) * 0.25,
       contact: 0.25,
       battle: 0.25 + 0.35 * (this.destroyed / Math.max(1, L.raiders)),
       boss: 0.25 + 0.35 * (1 - (this.bossIntegrity ?? 1)),

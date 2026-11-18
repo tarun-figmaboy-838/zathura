@@ -7,15 +7,15 @@ const POOL = 10;
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => Math.round(n).toLocaleString('en-US');
 
-// Deliberately minimal: sector + objective + two health bars (top-left), the journey bar
-// (top-centre), score + pause (top-right), a crosshair, edge arrows for off-screen raiders and
-// short banners. Enemy health lives in the world as holographic rings (see world/holo.js).
+// Deliberately minimal: score + pause (top-right), the boss bar, a crosshair, edge arrows for
+// off-screen raiders and short banners. The sector name is on the gate the ship flies through,
+// the ship's condition shows on the ship itself (shield flashes, smoke, red screen edges), and
+// enemy health lives in the world as holographic rings (see world/holo.js).
 export class Hud {
   constructor() {
     this.root = $('hud');
     this.el = {
-      levelNum: $('level-num'), levelName: $('level-name'), objective: $('objective'),
-      shield: $('shield-bar'), hull: $('hull-bar'), score: $('score'),
+      score: $('score'),
       banner: $('banner'), alert: $('alert'), crosshair: $('crosshair'), hit: $('hitmarker'), marker: $('turret-marker'),
     };
     const markers = $('markers');
@@ -73,9 +73,9 @@ export class Hud {
     el.textContent = value;
   }
 
-  // ctx: { camera, campaign, vitals, score, crosshair (px), markerPoint, showMarker, turret, raiders, locked, boss }
+  // ctx: { camera, score, crosshair (px), markerPoint, showMarker, hideAim, turret, raiders, locked, boss }
   update(dt, ctx) {
-    const { camera, campaign, vitals } = ctx;
+    const { camera } = ctx;
     const W = window.innerWidth, H = window.innerHeight;
     const toScreen = (v, out) => {
       _p.copy(v).project(camera);
@@ -85,11 +85,6 @@ export class Hud {
     };
     const s = {};
 
-    this.text('num', this.el.levelNum, `SECTOR ${campaign.level + 1}/${campaign.count}`);
-    this.text('name', this.el.levelName, campaign.L.name);
-    const obj = campaign.objective(ctx.boss);
-    this.text('obj', this.el.objective, obj);
-    this.el.objective.style.display = obj ? '' : 'none';
 
     // boss integrity bar
     const b = ctx.boss;
@@ -101,9 +96,6 @@ export class Hud {
       this.text('bstate', this.boss.state, b.dying ? 'Breaking up' : exposed ? 'Core exposed' : `${b.turretsLeft} turrets`);
       this.boss.state.classList.toggle('exposed', exposed);
     }
-    this.el.shield.style.width = `${vitals.shieldFrac * 100}%`;
-    this.el.hull.style.width = `${vitals.hullFrac * 100}%`;
-    this.el.hull.classList.toggle('low', vitals.hullFrac < 0.3);
     this.text('score', this.el.score, fmt(ctx.score));
 
     this.el.crosshair.style.display = ctx.hideAim ? 'none' : '';

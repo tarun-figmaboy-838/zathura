@@ -178,18 +178,16 @@ export class TargetRings {
         uniform float uTime;
         varying vec2 vP; varying float vHp; varying float vKind;
         const float TAU = 6.2831853;
+        // lock-on bracket: four corner marks that slowly turn and breathe
         void main() {
-          float r = length(vP);
-          if (r > 1.0) discard;
-          float a = atan(vP.x, -vP.y) / TAU + 0.5;                 // 0..1 clockwise from the top
-          float track = exp(-pow((r - 0.86) * 22.0, 2.0));
-          float filled = step(a, vHp);
-          float notch = step(0.12, abs(fract(a * 10.0 + 0.5) - 0.5) * 2.0);
-          float spin = fract(a * 3.0 - uTime * 0.6);
-          float outer = exp(-pow((r - 0.97) * 40.0, 2.0)) * step(0.55, spin) * 0.5;
-          vec3 col = vKind > 1.5 ? vec3(1.0, 0.85, 0.3) : vKind > 0.5 ? vec3(1.0, 0.72, 0.2) : vec3(1.0, 0.25, 0.15);
-          float v = track * (0.18 + filled * notch * 1.4) + outer;
-          gl_FragColor = vec4(col * v, 1.0);
+          float pulse = 0.92 + 0.08 * sin(uTime * 4.0);
+          float c = cos(uTime * 0.6), s = sin(uTime * 0.6);
+          vec2 p = vec2(c * vP.x - s * vP.y, s * vP.x + c * vP.y) / pulse;
+          vec2 q = abs(p);
+          float edge = 1.0 - smoothstep(0.035, 0.075, abs(max(q.x, q.y) - 0.82));   // the square's outline
+          float arms = edge * smoothstep(0.46, 0.5, min(q.x, q.y));                   // keep only the corners
+          vec3 col = vKind > 1.5 ? vec3(1.0, 0.85, 0.3) : vKind > 0.5 ? vec3(1.0, 0.72, 0.2) : vec3(1.0, 0.3, 0.18);
+          gl_FragColor = vec4(col * arms * 1.6, 1.0);
         }`,
     });
     this.mesh = new THREE.InstancedMesh(geo, mat, capacity);

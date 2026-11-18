@@ -33,7 +33,8 @@ function gauss(r) {
 }
 
 export class AsteroidField {
-  constructor(scene, gltf, { count = 520, radius = 1300, clear = 110, seed = 42, managed = false, capacity = 0 } = {}) {
+  // tints: optional list of colours, one picked per rock (lets a field look icy, rusty, brighter)
+  constructor(scene, gltf, { count = 520, radius = 1300, clear = 110, seed = 42, managed = false, capacity = 0, tints = null } = {}) {
     // Asteroid_N = 5k-tri hero mesh, Asteroid_N_lod = 1.3k-tri distant mesh
     const byName = {};
     gltf.scene.traverse((o) => { if (o.isMesh) byName[o.name] = o.geometry; });
@@ -42,6 +43,7 @@ export class AsteroidField {
     addRockDetail(this.material);
     this.radius = radius;
     this.clear = clear;
+    this.tints = tints;
     this.rocks = [];
     this.time = 0;
     this.r = rng(seed);
@@ -70,7 +72,8 @@ export class AsteroidField {
         const rock = {
           alive: false, fragment: false, respawnAt: 0,
           pos: new THREE.Vector3(), vel: new THREE.Vector3(), axis: new THREE.Vector3(0, 1, 0),
-          base: new THREE.Quaternion(), angle: 0, spin: 0, size: 1, radius: 1, hp: 1, flash: 0,
+          base: new THREE.Quaternion(), angle: 0, spin: 0, size: 1, radius: 1, hp: 1, flash: 0, owner: this,
+          tint: new THREE.Color(1, 1, 1),
         };
         slots.push(rock);
         this.rocks.push(rock);
@@ -122,6 +125,7 @@ export class AsteroidField {
       rock.radius = size * 0.8;
       rock.hp = Math.ceil(size * 0.6);
       rock.flash = 0;
+      if (this.tints) rock.tint.copy(this.tints[Math.floor(r() * this.tints.length)]);
       return rock;
     }
     return null;
@@ -159,7 +163,7 @@ export class AsteroidField {
         _m.compose(rock.pos, _q, _s.setScalar(rock.size));
         if (rock.flash > 0) rock.flash = Math.max(0, rock.flash - dt * 7);
         const f = rock.flash;
-        _c.setRGB(1 + f * 4, 1 + f * 2.2, 1 + f * 1.2);
+        _c.setRGB(rock.tint.r * (1 + f * 4), rock.tint.g * (1 + f * 2.2), rock.tint.b * (1 + f * 1.2));
         const lodDist = 120 + rock.size * 10;
         if (rock.pos.distanceToSquared(eye) < lodDist * lodDist) {
           pool.high.setMatrixAt(nh, _m);

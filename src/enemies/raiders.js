@@ -5,6 +5,8 @@ import { addPanelDetail } from '../ship/ship.js';
 export const RAIDER_RADIUS = 5.6;
 export const ENEMY_BOLT_SPEED = 330;
 export const ENEMY_BOLT_DAMAGE = 7;
+const AUTO_DAMAGE = 3;      // the light bursts held raiders fire on their own
+const ARRIVE = 1.6;         // seconds to fly in and brake onto the spot
 
 const UP = new THREE.Vector3(0, 1, 0);
 const TRAIL_COLOR = new THREE.Color(1.15, 0.38, 0.16);
@@ -157,6 +159,8 @@ export class Raiders {
     r.hold = null;      // set to an offset from the ship to make it hover there (angle battles)
     r.holdT = 0;
     r.shots = 0;        // scripted shots still to fire at the ship
+    r.shotDamage = ENEMY_BOLT_DAMAGE;
+    r.nextAuto = 0;
     if (arena) {
       // top-view battle: slower, readable, circling close around the ship
       r.maxSpeed = r.speed = 46 + skill * 4;
@@ -169,6 +173,7 @@ export class Raiders {
       r.vel.setLength(r.speed);
     }
     this.trails.reset(r.trail);
+    r.trail.intensity = 1;
     return r;
   }
 
@@ -260,29 +265,40 @@ export class Raiders {
     this.separate(dt);
   }
 
-  // hover at a fixed spot next to the ship, facing it, and fire only when told to
+  // Angle battles: fly in from far out and brake onto a fixed spot next to the ship, then hover
+  // there facing it (the question's geometry needs it to stay put) and fire short bursts.
   holdUpdate(r, dt, t, ctx) {
     const sp = ctx.ship.position;
     const pos = r.root.position;
     r.holdT += dt;
-    pos.copy(sp).add(r.hold);
-    r.vel.copy(ctx.ship.velocity);
+    const k = Math.min(1, r.holdT / ARRIVE);
+    const out = 1 + 1.9 * Math.pow(1 - k, 3);          // starts ~2.9x further out, eases in
+    const prev = _b.copy(pos);
+    pos.copy(sp).addScaledVector(r.hold, out);
+    r.vel.copy(pos).sub(prev).divideScalar(Math.max(dt, 1e-3));
+    if (k >= 1) r.vel.copy(ctx.ship.velocity);
+    // once in place it harasses the ship: a short burst every few seconds
+    if (k >= 1 && ctx.shipAlive && r.shots <= 0 && t > r.nextAuto) {
+      if (r.nextAuto > 0) { r.shots = 2 + (Math.random() < 0.4 ? 1 : 0); r.shotDamage = AUTO_DAMAGE; r.nextShot = t; }
+      r.nextAuto = t + rand(2.6, 3.6);
+    }
     _m.lookAt(pos, sp, UP);
     r.root.quaternion.slerp(_q.setFromRotationMatrix(_m), 1 - Math.exp(-6 * dt));
     r.visual.position.y = Math.sin(t * 2.2 + r.seed) * 0.35;
-    r.visual.rotation.z = Math.sin(t * 1.3 + r.seed) * 0.08;
+    r.visual.rotation.z = Math.sin(t * 1.3 + r.seed) * 0.12 + (1 - k) * 0.5 * Math.sin(r.seed);   // banks in on arrival
+    r.visual.rotation.x = (1 - k) * 0.25;
     r.flash = Math.max(0, r.flash - dt * 6);
     for (const m of r.hullMats) m.emissive.setRGB(r.flash * 1.6, r.flash * 0.7, r.flash * 0.3);
     r.glowMat.emissiveIntensity = r.glowBase * (0.85 + 0.15 * Math.sin(t * 7 + r.seed));
-    _fwd.set(0, 0, -1).applyQuaternion(r.root.quaternion);
-    this.trails.push(r.trail, _a.copy(pos).addScaledVector(_fwd, -3.1), t);
+    // no contrail while riding along with the ship: it would be dragged into a long line
+    r.trail.intensity = 0;
     if (r.shots > 0 && t >= r.nextShot && ctx.shipAlive) {
       r.root.updateMatrixWorld(true);
       const gun = r.guns[r.gunIdx];
       r.gunIdx ^= 1;
       gun.getWorldPosition(_gun);
       _dir.subVectors(sp, _gun).normalize().addScaledVector(randomDir(_c), 0.012).normalize();
-      ctx.bolts.spawn(_gun, _dir, r.vel, r.boltSpeed, ENEMY_BOLT_DAMAGE);
+      ctx.bolts.spawn(_gun, _dir, r.vel, r.boltSpeed, r.shotDamage);
       ctx.fx.enemyMuzzle(_gun, _dir, r.vel);
       ctx.audio.enemyShot(_gun);
       r.shots--;
@@ -290,10 +306,15 @@ export class Raiders {
     }
   }
 
-  // a held raider fires a short burst at the ship
+  // a held raider is in place and can be asked about
+  arrived(r) { return r.holdT >= ARRIVE + 0.2; }
+
+  // a wrong answer: a heavier burst at the ship
   punish(r, t) {
-    r.shots = 3;
+    r.shots = 4;
+    r.shotDamage = ENEMY_BOLT_DAMAGE;
     r.nextShot = t;
+    r.nextAuto = t + rand(3, 4);
   }
 
   // steer around asteroids ahead, and away from the player's hull unless attacking

@@ -28,13 +28,17 @@ const INFALL = [
 
 const LIFT = 6.5;
 // launch timeline (seconds after Play)
-const T_HOSE = [0.15, 0.75];
-const T_CLAMP = [0.5, 1.1];
-const T_LIFT = [1.15, 2.3];
-const T_RETRACT = [1.7, 2.3];
-const T_IGNITE = 2.35;
-const T_BOOST = 2.95;
-const ZOOM_IN = 1.7;        // drone swoops in on the ship
+const T_HOSE = [1.15, 1.75];
+const T_CLAMP = [1.5, 2.1];
+const T_LIFT = [2.15, 3.3];
+const T_RETRACT = [2.7, 3.3];
+const T_IGNITE = 3.35;
+const T_BOOST = 3.95;
+const RISE = 1.35;          // camera leaves the cockpit and swings out to the release shot
+// captain's eye inside the docked ship (ship space), and the outside shot of the release
+const EYE = new THREE.Vector3(0, 0.95, -2.3);
+const RELEASE_POS = new THREE.Vector3(16, 8, -20);
+const RELEASE_TARGET = new THREE.Vector3(0, 0.5, 5);
 const RCS_POINTS = [
   new THREE.Vector3(0, -0.7, -3.2), new THREE.Vector3(0, -0.8, 3.0),
   new THREE.Vector3(-4.2, -0.5, -0.5), new THREE.Vector3(4.2, -0.5, -0.5),
@@ -96,6 +100,10 @@ export class Intro {
     this.roll = 0;
     this.cues.clear();
     this.pose(0, 0, 0);
+    // start in the captain's seat (also when relaunching straight from a menu)
+    s.model.visible = false;
+    this.shot(EYE, _t.set(0, EYE.y - 5.2, -40));
+    this.fov = 62;
   }
 
   start() {
@@ -140,14 +148,13 @@ export class Intro {
     if (this.phase === 'docked') {
       this.padAmber.emissiveIntensity = this.amberBase * (0.55 + 0.45 * Math.sin(time * 2.2));
       this.padRing.emissiveIntensity = this.ringBase * (0.7 + 0.3 * Math.sin(time * 1.4));
-      // poster framing: the craft centre stage, the black hole's light behind it; the drone
-      // drifts around slowly and zooms in and out
-      const yaw = 0.24 + Math.sin(time * 0.08) * 0.12;
-      const lens = this.lens(50, 21);
-      const r = lens.dist + Math.sin(time * 0.13) * 2.5;
-      const h = 4.6 + (lens.dist - 21) * 0.6 + Math.sin(time * 0.1) * 0.8;
-      this.shot(_p.set(Math.sin(yaw) * r, h, Math.cos(yaw) * r), _t.set(0, 2.2, -8));
-      this.fov = lens.fov;
+      // first-person from the captain's seat: the cockpit art frames the view and the 3D world
+      // shows through its windshield; a gentle breathing head motion keeps it alive
+      s.model.visible = false;
+      _p.copy(EYE).add(_v.set(Math.sin(time * 0.31) * 0.04, Math.sin(time * 0.52) * 0.025, 0));
+      _t.set(Math.sin(time * 0.11) * 1.2, EYE.y - 5.2, -40);
+      this.shot(_p, _t);
+      this.fov = 62 * (this.rig.camera.aspect < 1 ? 1.15 : 1);
       return null;
     }
 
@@ -282,11 +289,27 @@ export class Intro {
     const pull = lens.dist / 16.8;
     const close = _w.set(8.5 * pull, 3.4 * pull, 14.5 * pull).add(sp);
     const closeTarget = _r.set(0, 0.8, -1.5).add(sp);
-    if (t < ZOOM_IN) {
-      const k = ease(t / ZOOM_IN);
-      _p.copy(this.fromPos).lerp(close, k);
-      _t.copy(this.fromTarget).lerp(closeTarget, k);
-      this.fov = lerp(this.fromFov, lens.fov, k);
+    if (t < RISE) {
+      const k = ease(t / RISE);
+      // cubic Bezier: straight up out of the canopy first, then out to the front-right
+      const u = 1 - k;
+      _a.copy(this.fromPos);
+      _b.set(this.fromPos.x, this.fromPos.y + 5, this.fromPos.z + 0.5);
+      _c.copy(RELEASE_POS).add(_e.set(-4, 3, 6));
+      _p.copy(_a).multiplyScalar(u * u * u).addScaledVector(_b, 3 * u * u * k).addScaledVector(_c, 3 * u * k * k).addScaledVector(RELEASE_POS, k * k * k);
+      _t.copy(this.fromTarget).lerp(RELEASE_TARGET, ease(t / RISE * 1.15));
+      if (!s.model.visible && _p.y > 1.6) s.model.visible = true;
+      this.fov = lerp(this.fromFov, 46, k);
+      this.shot(_p, _t);
+      return;
+    }
+    if (this.stage === 'pad' && t < T_IGNITE) {
+      // the release: hoses drop, clamps open and the ship lifts off the station's pad
+      s.model.visible = true;
+      const k = (t - RISE) / (T_IGNITE - RISE);
+      _p.copy(RELEASE_POS).add(_v.set(-2.5 * k, 0.8 * k, 1.5 * k));
+      _t.copy(RELEASE_TARGET).lerp(_w.set(0, sp.y + 0.6, 0), 0.5);
+      this.fov = 46;
       this.shot(_p, _t);
       return;
     }
@@ -300,7 +323,13 @@ export class Intro {
       const look = _a.copy(closeTarget).sub(_p).normalize();
       look.lerp(_b.copy(bh).sub(_p).normalize(), ease((t - T_BOOST + 0.1) / 1.3) * 0.85).normalize();
       _t.copy(_p).addScaledVector(look, 60);
-      this.fov = this.stage === 'pad' ? lerp(lens.fov, lens.fov + 4, ease(span(t, ZOOM_IN, T_BOOST))) : lerp(lens.fov + 4, Math.max(70, lens.fov + 4), k);
+      this.fov = this.stage === 'pad' ? lerp(lens.fov, lens.fov + 4, ease(span(t, T_IGNITE, T_BOOST))) : lerp(lens.fov + 4, Math.max(70, lens.fov + 4), k);
+      const kb = ease((t - T_IGNITE) / 0.7);
+      if (kb < 1) {
+        _p.lerp(_v.copy(RELEASE_POS).add(_w.set(-2.5, 0.8, 1.5)), 1 - kb);
+        _t.lerp(_w.copy(RELEASE_TARGET).lerp(_a.set(0, sp.y + 0.6, 0), 0.5), 1 - kb);
+        this.fov = lerp(46, this.fov, kb);
+      }
       this.shot(_p, _t);
       return;
     }

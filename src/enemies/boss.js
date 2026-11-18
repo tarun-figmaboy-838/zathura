@@ -199,7 +199,7 @@ export class Boss {
         _c.sub(_b).normalize();
         _c.x += rand(-0.03, 0.03);
         _c.z += rand(-0.03, 0.03);
-        ctx.bolts.spawn(_b, _c.normalize(), this.vel, BOLT_SPEED, 5);
+        ctx.bolts.spawn(_b, _c.normalize(), this.vel, BOLT_SPEED, this.quiz ? 3 : 5);
         ctx.fx.enemyMuzzle(_b, _c, this.vel);
         ctx.audio.enemyShot(_b);
         tr.burst--;
@@ -208,7 +208,7 @@ export class Boss {
     }
     // turrets take turns: one two-shot volley at a time, slower as turrets are destroyed
     const alive = this.turretsLeft;
-    if (!this.quiz && ready && alive && t > this.volleyT) {
+    if (ready && alive && t > this.volleyT) {
       for (let k = 0; k < 4; k++) {
         const tr = this.turrets[(this.volleyIdx + k) % 4];
         if (!tr.alive) continue;
@@ -217,7 +217,19 @@ export class Boss {
         this.volleyIdx = (tr.index + 1) % 4;
         break;
       }
-      this.volleyT = t + rand(1.1, 1.5) * Math.sqrt(4 / alive);
+      // angle battles: a lighter volley every few seconds while the player thinks
+      this.volleyT = t + (this.quiz ? rand(2.8, 3.8) : rand(1.1, 1.5) * Math.sqrt(4 / alive));
+    }
+    // angle battles, core phase: the exposed core takes over the shooting
+    if (this.quiz && ready && !alive && t > this.volleyT) {
+      for (let i = 0; i < 2; i++) {
+        _c.copy(ship.position).sub(this.corePos).normalize();
+        _c.x += rand(-0.03, 0.03);
+        _c.z += rand(-0.03, 0.03);
+        ctx.bolts.spawn(this.corePos, _c.normalize(), this.vel, BOLT_SPEED * (1 + i * 0.1), 3);
+      }
+      ctx.audio.enemyShot(this.corePos);
+      this.volleyT = t + rand(2.8, 3.8);
     }
 
     // core phase: charge up (telegraphed), then three spinning radial rings

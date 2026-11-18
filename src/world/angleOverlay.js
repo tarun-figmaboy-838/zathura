@@ -5,17 +5,21 @@ const _p = new THREE.Vector3();
 const DIR = (yaw, out) => out.set(-Math.sin(yaw), 0, -Math.cos(yaw));
 const ease = (x) => { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); };
 
-// The angle diagram drawn on the battle plane around the ship's cannon: a dotted reference line,
-// the red dashed line to the target, the given angle (orange), the asked angle "?" (white) with
-// a ghost sweep that shows which turn to name, and, once an answer is picked, a ghost beam that
-// turns by that angle and flashes green or red. The numbers are crisp HTML labels.
+// The battle radar drawn on the plane around the ship's cannon, kept deliberately clean:
+//  - a see-through radar ring with tick marks and a slow sweep (nothing blocks the view)
+//  - the cannon beam: a bright cyan line from the cannon to the ring, exactly where the cannon
+//    points (this is the reference line); its extension through the ship is a faint dotted line
+//  - the line to the enemy (warm red), with a faint dotted extension when the rule needs it
+//  - the given angle (orange arc) and the asked angle "?" (white arc with a gentle ghost sweep)
+//  - after an answer: a beam that turns by the picked angle and lights green (hit) or red (miss)
+// Numbers are crisp HTML labels placed in world units.
 export class AngleOverlay {
   constructor(scene, labelRoot) {
     this.u = {
-      uBack: { value: 40 }, uLen: { value: 38 }, uTLen: { value: 30 }, uR: { value: 15 },
-      uAxis: { value: 0 }, uT: { value: 0 }, uP: { value: 0 }, uHasP: { value: 0 },
+      uRing: { value: 31 }, uTLen: { value: 27 }, uR: { value: 13 }, uMax: { value: 34 },
+      uAxis: { value: 0 }, uT: { value: 0 }, uP: { value: 0 }, uHasP: { value: 0 }, uExtR: { value: 0 }, uExtT: { value: 0 },
       uKnown: { value: new THREE.Vector2() }, uUnknown: { value: new THREE.Vector2() }, uRight: { value: new THREE.Vector2() },
-      uDraw: { value: 0 }, uAlpha: { value: 0 }, uSweep: { value: 0 }, uSweepA: { value: 0 },
+      uDraw: { value: 0 }, uAlpha: { value: 0 }, uSweep: { value: 0 }, uSweepA: { value: 0 }, uTime: { value: 0 },
       uAim: { value: new THREE.Vector3() }, uAimOn: { value: 0 }, uResult: { value: 0 }, uFlash: { value: 0 },
     };
     const mat = new THREE.ShaderMaterial({
@@ -30,89 +34,97 @@ export class AngleOverlay {
       vertexShader: /* glsl */ `
         varying vec2 vP;
         void main() {
-          // world-space offset from the diagram centre (the mesh is scaled to fit the diagram)
+          // world-space offset from the radar centre (the mesh is scaled to fit)
           vP = (modelMatrix * vec4(position, 1.0)).xz - modelMatrix[3].xz;
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }`,
       fragmentShader: /* glsl */ `
-        uniform float uBack, uLen, uTLen, uR, uAxis, uT, uP, uHasP, uDraw, uAlpha, uSweep, uSweepA, uAimOn, uResult, uFlash;
+        uniform float uRing, uTLen, uR, uMax, uAxis, uT, uP, uHasP, uExtR, uExtT, uDraw, uAlpha, uSweep, uSweepA, uTime, uAimOn, uResult, uFlash;
         uniform vec2 uKnown, uUnknown, uRight;
         uniform vec3 uAim;
         varying vec2 vP;
         const float TAU = 6.2831853;
         vec2 dirOf(float a) { return vec2(-sin(a), -cos(a)); }
-        // 0..1 inside an arc (from, signed sweep), outside otherwise
         float arcPos(float a, vec2 arc) {
           if (abs(arc.y) < 1e-4) return -1.0;
           float d = arc.y > 0.0 ? mod(a - arc.x, TAU) : mod(arc.x - a, TAU);
           return d / abs(arc.y);
         }
         float inside(float k, float upto) { return step(0.0, k) * step(k, upto); }
-        void over(inout vec4 acc, vec3 c, float a) { acc.rgb = mix(acc.rgb, c, clamp(a, 0.0, 1.0)); acc.a += a * (1.0 - acc.a); }
-        // perpendicular distance to the line through the centre at angle a, and position along it
+        float gauss(float x) { return exp(-x * x); }   // never pow() a negative base: NaN would spread via bloom
+        void over(inout vec4 acc, vec3 c, float a) { a = clamp(a, 0.0, 1.0); acc.rgb = mix(acc.rgb, c, a); acc.a += a * (1.0 - acc.a); }
+        // (perpendicular distance, position along) for the line through the centre at angle a
         vec2 lineCoord(vec2 p, float a) { vec2 v = dirOf(a); return vec2(abs(p.x * v.y - p.y * v.x), dot(p, v)); }
+        float solid(vec2 lc, float w, float from, float to) {
+          return (1.0 - smoothstep(w, w + 0.18, lc.x)) * smoothstep(from, from + 0.4, lc.y) * (1.0 - smoothstep(to - 0.4, to, lc.y));
+        }
+        float dotted(vec2 lc, float from, float to) {
+          float k = fract(lc.y / 1.7) - 0.5;
+          return (1.0 - smoothstep(0.16, 0.26, length(vec2(lc.x, k * 1.7)))) * step(from, lc.y) * step(lc.y, to);
+        }
 
         void main() {
           float r = length(vP);
-          if (r > uBack + 1.5) discard;
+          if (r > uMax) discard;
           float ang = atan(-vP.x, -vP.y);
-          vec3 cyan = vec3(0.45, 0.92, 1.0) * 1.35;
-          vec3 red = vec3(1.0, 0.16, 0.1) * 1.35;
-          vec3 orange = vec3(1.0, 0.62, 0.16) * 1.8;
-          vec3 white = vec3(1.0) * 1.7;
-          vec3 good = vec3(0.3, 1.0, 0.45) * 1.9;
+          vec3 cyan = vec3(0.4, 0.92, 1.0);
+          vec3 enemy = vec3(1.0, 0.36, 0.22);
+          vec3 orange = vec3(1.0, 0.64, 0.18);
+          vec3 white = vec3(1.0);
+          vec3 good = vec3(0.35, 1.0, 0.5);
           vec4 acc = vec4(0.0);
+          float ring = uRing * uDraw;
 
-          // dark glass disc so the diagram reads over the nebula, with a thin rim
-          over(acc, vec3(0.012, 0.025, 0.06), 0.72 * (1.0 - smoothstep(uBack - 4.0, uBack, r)));
-          over(acc, cyan * 0.7, 0.45 * exp(-pow((r - uBack + 0.8) * 2.2, 2.0)));
+          // radar: a faint glass tint (lets the stars through), the ring, ticks, a slow sweep
+          over(acc, vec3(0.02, 0.05, 0.1), 0.22 * (1.0 - smoothstep(uRing - 1.0, uRing, r)));
+          over(acc, cyan * 1.2, 0.75 * gauss((r - ring) * 3.0));
+          float t10 = abs(fract(ang / TAU * 36.0 + 0.5) - 0.5) * (TAU / 36.0) * r;
+          float t30 = abs(fract(ang / TAU * 12.0 + 0.5) - 0.5) * (TAU / 12.0) * r;
+          over(acc, cyan, 0.5 * (1.0 - smoothstep(0.06, 0.14, t10)) * step(ring - 0.9, r) * step(r, ring));
+          over(acc, cyan, 0.8 * (1.0 - smoothstep(0.08, 0.16, t30)) * step(ring - 1.8, r) * step(r, ring));
+          // slow radar sweep: a thin, faint line (never a wedge that could read as an angle)
+          float sw = mod(uTime * 0.9 - ang, TAU) * r;
+          over(acc, cyan, 0.16 * exp(-sw * 0.9) * step(4.0, r) * (1.0 - smoothstep(ring - 0.5, ring, r)));
 
-          float L = uLen * uDraw;
-          // reference line: dotted, both ways (and the perpendicular for right-angle questions)
-          vec2 lc = lineCoord(vP, uAxis);
-          float dots = 1.0 - smoothstep(0.32, 0.48, length(vec2(lc.x, (fract(lc.y / 2.1) - 0.5) * 2.1)));
-          over(acc, cyan, dots * step(abs(lc.y), L) * step(5.0, r));
-          if (uHasP > 0.5) {
-            vec2 pc = lineCoord(vP, uP);
-            float pd = 1.0 - smoothstep(0.32, 0.48, length(vec2(pc.x, (fract(pc.y / 2.1) - 0.5) * 2.1)));
-            over(acc, cyan, pd * step(0.0, pc.y) * step(pc.y, L) * step(5.0, r));
-          }
-          // line to the target: red dashes, through the ship and out the far side
-          vec2 tc = lineCoord(vP, uT);
-          float dash = step(fract(tc.y / 3.0), 0.6) * (1.0 - smoothstep(0.34, 0.6, tc.x));
-          float tReach = step(-L, tc.y) * step(tc.y, uTLen * uDraw);
-          vec3 tCol = mix(red, good, step(0.5, uResult) * uFlash);
-          over(acc, tCol, dash * tReach * step(5.0, r));
+          // dotted extensions and the perpendicular (only the ones the rule needs)
+          if (uExtR > 0.5) over(acc, cyan, 0.7 * dotted(lineCoord(vP, uAxis + 3.14159265), 5.0, ring - 0.6));
+          if (uExtT > 0.5) over(acc, enemy, 0.7 * dotted(lineCoord(vP, uT + 3.14159265), 5.0, ring - 0.6));
+          if (uHasP > 0.5) over(acc, cyan, 0.7 * dotted(lineCoord(vP, uP), 5.0, ring - 0.6));
 
-          // the given angle: orange arc and a faint wedge
-          float kk = arcPos(ang, uKnown);
-          float inK = inside(kk, uDraw);
-          over(acc, orange, 0.16 * inK * (1.0 - smoothstep(uR - 1.0, uR, r)) * step(5.0, r));
-          over(acc, orange, inK * exp(-pow((r - uR) / 0.55, 2.0)));
-          // the asked angle: white arc
+          // the asked and given angles
           float ku = arcPos(ang, uUnknown);
-          float inU = inside(ku, uDraw);
-          vec3 uCol = mix(white, good, step(0.5, uResult) * uFlash);
-          over(acc, uCol, inU * exp(-pow((r - uR) / 0.45, 2.0)));
-          // ghost sweep through the asked angle: a translucent wedge led by a ghost cannon beam
-          float sweepIn = inside(ku, uSweep);
-          over(acc, vec3(0.75, 0.95, 1.0), 0.26 * uSweepA * sweepIn * (1.0 - smoothstep(uR - 0.5, uR + 0.5, r)) * step(5.0, r));
-          float front = uUnknown.x + uUnknown.y * uSweep;
-          vec2 fc = lineCoord(vP, front);
-          over(acc, vec3(0.85, 1.0, 1.0) * 1.5, 0.75 * uSweepA * (1.0 - smoothstep(0.2, 0.5, fc.x)) * step(5.0, fc.y) * step(fc.y, uR + 7.0));
-          // right angle (90 degrees) between the reference line and the perpendicular
+          float kk = arcPos(ang, uKnown);
+          vec3 uCol = mix(white, good, step(0.5, uResult) * max(uFlash, 0.6));
+          over(acc, uCol, 0.1 * inside(ku, uDraw) * step(5.0, r) * (1.0 - smoothstep(uR - 0.4, uR, r)));
+          over(acc, orange, 0.12 * inside(kk, uDraw) * step(5.0, r) * (1.0 - smoothstep(uR - 0.4, uR, r)));
+          over(acc, uCol * 1.4, inside(ku, uDraw) * gauss((r - uR) / 0.32));
+          over(acc, orange * 1.5, inside(kk, uDraw) * gauss((r - uR) / 0.36));
           float kr = arcPos(ang, uRight);
-          over(acc, white * 0.85, inside(kr, uDraw) * exp(-pow((r - uR * 1.75) / 0.3, 2.0)));
+          over(acc, white, 0.55 * inside(kr, uDraw) * gauss((r - uR * 1.6) / 0.22));
+          // ghost sweep through "?": shows which turn to name
+          float sweepIn = inside(ku, uSweep);
+          over(acc, white, 0.16 * uSweepA * sweepIn * step(5.0, r) * (1.0 - smoothstep(uR - 0.4, uR, r)));
 
-          // the player's answer: a ghost beam turning from the reference line by the picked angle
+          // the line to the enemy
+          vec3 tCol = mix(enemy, good, step(0.5, uResult) * max(uFlash, 0.6));
+          vec2 tc = lineCoord(vP, uT);
+          over(acc, tCol * 1.3, solid(tc, 0.16, 4.5, uTLen * uDraw));
+          // the cannon beam (reference line): bright, with a soft glow and a dot where it meets the ring
+          vec2 rc = lineCoord(vP, uAxis);
+          float beamTo = uAimOn > 0.5 ? ring : ring;
+          over(acc, cyan, 0.3 * solid(rc, 0.7, 4.5, beamTo));
+          over(acc, cyan * 1.6, solid(rc, 0.2, 4.5, beamTo));
+          over(acc, cyan * 1.8, 1.0 - smoothstep(0.55, 0.8, length(vP - dirOf(uAxis) * ring)));
+
+          // the player's answer: a beam turning from the cannon line by the picked angle
           if (uAimOn > 0.5) {
             vec2 aimArc = vec2(uAim.x, uAim.y * uAim.z);
+            vec3 aCol = uResult > 0.5 ? good : uResult < -0.5 ? enemy : vec3(0.85, 1.0, 1.0);
             float ka = arcPos(ang, aimArc);
-            vec3 aCol = uResult > 0.5 ? good : uResult < -0.5 ? red : vec3(0.75, 0.97, 1.0) * 1.4;
-            float glow = 1.0 + uFlash * 0.8;
-            over(acc, aCol, 0.24 * inside(ka, 1.0) * (1.0 - smoothstep(uR * 0.75, uR * 0.75 + 0.6, r)) * step(5.0, r));
+            over(acc, aCol, 0.2 * inside(ka, 1.0) * step(5.0, r) * (1.0 - smoothstep(uR * 0.8, uR * 0.8 + 0.5, r)));
             vec2 ac = lineCoord(vP, aimArc.x + aimArc.y);
-            over(acc, aCol * glow, (1.0 - smoothstep(0.35, 0.75, ac.x)) * step(5.0, ac.y) * step(ac.y, uLen));
+            over(acc, aCol * (1.5 + uFlash), solid(ac, 0.28, 4.5, ring));
+            over(acc, aCol, 0.35 * solid(ac, 0.9, 4.5, ring));
           }
           gl_FragColor = vec4(acc.rgb, acc.a * uAlpha);
         }`,
@@ -148,9 +160,10 @@ export class AngleOverlay {
     this.q = q;
     this.on = true;
     this.t = 0;
-    u.uLen.value = len;
-    u.uBack.value = len + 1;
+    u.uRing.value = len;
     u.uTLen.value = tLen;
+    u.uExtR.value = q.type === 'complement' ? 0 : 1;   // straight line / opposite angles need it
+    u.uExtT.value = q.type === 'opposite' ? 1 : 0;
     u.uR.value = arcR;
     u.uAxis.value = q.rYaw;
     u.uT.value = q.tYaw;
@@ -164,7 +177,8 @@ export class AngleOverlay {
     u.uResult.value = 0;
     u.uFlash.value = 0;
     this.lbKnown.textContent = `${q.given}°`;
-    this.mesh.scale.setScalar(len + 2.5);
+    u.uMax.value = Math.max(len, tLen) + 2.5;          // the enemy line may run past the radar ring
+    this.mesh.scale.setScalar(u.uMax.value + 0.5);
     this.mesh.visible = true;
   }
 
@@ -198,6 +212,7 @@ export class AngleOverlay {
     this.center.copy(center);
     this.mesh.position.copy(center);
     this.t += dt;
+    u.uTime.value = time;
     u.uAlpha.value = this.on ? Math.min(1, u.uAlpha.value + dt * 4) : Math.max(0, u.uAlpha.value - dt * 3);
     u.uDraw.value = this.on ? ease(this.t / 0.7) : u.uDraw.value;
     u.uFlash.value = Math.max(0, u.uFlash.value - dt * 1.2);
@@ -223,13 +238,13 @@ export class AngleOverlay {
     const q = this.q;
     const R = u.uR.value;
     if (q) {
-      place(this.lbKnown, q.known.from + q.known.sweep / 2, R * 1.42, true);
-      place(this.lbUnknown, q.unknown.from + q.unknown.sweep / 2, R * 1.42, u.uResult.value <= 0.5);
+      place(this.lbKnown, q.known.from + q.known.sweep / 2, R * 1.38, true);
+      place(this.lbUnknown, q.unknown.from + q.unknown.sweep / 2, R * 1.38, u.uResult.value <= 0.5);
       // the whole-angle label (180° / 90°) sits at whichever end of its arc is further from the target
       if (q.whole) {
         const aT = Math.abs(q.answer * Math.PI / 180);
         const f = Math.abs(Math.abs(q.whole.sweep) * 0.08 - aT) > Math.abs(Math.abs(q.whole.sweep) * 0.92 - aT) ? 0.08 : 0.92;
-        place(this.lbRight, q.whole.from + q.whole.sweep * f, R * 1.75 + 2.6, true);
+        place(this.lbRight, q.whole.from + q.whole.sweep * f, R * 1.6 + 2.6, true);
       } else place(this.lbRight, 0, 0, false);
     }
   }

@@ -1,7 +1,6 @@
 import { wrapAngle } from '../core/math.js';
 
 const DEG = Math.PI / 180;
-export const CHARGE_TIME = 12;   // seconds a target waits before it fires on its own
 const ease = (x) => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
 const $ = (id) => document.getElementById(id);
 
@@ -24,12 +23,10 @@ export class AngleQuiz {
       b.addEventListener('click', (e) => e.preventDefault());
     });
     this.state = 'off';
-    this.charge = 0;
     this.aimYaw = 0;
   }
 
   get active() { return this.state !== 'off'; }
-  get chargeLeft() { return 1 - this.charge / CHARGE_TIME; }
   get busy() { return this.state === 'aim' || this.state === 'fire'; }
 
   // target: { kind, obj, part, pos (live Vector3), radius }
@@ -38,7 +35,6 @@ export class AngleQuiz {
     this.q = q;
     this.state = 'ask';
     this.t = 0;
-    this.charge = 0;
     this.tries = 0;
     this.aimYaw = q.rYaw;
     this.say(q.prompt, '');
@@ -78,11 +74,6 @@ export class AngleQuiz {
     switch (this.state) {
       case 'ask':
         this.aimYaw = q.rYaw;
-        this.charge += dt;
-        if (this.charge >= CHARGE_TIME) {
-          this.charge = 0;
-          this.ctx.punish(this.target);
-        }
         break;
       case 'aim': {
         const k = Math.min(1, this.t / 0.75);
@@ -116,7 +107,6 @@ export class AngleQuiz {
           this.say(this.tries >= 2 && q.hint2 ? q.hint2 : q.hint, 'bad');
           this.ctx.audio.wrong();
           this.ctx.punish(this.target);
-          this.charge = 0;
         }
         break;
       case 'result':

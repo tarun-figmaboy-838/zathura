@@ -37,21 +37,21 @@ export function createBlackHole(skyCube, { position, radius = 450, normal = new 
       varying vec3 vWorld;
       ${VALUE3}
 
-      // swirling plasma at disk radius r (in horizon radii) and azimuth phi
+      float gauss(float x) { return exp(-x * x); }   // never pow() a negative base: NaN spreads via bloom
+
+      // Hot gas at disk radius r (in horizon radii) and azimuth phi: white-hot at the inner edge,
+      // cooling through gold to deep orange; fine streaks drawn out along the orbit, sheared by
+      // the faster inner rotation.
       vec3 diskColor(float r, float phi, out float a) {
-        float spin = phi + uTime * 2.4 / (r * sqrt(r));
-        vec3 q = vec3(cos(spin) * r * 1.6, sin(spin) * r * 1.6, r * 2.3);
-        float n = fbm3(q * 1.3) * 0.7 + vnoise(q * 4.0) * 0.3;
-        float streak = 0.55 + 0.45 * sin(r * 11.0 - spin * 3.0 + n * 6.0);
-        vec3 hot = vec3(1.0, 0.96, 0.88);
-        vec3 gold = vec3(1.0, 0.55, 0.12);
-        vec3 rose = vec3(0.95, 0.18, 0.55);
-        vec3 violet = vec3(0.35, 0.2, 1.0);
-        vec3 col = mix(hot, gold, smoothstep(1.7, 2.6, r));
-        col = mix(col, rose, smoothstep(2.8, 4.3, r));
-        col = mix(col, violet, smoothstep(4.4, 6.3, r));
-        a = smoothstep(1.55, 1.9, r) * (1.0 - smoothstep(5.2, 6.8, r));
-        return col * (0.35 + 1.3 * n * streak) * (3.2 / pow(r, 1.15));
+        float spin = phi + uTime * 1.6 / (r * sqrt(r));
+        vec3 q = vec3(cos(spin) * 2.2, sin(spin) * 2.2, r * 9.0);   // stretched along the orbit
+        float n = fbm3(q) * 0.75 + vnoise(q * 3.0) * 0.25;
+        float streaks = 0.62 + 0.38 * sin(r * 46.0 + n * 9.0);
+        float temp = clamp((r - 1.65) / 4.3, 0.0, 1.0);
+        vec3 col = mix(vec3(1.0, 0.97, 0.92), vec3(1.0, 0.72, 0.36), smoothstep(0.0, 0.3, temp));
+        col = mix(col, vec3(0.9, 0.34, 0.1), smoothstep(0.3, 1.0, temp));
+        a = smoothstep(1.55, 1.85, r) * (1.0 - smoothstep(4.4, 6.6, r));
+        return col * (0.45 + 0.9 * n) * streaks * (3.0 / pow(r, 1.35));
       }
 
       void main() {
@@ -78,14 +78,19 @@ export function createBlackHole(skyCube, { position, radius = 450, normal = new 
         vec3 V = cross(N, U);
         vec3 nScreen = normalize(N - c * dot(N, c) + vec3(1e-5));
 
-        // lensed far side of the disk, bent up and over the shadow
+        // the disk's far side, bent by gravity into a halo around the shadow: a broad bright arch
+        // over the top and a thinner, fainter one underneath
         float side = dot(perp, nScreen);
-        float arcBand = smoothstep(1.02, 1.15, x) * (1.0 - smoothstep(1.3, 2.6, x));
+        float over_ = max(side, 0.0), under = max(-side, 0.0);
+        float outer = mix(1.35, 2.3, over_) * (1.0 - 0.35 * under);
+        float arcBand = smoothstep(1.02, 1.12, x) * (1.0 - smoothstep(outer - 0.3, outer, x));
         if (arcBand > 0.0) {
           float ang = atan(dot(perp, cross(c, nScreen)), side);
           float a2;
-          vec3 arc = diskColor(1.75 + (x - 1.05) * 2.6, ang * 1.2 + 3.14159, a2);
-          col += arc * arcBand * a2 * (0.45 + 0.75 * smoothstep(-0.3, 0.8, side)) * uDisk;
+          vec3 arc = diskColor(1.7 + (x - 1.05) * 2.4, ang * 1.1 + 3.14159, a2);
+          float spinSide = dot(perp, cross(c, nScreen));             // Doppler on the lensed image too
+          float beam = 0.5 + 0.9 * smoothstep(-0.9, 0.9, spinSide);
+          col += arc * arcBand * a2 * beam * (0.35 + 0.65 * over_ + 0.25 * under) * uDisk;
         }
 
         // direct image of the near disk (ray / plane intersection), hidden behind the horizon
@@ -102,16 +107,20 @@ export function createBlackHole(skyCube, { position, radius = 450, normal = new 
             if (!blocked && r < 7.0) {
               float a;
               vec3 dc = diskColor(r, atan(dot(P, V), dot(P, U)), a);
+              // Doppler beaming: gas moving toward us is brighter and bluer, receding gas dimmer, redder
               vec3 vel = normalize(cross(N, P));
-              float doppler = 0.55 + 0.9 * max(0.0, dot(vel, -rd) * 0.5 + 0.5);
-              col = mix(col, col * 0.3 + dc * doppler * 1.4 * uDisk, a * 0.92);
+              float toward = dot(vel, -rd);
+              float doppler = 0.3 + 1.7 * smoothstep(-0.95, 0.95, toward);
+              dc *= mix(vec3(1.15, 0.78, 0.6), vec3(0.92, 0.98, 1.12), smoothstep(-0.6, 0.6, toward));
+              col = mix(col, col * 0.25 + dc * doppler * 1.3 * uDisk, a * 0.94);
             }
           }
         }
 
         // photon ring and the shadow itself
-        col += vec3(1.0, 0.85, 0.65) * exp(-pow((x - 1.04) * 26.0, 2.0)) * 3.0 * uDisk;
-        col += vec3(0.6, 0.4, 1.0) * exp(-pow((x - 1.1) * 7.0, 2.0)) * 0.35 * uDisk;
+        // the photon ring: a thin, sharp rim of light just outside the shadow
+        col += vec3(1.0, 0.9, 0.75) * gauss((x - 1.035) * 34.0) * 3.4 * uDisk;
+        col += vec3(1.0, 0.78, 0.5) * gauss((x - 1.07) * 11.0) * 0.4 * uDisk;
         col *= smoothstep(0.97, 1.01, x);
 
         float alpha = 1.0 - smoothstep(6.0, 9.0, x);

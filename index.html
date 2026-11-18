@@ -50,15 +50,6 @@
       </svg>
     </div>
 
-    <div id="top-left">
-      <div class="level"><b id="level-num">SECTOR 1/5</b><span id="level-name">Drift Lanes</span></div>
-      <div class="objective" id="objective"></div>
-      <div class="vitals">
-        <div class="vital shield"><svg viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5z" /></svg><i><em id="shield-bar"></em></i></div>
-        <div class="vital hull"><svg viewBox="0 0 24 24"><path d="M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7z" /></svg><i><em id="hull-bar"></em></i></div>
-      </div>
-    </div>
-
     <div id="bossbar" class="hidden">
       <div class="row"><b>Warden</b><span id="boss-state"></span></div>
       <div class="bar"><i id="boss-fill"></i></div>
@@ -106,9 +97,14 @@
   <button id="skip" class="img-btn hidden" type="button" aria-label="Skip intro"><img src="assets/ui/btn-skip.png" alt="" draggable="false" /></button>
 
   <!-- ============================== title -->
+  <!-- the bridge, seen from the captain's seat: the live 3D view shows through the windshield -->
+  <div id="cockpit" aria-hidden="true">
+    <div class="cockpit-frame"><img src="assets/ui/cockpit.webp" alt="" draggable="false" /></div>
+  </div>
+
   <div id="title" class="screen">
     <h1 class="title-logo"><img src="assets/ui/title.png" alt="Driftbound" draggable="false" /></h1>
-    <div class="play">
+    <div class="cockpit-frame">
       <button id="start" class="play-btn" aria-label="Play" disabled>
         <span class="ping"></span><img src="assets/ui/btn-play.png" alt="" draggable="false" />
       </button>
@@ -154,6 +150,7 @@
     </div>
   </div>
 
+  <div id="letterbox" aria-hidden="true"></div>
   <div id="whiteout"></div>
   <script type="module" src="src/main.js"></script>
 </body>
