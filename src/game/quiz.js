@@ -29,10 +29,6 @@ export class AngleQuiz {
     this.root = $('quiz');
     this.box = $('quiz-prompt');
     this.textEl = $('quiz-text');
-    this.timerEl = $('quiz-timer');
-    this.secsEl = $('quiz-secs');
-    this.clockEl = this.box.querySelector('.clock');
-    this.drawn = { off: '', secs: '', tone: '' };
     this.limit = 0;
     this.timeLeft = 0;
     this.buttons = [...this.root.querySelectorAll('.opt')];
@@ -90,7 +86,6 @@ export class AngleQuiz {
   update(dt, turretYaw, hold = false) {
     if (this.state === 'off') return;
     this.t += dt;
-    this.drawTimer();
     const q = this.q;
     const b = this.buttons[this.choice];
     switch (this.state) {
@@ -172,22 +167,6 @@ export class AngleQuiz {
     if (!mood) return;
     void this.box.offsetWidth;
     this.box.classList.add(mood);
-  }
-
-  // the countdown badge: the ring drains and the seconds count down (only what changed is written)
-  drawTimer() {
-    const k = this.limit ? Math.max(0, this.timeLeft / this.limit) : 1;
-    const off = (100 * (1 - k)).toFixed(1);
-    const secs = this.limit ? String(Math.max(0, Math.ceil(this.timeLeft))) : '';
-    const tone = k < 0.22 ? 'danger' : k < 0.45 ? 'warn' : '';
-    const d = this.drawn;
-    if (off !== d.off) { d.off = off; this.timerEl.style.strokeDashoffset = off; }
-    if (secs !== d.secs) { d.secs = secs; this.secsEl.textContent = secs; this.clockEl.style.visibility = this.limit ? '' : 'hidden'; }
-    if (tone !== d.tone) {
-      d.tone = tone;
-      this.box.classList.toggle('warn', tone === 'warn');
-      this.box.classList.toggle('danger', tone === 'danger');
-    }
   }
 
   stop() {
