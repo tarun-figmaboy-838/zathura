@@ -1207,7 +1207,8 @@ function camDiagram(o) {
 function nextQuizTarget(dt) {
   if (campaign.phase === 'battle') {
     for (const r of raiders.list) {
-      if (r.alive && r.hold && raiders.arrived(r)) return { kind: 'raider', obj: r, pos: r.position, index: campaign.level + 1, total: campaign.total };
+      // the question comes after the raider's opening taunt (see updateBanter)
+      if (r.alive && r.hold && raiders.arrived(r) && r.taunted) return { kind: 'raider', obj: r, pos: r.position, index: campaign.level + 1, total: campaign.total };
     }
     return null;
   }
@@ -1422,7 +1423,10 @@ function placeComms(dt) {
 
 // enemy banter: a raider taunts once it has flown in, the Warden boasts after its introduction
 function updateBanter() {
-  if (director.active || state.doom > 0) return;
+  // wait until the camera is back on the battle (not mid-way back from a close-up), so the craft
+  // that talks is in view and its bubble sits on it
+  if (director.active || director.camera || state.doom > 0) return;
+  if (rig.mode !== campaign.cfg.view || rig.t < 1) return;
   for (const r of raiders.list) {
     if (!r.alive || !r.hold || r.taunted || !raiders.arrived(r)) continue;
     r.taunted = true;
