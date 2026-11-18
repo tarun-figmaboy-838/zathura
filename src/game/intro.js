@@ -110,7 +110,7 @@ export class Intro {
     this.pose(0, 0, 0);
     // start in the captain's seat (also when relaunching straight from a menu)
     s.model.visible = false;
-    this.shot(EYE, _t.set(0, EYE.y - 5.2, -40));
+    this.shot(EYE, _t.set(0, EYE.y - 2.4, -40));
     this.fov = 62;
   }
 
@@ -160,7 +160,7 @@ export class Intro {
       // shows through its windshield; a gentle breathing head motion keeps it alive
       s.model.visible = false;
       _p.copy(EYE).add(_v.set(Math.sin(time * 0.31) * 0.04, Math.sin(time * 0.52) * 0.025, 0));
-      _t.set(Math.sin(time * 0.11) * 1.2, EYE.y - 5.2, -40);
+      _t.set(Math.sin(time * 0.11) * 1.2, EYE.y - 2.4, -40);
       this.shot(_p, _t);
       this.fov = 62 * (this.rig.camera.aspect < 1 ? 1.15 : 1);
       return null;

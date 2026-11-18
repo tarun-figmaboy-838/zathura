@@ -319,7 +319,7 @@ body.narrating .quiz-prompt, body.narrating #banner { opacity: 0 !important; }
 #cockpit img { display: block; width: 100%; height: 100%; -webkit-user-drag: none; }
 #title { display: block; padding: 0; overflow: hidden; }
 /* the title sits inside the windshield glass, just under the frame's top bar (locked to the art) */
-.title-logo { position: absolute; left: 50%; top: 7.5%; width: 25%; max-width: 600px; margin: 0; translate: -50% 0; z-index: 1;
+.title-logo { position: absolute; left: 50%; top: 7.5%; width: 30%; max-width: 720px; margin: 0; translate: -50% 0; z-index: 1;
   animation: logo-in 1s var(--spring) both, logo-float 6s ease-in-out 1s infinite; }
 .title-logo img { display: block; width: 100%; height: auto; -webkit-user-drag: none;
   filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.6)); }
@@ -396,7 +396,7 @@ body.narrating .quiz-prompt, body.narrating #banner { opacity: 0 !important; }
 
 /* ---------------------------------------------------------------- small screens */
 @media (max-width: 760px), (max-aspect-ratio: 4/5) {
-  .title-logo { width: 78vw; top: calc(7% + env(safe-area-inset-top)); }
+  .title-logo { width: 86vw; top: calc(7% + env(safe-area-inset-top)); }
   #bossbar { top: 66px; width: 80vw; }
   #alert { top: 104px; }
   .pad { left: 8px; bottom: 10px; transform: scale(0.8); transform-origin: bottom left; }
