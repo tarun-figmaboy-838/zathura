@@ -69,8 +69,15 @@ export class Hud {
   // only touch the DOM when a text value actually changes
   text(key, el, value) {
     if (this.last[key] === value) return;
+    const grew = key === 'score' && this.last[key] !== undefined && value !== '0';
     this.last[key] = value;
     el.textContent = value;
+    if (grew) {                                 // points in: the coin pops
+      const chip = el.parentElement;
+      chip.classList.remove('pop');
+      void chip.offsetWidth;
+      chip.classList.add('pop');
+    }
   }
 
   // ctx: { camera, score, crosshair (px), markerPoint, showMarker, hideAim, turret, raiders, locked, boss }

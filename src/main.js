@@ -1369,10 +1369,16 @@ function placeComms(dt) {
   const l = dialogue.line;
   const on = l && l.src && (document.body.classList.contains('battle') || state.mode === 'dying');
   if (!on) {
-    if (dlgEl.classList.contains('bubble')) { dlgEl.classList.remove('bubble', 'compact'); dlgEl.style.cssText = ''; }
+    // keep the bubble where it is while it fades out (dropping it at once moved it to the docked spot,
+    // right over the answers); a docked line (no speaker) takes over straight away
+    if (dlgEl.classList.contains('bubble')) {
+      comms.idle = (comms.idle || 0) + dt;
+      if ((l && !l.src) || comms.idle > 0.35) { dlgEl.classList.remove('bubble', 'compact'); dlgEl.style.cssText = ''; }
+    }
     comms.line = null;
     return;
   }
+  comms.idle = 0;
   const W = window.innerWidth, H = window.innerHeight;
   if (!dlgEl.classList.contains('bubble')) dlgEl.classList.add('bubble');
   if (l !== comms.line) {

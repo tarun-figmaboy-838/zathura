@@ -102,7 +102,7 @@ you fire; the ring around the Fire button shows the cannon's heat.
 index.html        page, HUD and on-screen controls
 src/              game code (Three.js ES modules)
 assets/models/    ship, raider, boss, station and asteroid models (.glb)
-assets/ui/        title, cockpit, button art and character portraits (Figma: answer capsules from the POLYGON kit, the rest made with Figma AI)
+assets/ui/        title, cockpit, button art and character portraits (made with Figma AI; the answer capsules are drawn in CSS after the POLYGON kit)
 blender/          the Python scripts that generate every model
 PLAN.md           design plan and milestones
 ```

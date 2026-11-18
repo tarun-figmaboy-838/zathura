@@ -46,9 +46,18 @@ body.warping #hud, body.warping #controls { opacity: 0; }
 #bossbar .bar i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #ff3d2e, #ff8a5c); box-shadow: 0 0 12px rgba(255, 61, 46, 0.7); transition: width 0.15s; }
 
 #top-right { position: absolute; right: calc(18px + env(safe-area-inset-right)); top: 12px; display: flex; align-items: center; gap: 12px; }
-#top-right .score { display: grid; text-align: right; text-shadow: 0 1px 2px #000, 0 0 8px rgba(0, 0, 0, 0.85); }
-#top-right .score span { font-size: 11px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: #dfe9f5; }
-#top-right .score b { font: 400 24px/1.05 var(--font-game); letter-spacing: 0.02em; }
+/* score: a game chip (coin + number) in the same panel build as the rest of the UI, the pause
+   button's height; the coin pops when points come in */
+#top-right .score { position: relative; height: 42px; display: flex; align-items: center; gap: 8px; padding: 0 16px 0 6px; border-radius: 999px;
+  background: linear-gradient(180deg, #1d2a5c 0%, #111a3d 55%, #0b1230 100%);
+  box-shadow: 0 0 0 3px #060a1c, 0 4px 0 3px #060a1c, inset 0 0 0 2px #ffb547, inset 0 -3px 0 rgba(0, 0, 0, 0.28); }
+#top-right .score b { min-width: 2.2ch; text-align: right; font: 400 23px/1 var(--font-game); letter-spacing: 0.02em; color: #fff;
+  text-shadow: var(--ink-outline); font-variant-numeric: tabular-nums; }
+#top-right .coin { width: 30px; height: 30px; border-radius: 50%; flex: none;
+  background: radial-gradient(circle at 38% 32%, #fff6b8 0 12%, #ffd23f 30%, #f5a311 72%, #c96a06 100%);
+  box-shadow: 0 0 0 2px #060a1c, inset 0 0 0 3px rgba(255, 236, 150, 0.55), inset 0 -3px 0 rgba(150, 70, 0, 0.45); }
+#top-right .score.pop .coin { animation: coin-pop 0.35s var(--spring); }
+@keyframes coin-pop { 40% { transform: scale(1.3) rotate(-12deg); } }
 
 #crosshair { position: absolute; left: 0; top: 0; width: 30px; height: 30px; margin: -15px 0 0 -15px; }
 #crosshair .ring { position: absolute; inset: 0; border: 2px solid rgba(255, 255, 255, 0.75); border-radius: 50%;
@@ -91,7 +100,7 @@ body.warping #hud, body.warping #controls { opacity: 0; }
   filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.5)); }
 @media (hover: hover) { .img-btn:hover { transform: translateY(-2px) scale(1.05); filter: brightness(1.08); } }
 .img-btn:active { transform: translateY(3px) scale(0.94); filter: brightness(1.15); transition-duration: 50ms; }
-#pause-btn { width: 46px; height: 46px; }
+#pause-btn { width: 48px; height: 48px; }
 
 /* ---------------------------------------------------------------- on-screen controls */
 #controls { position: fixed; inset: auto 0 0 0; height: 0; transition: opacity 0.4s ease; }
@@ -160,26 +169,37 @@ body.warping #hud, body.warping #controls { opacity: 0; }
 @keyframes box-shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
 @keyframes box-pop { 40% { scale: 1.05; } }
 .quiz-options { position: absolute; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom)); translate: -50% 0; display: flex; gap: 16px; }
-.opt { pointer-events: auto; position: relative; width: clamp(140px, 13vw, 186px); aspect-ratio: 420 / 153; padding: 0; border: 0;
-  background: url(../assets/ui/opt.png) center / contain no-repeat;
-  display: grid; place-items: center; cursor: pointer; opacity: 0; transition: transform 0.16s var(--spring), filter 0.12s; }
+/* answer capsules, drawn in CSS after the POLYGON kit art (white rim, glossy face shading to a
+   deeper band at the bottom, a highlight and a dot), so there is no image to load or drop: gold to
+   pick, green for right, red for wrong. No filters (they can drop a layer's paint over WebGL). */
+.opt { --c1: #fde97f; --c2: #fdd21e; --c3: #fcb905; --c4: #ff8a00; --edge: #e2560a; --deep: rgba(214, 52, 0, 0.75);
+  pointer-events: auto; position: relative; width: clamp(140px, 13vw, 186px); aspect-ratio: 420 / 153; padding: 0; border: 0; border-radius: 999px;
+  background: linear-gradient(180deg, var(--c1) 0%, var(--c2) 30%, var(--c3) 62%, var(--c4) 100%);
+  box-shadow: 0 0 0 3.5px #fffaf3, 0 0 0 5px rgba(6, 10, 28, 0.45), inset 0 0 0 1.5px var(--edge), inset 0 -7px 7px -2px var(--deep),
+    inset 0 3px 2px rgba(255, 255, 255, 0.55);
+  display: grid; place-items: center; cursor: pointer; opacity: 0; transition: transform 0.16s var(--spring); }
+/* the soft light band across the middle and the gloss: a highlight and a dot, top left */
+.opt::before { content: ''; position: absolute; inset: 44% 6% 18%; border-radius: 999px; background: linear-gradient(rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0)); pointer-events: none; }
+.opt::after { content: ''; position: absolute; left: 7%; top: 12%; width: 14%; height: 28%; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.55) 60%, rgba(255, 255, 255, 0));
+}
+.opt.correct { --c1: #b6f79a; --c2: #74de4f; --c3: #45bd2c; --c4: #2c961c; --edge: #217a14; --deep: rgba(20, 90, 10, 0.75); }
+.opt.wrong { --c1: #ff9c9c; --c2: #ff6b6b; --c3: #f43f45; --c4: #d0222c; --edge: #a8131c; --deep: rgba(140, 10, 20, 0.75); }
+.opt .dot { position: absolute; left: 22.5%; top: 15%; width: 4.5%; aspect-ratio: 1; border-radius: 50%; background: rgba(255, 255, 255, 0.8); pointer-events: none; }
+.opt span { z-index: 1; }
 #quiz.show .opt { animation: opt-in 0.45s var(--spring) both; }
 @keyframes opt-in { from { opacity: 0; transform: translateY(26px) scale(0.85); } to { opacity: 1; transform: none; } }
-/* the capsule art is the button's background and its state picks the colour, so a button can never
-   lose its art (swapping <img> sources could leave a button blank in Safari) */
-.opt.correct { background-image: url(../assets/ui/opt-ok.png); }
-.opt.wrong { background-image: url(../assets/ui/opt-bad.png); }
 /* capsule kit from the POLYGON Figma file: gold acts, green and red are verdicts. Labels in the kit's
    Fredoka Bold: dark brown on gold, white with a toned outline on green and red */
 .opt span { position: relative; display: block; font: 700 clamp(26px, 2.4vw, 34px)/1 'Fredoka', 'Inter', sans-serif; letter-spacing: 0.01em;
   color: #4a2400; text-shadow: 0 1px 0 rgba(255, 244, 200, 0.6); pointer-events: none; transform: translateY(-2%); }
 .opt.correct span { color: #fff; text-shadow: 0 2px 0 #1d6b12, 1.5px 0 0 #1d6b12, -1.5px 0 0 #1d6b12, 0 -1.5px 0 #1d6b12; }
 .opt.wrong span { color: #fff; text-shadow: 0 2px 0 #8e1414, 1.5px 0 0 #8e1414, -1.5px 0 0 #8e1414, 0 -1.5px 0 #8e1414; }
-@media (hover: hover) { .opt:hover:not(:disabled) { transform: translateY(-3px); filter: brightness(1.12); } }
+@media (hover: hover) { .opt:hover:not(:disabled) { transform: translateY(-3px); } }
 .opt:active:not(:disabled) { transform: translateY(3px) scale(0.95); }
-.opt.picked { filter: brightness(1.2); }
-.opt.correct { filter: brightness(1.05); transform: scale(1.08); }
-.opt.wrong { animation: opt-shake 0.4s ease both !important; opacity: 1; filter: saturate(0.85); }
+.opt.picked { transform: scale(1.04); }
+.opt.correct { transform: scale(1.08); }
+.opt.wrong { animation: opt-shake 0.4s ease both !important; opacity: 1; }
 .opt:disabled { cursor: default; }
 .opt.wrong:disabled { opacity: 0.92; }
 @keyframes opt-shake { 20%, 60% { transform: translateX(-7px); } 40%, 80% { transform: translateX(7px); } }
