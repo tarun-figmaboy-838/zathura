@@ -67,8 +67,10 @@
   <!-- ============================== on-screen controls -->
   <div id="controls" class="hidden" data-mode="chase">
     <div class="pad">
+      <button class="dir up" data-hold="up" aria-label="Steer up"><img src="assets/ui/btn-arrow.png" alt="" draggable="false" /></button>
       <button class="dir left" data-hold="left" aria-label="Steer left"><img src="assets/ui/btn-arrow.png" alt="" draggable="false" /></button>
       <button class="dir right" data-hold="right" aria-label="Steer right"><img src="assets/ui/btn-arrow.png" alt="" draggable="false" /></button>
+      <button class="dir down" data-hold="down" aria-label="Steer down"><img src="assets/ui/btn-arrow.png" alt="" draggable="false" /></button>
     </div>
     <div class="actions">
       <button class="act shield" data-tap="shield" aria-label="Shield (Q)">
@@ -88,7 +90,7 @@
 
   <!-- ============================== angle battle: question, hint and answer options -->
   <div id="quiz" class="hidden">
-    <div class="quiz-prompt" id="quiz-prompt"><span class="text" id="quiz-text"></span></div>
+    <div class="quiz-prompt" id="quiz-prompt"><span class="text" id="quiz-text"></span><span class="timer" aria-hidden="true"><i id="quiz-timer"></i></span></div>
     <div class="quiz-options">
       <button class="opt" type="button"><img src="assets/ui/opt.png" alt="" draggable="false" /><span></span></button>
       <button class="opt" type="button"><img src="assets/ui/opt.png" alt="" draggable="false" /><span></span></button>
@@ -160,7 +162,6 @@
     </div>
   </div>
 
-  <div id="letterbox" aria-hidden="true"></div>
   <div id="report" class="screen modal hidden" role="dialog" aria-modal="true" aria-label="Sector complete">
     <div class="panel small report">
       <h2 id="r-title">Sector 1</h2>

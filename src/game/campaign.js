@@ -62,7 +62,7 @@ function buildLevels() {
     groupEnd: i % 4 === 3,
     skill: group,
     meteors: [8, 10, 12][group],
-    journey: i === 0 ? 13 : 7,
+    journey: i === 0 ? 14 : 10,
   });
   HUNT.forEach((q, i) => add(q, i, Math.floor(i / 4)));
   for (let i = 8; i < 12; i++) add(masteryLevel(), i, 2);
@@ -72,7 +72,7 @@ function buildLevels() {
 
 // Phase timings / speeds
 const PHASES = {
-  journey: { view: 'chase', speed: 125, steer: false },   // autopilot to the portal
+  journey: { view: 'chase', speed: 125, steer: true },    // fly it: steer, shoot rocks and junk, reach the portal
   contact: { view: 'top', speed: 16, steer: false },
   battle: { view: 'top', speed: 16, steer: false },
   won: { view: 'top', speed: 16, steer: false },          // a beat after the hit, then the next journey

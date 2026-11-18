@@ -93,9 +93,6 @@ export class AngleOverlay {
           float t30 = abs(fract(ang / TAU * 12.0 + 0.5) - 0.5) * (TAU / 12.0) * r;
           over(acc, cyan, 0.5 * (1.0 - smoothstep(0.06, 0.14, t10)) * step(ring - 0.9, r) * step(r, ring));
           over(acc, cyan, 0.8 * (1.0 - smoothstep(0.08, 0.16, t30)) * step(ring - 1.8, r) * step(r, ring));
-          // slow radar sweep, confined to the rim band so it never crosses the angle diagram
-          float sw = mod(uTime * 0.9 - ang, TAU);
-          over(acc, cyan, 0.5 * exp(-sw * 3.0) * smoothstep(ring - 2.6, ring - 1.8, r) * step(r, ring));
 
           // dotted extensions and the perpendicular (only the ones the rule needs)
           if (uExtR > 0.5) over(acc, cyan, 0.7 * dotted(lineCoord(vP, uAxis + 3.14159265), 5.0, ring - 0.6));
@@ -106,13 +103,13 @@ export class AngleOverlay {
           float ku = arcPos(ang, uUnknown);
           float kk = arcPos(ang, uKnown);
           vec3 uCol = mix(white, good, step(0.5, uResult) * max(uFlash, 0.6));
-          over(acc, uCol, 0.15 * inside(ku, uDraw) * step(5.0, r) * (1.0 - smoothstep(uR - 0.4, uR, r)));
-          over(acc, orange, 0.15 * inside(kk, uDraw) * step(5.0, r) * (1.0 - smoothstep(uR - 0.4, uR, r)));
+          over(acc, uCol, 0.07 * inside(ku, uDraw) * step(5.0, r) * (1.0 - smoothstep(uR - 0.4, uR, r)));
+          over(acc, orange, 0.07 * inside(kk, uDraw) * step(5.0, r) * (1.0 - smoothstep(uR - 0.4, uR, r)));
           over(acc, uCol * 1.4, inside(ku, uDraw) * gauss((r - uR) / 0.34));
           over(acc, orange * 1.5, inside(kk, uDraw) * gauss((r - uR) / 0.34));
           // second given angle (angles around a point)
           float kk2 = arcPos(ang, uKnown2);
-          over(acc, orange, 0.15 * inside(kk2, uDraw) * step(5.0, r) * (1.0 - smoothstep(uR - 0.4, uR, r)));
+          over(acc, orange, 0.07 * inside(kk2, uDraw) * step(5.0, r) * (1.0 - smoothstep(uR - 0.4, uR, r)));
           over(acc, orange * 1.5, inside(kk2, uDraw) * gauss((r - uR) / 0.34));
           // triangle: the third side, the given angles at its two far corners, white corner knobs
           if (uTriOn > 0.5) {
@@ -139,9 +136,6 @@ export class AngleOverlay {
             float e2 = (1.0 - smoothstep(0.16, 0.3, abs(sq.y - S))) * step(0.0, sq.x) * step(sq.x, S);
             over(acc, white * 1.3, max(e1, e2) * uDraw);
           }
-          // ghost sweep through "?": shows which turn to name
-          float sweepIn = inside(ku, uSweep);
-          over(acc, white, 0.16 * uSweepA * sweepIn * step(5.0, r) * (1.0 - smoothstep(uR - 0.4, uR, r)));
 
           // the line to the enemy
           vec3 tCol = mix(enemy, good, step(0.5, uResult) * max(uFlash, 0.6));
@@ -188,7 +182,7 @@ export class AngleOverlay {
     this.lbKnown2 = make('ang-label known');
     this.triP = new THREE.Vector2();
     this.triQ = new THREE.Vector2();
-    this.lbUnknown = make('ang-label unknown', '?');
+    this.lbUnknown = make('ang-label unknown', 'x');
     this.center = new THREE.Vector3();
     this.q = null;
     this.t = 0;
@@ -300,7 +294,7 @@ export class AngleOverlay {
     const R = u.uR.value;
     if (q) {
       // each number sits just outside its own arc, on the arc's middle
-      place(this.lbUnknown, q.unknown.from + q.unknown.sweep / 2, R * 1.3, u.uResult.value <= 0.5);
+      place(this.lbUnknown, q.unknown.from + q.unknown.sweep / 2, R + 3.4, u.uResult.value <= 0.5);
       if (q.tri) {
         // triangle: each given angle sits inside its corner, along the corner's bisector
         const corner = (el, A, B) => {
@@ -314,8 +308,8 @@ export class AngleOverlay {
         corner(this.lbKnown, this.triP, this.triQ);
         corner(this.lbKnown2, this.triQ, this.triP);
       } else {
-        place(this.lbKnown, q.known.from + q.known.sweep / 2, R * 1.3, true);
-        place(this.lbKnown2, q.known2 ? q.known2.from + q.known2.sweep / 2 : 0, R * 1.3, !!q.known2);
+        place(this.lbKnown, q.known.from + q.known.sweep / 2, R + 3.4, true);
+        place(this.lbKnown2, q.known2 ? q.known2.from + q.known2.sweep / 2 : 0, R + 3.4, !!q.known2);
       }
     }
   }

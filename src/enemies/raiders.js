@@ -174,6 +174,7 @@ export class Raiders {
     }
     this.trails.reset(r.trail);
     r.trail.intensity = 1;
+    r.root.scale.setScalar(1.35);
     return r;
   }
 
@@ -288,8 +289,10 @@ export class Raiders {
     r.visual.rotation.z = Math.sin(t * 1.3 + r.seed) * 0.12 + (1 - k) * 0.5 * Math.sin(r.seed);   // banks in on arrival
     r.visual.rotation.x = (1 - k) * 0.25;
     r.flash = Math.max(0, r.flash - dt * 6);
-    for (const m of r.hullMats) m.emissive.setRGB(r.flash * 1.6, r.flash * 0.7, r.flash * 0.3);
-    r.glowMat.emissiveIntensity = r.glowBase * (0.85 + 0.15 * Math.sin(t * 7 + r.seed));
+    const danger = 0.12 + 0.1 * Math.sin(t * 4 + r.seed);
+    for (const m of r.hullMats) m.emissive.setRGB(r.flash * 1.6 + danger, r.flash * 0.7 + danger * 0.18, r.flash * 0.3 + danger * 0.1);
+    r.glowMat.emissiveIntensity = r.glowBase * (1.1 + 0.3 * Math.sin(t * 7 + r.seed));
+    r.root.scale.setScalar(1.35 + 0.55 * k);       // grows to full size as it brakes into place
     // no contrail while riding along with the ship: it would be dragged into a long line
     r.trail.intensity = 0;
     if (r.shots > 0 && t >= r.nextShot && ctx.shipAlive) {
@@ -309,10 +312,10 @@ export class Raiders {
   // a held raider is in place and can be asked about
   arrived(r) { return r.holdT >= ARRIVE + 0.2; }
 
-  // a wrong answer: a heavier burst at the ship
-  punish(r, t) {
-    r.shots = 4;
-    r.shotDamage = ENEMY_BOLT_DAMAGE;
+  // a wrong answer (heavy = the time ran out): a heavier burst at the ship
+  punish(r, t, heavy = false) {
+    r.shots = heavy ? 6 : 4;
+    r.shotDamage = heavy ? 10 : ENEMY_BOLT_DAMAGE;
     r.nextShot = t;
     r.nextAuto = t + rand(3, 4);
   }

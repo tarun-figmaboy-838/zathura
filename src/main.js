@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createRenderer, createComposer } from './core/renderer.js';
 import { Input } from './core/input.js';
-import { CameraRig } from './core/cameraRig.js';
+import { CameraRig, topHeight } from './core/cameraRig.js';
 import { clamp, damp, intercept, rand, segmentPointDistSq, segOut, wrapAngle } from './core/math.js';
 import { createSky } from './world/sky.js';
 import { createStars } from './world/stars.js';
@@ -13,6 +13,7 @@ import { AsteroidField } from './world/asteroids.js';
 import { createDust } from './world/dust.js';
 import { TargetRings } from './world/holo.js';
 import { Portal } from './world/portal.js';
+import { SpaceTrash } from './world/trash.js';
 import { AngleOverlay } from './world/angleOverlay.js';
 import { AngleQuiz } from './game/quiz.js';
 import { Director } from './game/director.js';
@@ -39,7 +40,7 @@ const BOLT_SPEED = 560;
 const SHIELD_RADIUS = 7;
 const SHIP_RADIUS = 6;
 const BATTLE_SCALE = 1.45;   // the ship is drawn bigger in top-view battles so it reads at a glance
-const QUIZ_DIST = 27;        // how far from the cannon a raider hovers while it is the question
+const QUIZ_DIST = 32;        // how far from the cannon a raider hovers (just outside the radar ring)
 let MOUNT_SCALE = 1.35;      // the turret's own scale from the model (read at load)
 const LANE = new THREE.Vector3(0, 6.5, 0);
 const BOUNDS = { x: 30, y: 11 };
@@ -107,6 +108,29 @@ const floods = ['Floodlight_L', 'Floodlight_R'].map((name) => {
 });
 
 const ship = new Ship(shipGltf);
+// battles: a soft overhead key light and a cyan glow under the player's ship, so it stands out
+const battleLight = new THREE.DirectionalLight(0xe6f6ff, 0);
+scene.add(battleLight, battleLight.target);
+const shipGlow = (() => {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+  grd.addColorStop(0, 'rgba(120, 220, 255, 0.55)');
+  grd.addColorStop(0.45, 'rgba(70, 160, 255, 0.18)');
+  grd.addColorStop(1, 'rgba(40, 90, 255, 0)');
+  g.fillStyle = grd;
+  g.fillRect(0, 0, 256, 256);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshBasicMaterial({
+    map: tex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
+  m.rotation.x = -Math.PI / 2;
+  m.renderOrder = -2;
+  m.visible = false;
+  scene.add(m);
+  return m;
+})();
 scene.add(ship.root);
 const turret = new Turret(ship);
 MOUNT_SCALE = ship.nodes.TurretMount.scale.x;
@@ -116,6 +140,7 @@ const shield = new ShieldFX(ship);
 const radar = new Radar(ship);
 const vitals = new Vitals();
 const field = new AsteroidField(scene, rockGltf, { managed: true, capacity: 64 });
+const trash = new SpaceTrash(scene);
 // decorative asteroid belt along the route: never collides, never counts as a meteor
 const C3 = (r, g, b) => new THREE.Color(r, g, b);
 const scenery = new AsteroidField(scene, rockGltf, {
@@ -157,6 +182,7 @@ const quiz = new AngleQuiz(angleOverlay, {
   audio,
   fire: (correct) => quizFire(correct),
   punish: (target) => quizPunish(target),
+  timeout: (target) => quizTimeout(target),
   solved: (target, firstTry) => quizSolved(target, firstTry),
 });
 fx.onSecondary = (pos, scale) => audio.explosion(pos, scale);
@@ -281,6 +307,7 @@ function clearCombat() {
   boss.despawn();
   field.clearAll();
   scenery.clearAll();
+  trash.clearAll();
   portal.hide();
   quiz.stop();
   director.clear();
@@ -456,6 +483,8 @@ function playerHitTest(a, b, out, bolt) {
   if (r) { best = r; bestD = a.distanceToSquared(hA); out.copy(hA); }
   const rock = field.segmentHit(a, b, hB);
   if (rock && a.distanceToSquared(hB) < bestD) { best = rock; bestD = a.distanceToSquared(hB); out.copy(hB); }
+  const junk = trash.segmentHit(a, b, hB);
+  if (junk && a.distanceToSquared(hB) < bestD) { best = junk; bestD = a.distanceToSquared(hB); out.copy(hB); }
   const deco = scenery.segmentHit(a, b, hB);
   if (deco && a.distanceToSquared(hB) < bestD) { best = deco; bestD = a.distanceToSquared(hB); out.copy(hB); }
   const part = ghost ? null : boss.segmentHit(a, b, hC);
@@ -502,6 +531,17 @@ function onPlayerBolt(target, point, bolt) {
     hud.hitMarker(killed);
     audio.hit(killed);
     if (killed) raiderDestroyed(target, true);
+    return;
+  }
+  if (target.isTrash) {
+    fx.impact(point, tmp.copy(point).sub(target.pos).normalize());
+    hud.hitMarker(false);
+    if (--target.hp > 0) return;
+    trash.kill(target);
+    fx.explosion(target.pos, 0.9, target.vel, { scrap: true });
+    audio.explosion(target.pos, 0.7);
+    hud.hitMarker(true);
+    addScore(25, target.pos);
     return;
   }
   const rock = target;
@@ -556,6 +596,18 @@ function updateScenery(dt) {
     if (rig.mode === 'top' && rig.t > 0.55 && scenery.liveCount) scenery.clearAll();
     return;
   }
+  // the journey: rocks and space junk drift into the lane to shoot or dodge, more on later levels
+  // (none in the last stretch before the portal)
+  if (ph === 'journey' && portal.state === 'in' && ship.position.z - portal.group.position.z > 420) {
+    state.hazardT = (state.hazardT ?? 1.2) - dt;
+    if (state.hazardT <= 0) {
+      state.hazardT = Math.max(0.55, rand(1.0, 1.6) - campaign.level * 0.06);
+      const at = V(rand(-26, 26), LANE.y + rand(-9, 10), ship.position.z - rand(430, 560));
+      if (Math.random() < 0.55) field.spawn(at, rand(2.4, 4.6), V(rand(-2, 2), rand(-1, 1), rand(12, 26)));
+      else trash.spawn(at, rand(1.2, 2.2), V(rand(-3, 3), rand(-1.5, 1.5), rand(14, 28)));
+    }
+  }
+  if (ph === 'contact' && (field.liveCount || trash.liveCount)) { field.clearAll(); trash.clearAll(); }
   const rate = ph === 'journey' ? (campaign.level === 0 ? 7 : 4) : ph === 'meteors' ? 0.8 : ph === 'idle' ? 0 : 3;
   state.sceneryT = (state.sceneryT ?? 0) + dt * rate;
   while (state.sceneryT >= 1) {
@@ -607,6 +659,13 @@ function playerDamage(amount, point) {
 
 // meteoroids that reach the ship explode against it
 function collideShip() {
+  const junk = trash.overlap(ship.position, ship.radius * 0.7);
+  if (junk) {
+    trash.kill(junk);
+    fx.explosion(junk.pos, 0.9, ship.velocity, { scrap: true });
+    audio.explosion(junk.pos, 0.8);
+    playerDamage(8, tmp2.copy(junk.pos));
+  }
   const rock = field.overlap(ship.position, ship.radius * 0.8);
   if (!rock) return;
   const p = tmp2.copy(rock.pos);
@@ -659,7 +718,11 @@ const campaignCtx = {
     state.portalPassed = false;
     for (let i = 0; i < 46; i++) spawnScenery(rand(90, 900));
     audio.waveHorn();
-    introduce('portal', [{ time: 2.2 }, { text: 'Fly through the portal to start Level 1.', time: 3.2 }]);
+    introduce('portal', [
+      { time: 1.5 },
+      { text: 'Steer with ◀ ▲ ▼ ▶ and shoot the rocks and space junk!', focus: ['#controls .pad', '#controls .act.fire'], time: 3.6 },
+      { text: 'Then fly through the portal to start Level 1.', time: 3 },
+    ]);
     if (campaign.firstOfGroup) state.sector = { asked: 0, first: 0 };
   },
   spawnBoss() {
@@ -677,7 +740,8 @@ const campaignCtx = {
   announce(title, sub) { hud.banner(title, sub, 2.2); audio.waveHorn(); },
   spawnRaider(skill) {
     // anywhere around the ship except straight up (question bar) or straight down (answers)
-    const yaw = (Math.random() < 0.5 ? 1 : -1) * rand(0.5, Math.PI - 0.5);
+    const side = Math.random() < 0.5 ? 1 : -1;
+    const yaw = side * (camera.aspect >= 1 ? rand(1.05, Math.PI - 1.05) : rand(0.55, 0.95) + (Math.random() < 0.5 ? 0 : Math.PI - 1.5));
     const off = V(-Math.sin(yaw) * QUIZ_DIST, 0, -Math.cos(yaw) * QUIZ_DIST);
     // it warps in far out along its bearing and flies in to its spot (see Raiders.holdUpdate)
     const pos = off.clone().multiplyScalar(2.9).add(ship.position);
@@ -810,6 +874,7 @@ function computeAim() {
     if (best < bestPx) { bestPx = best; aim.copy(pip); state.locked = obj; }
   };
   for (const r of raiders.list) if (r.alive) consider(r, r.position, r.vel);
+  if (!top) for (const j of trash.list) if (j.alive && j.pos.z < ship.position.z) consider(j, j.pos, j.vel);
   for (const w of boss.weakPoints()) consider(w.obj, w.pos, w.vel);
   if (!top) for (const r of field.rocks) if (r.alive && r.pos.z < ship.position.z) consider(r, r.pos, r.vel);
   return 'pointer';
@@ -930,7 +995,7 @@ function introduceQuestion(q) {
     seen.add('battle');
     saveSeen();
     steps.push({ text: 'This bright line is your cannon.', cam: camCannon, time: 2.6 });
-    steps.push({ text: 'Turn it by the angle ? to hit the target.', focus: ['.ang-label.unknown'], time: 2.8 });
+    steps.push({ text: 'Turn it by the angle x to hit the target.', focus: ['.ang-label.unknown'], time: 2.8 });
   }
   if (!seen.has(q.type)) {
     seen.add(q.type);
@@ -1014,15 +1079,16 @@ function updateQuiz(dt, t) {
       const q = makeQuestion(Math.atan2(-dx, -dz), lv.rule, Math.random, { answer: answerOf(lv), options: lv.options });
       state.sector.asked++;
       // the radar ring must fit between the question box and the answer buttons on any screen
-      const camH = (108 * rig.topZoom) / Math.pow(Math.min(1, camera.aspect), 0.62);
+      const camH = topHeight(camera.aspect) * rig.topZoom;
       const halfH = camH * Math.tan((52 * Math.PI) / 360);
       const ringMax = Math.min(halfH * 0.66, halfH * camera.aspect * 0.9);
-      quiz.ask(tgt, q, tgt.index, tgt.total, { len: Math.min(dist + 4.8, ringMax), tLen: dist, arcR: 14.5 * rig.topZoom });
+      // the ring stays clear of the raider: the enemy line runs on past it to the target
+      quiz.ask(tgt, q, tgt.index, tgt.total, { len: Math.min(dist - 8.5, ringMax), tLen: dist, arcR: 13 * rig.topZoom }, timeLimit());
       introduceQuestion(q);
     }
   }
   if (director.active && quiz.busy) director.clear();      // answering ends the walkthrough
-  quiz.update(dt, turret.yaw);
+  quiz.update(dt, turret.yaw, director.active);
   angleOverlay.update(dt, t, quizCenter, camera);
 }
 
@@ -1038,6 +1104,18 @@ function quizPunish(target) {
   else boss.punish(state.time, bossCtx);
   audio.alarm();
 }
+
+// time ran out: the target makes a heavy attack (Angle Hunt: the meteor reaches the core)
+function quizTimeout(target) {
+  buzz([90, 50, 90, 50, 90]);
+  audio.alarm();
+  hud.alert("Time's up!", 'danger', 1.4);
+  if (target.kind === 'raider') raiders.punish(target.obj, state.time, true);
+  else { boss.punish(state.time, bossCtx); boss.punish(state.time + 0.4, bossCtx); }
+}
+
+// seconds to answer: Angle Hunt's curve, 14 s on the first level down to 9 s; 9 s for the Warden
+const timeLimit = () => (campaign.L.boss ? 9 : Math.max(9, 14 - 0.55 * Math.min(campaign.level, 9)));
 
 function quizSolved(target, firstTry) {
   state.timeScale = 0.35;   // a beat of slow motion on the hit
@@ -1114,11 +1192,17 @@ function frame() {
   state.shipScale = damp(state.shipScale, battleView ? BATTLE_SCALE : 1, 2.5, dt);
   ship.root.scale.setScalar(state.shipScale);
   const gunBoost = (state.shipScale - 1) / (BATTLE_SCALE - 1);          // 0 cruising .. 1 in battle
-  ship.nodes.TurretMount.scale.setScalar(MOUNT_SCALE * (1 + 0.45 * gunBoost));
+  ship.nodes.TurretMount.scale.setScalar(MOUNT_SCALE * (1 + 0.7 * gunBoost));
+  battleLight.intensity = 2.2 * gunBoost;                // overhead light so both crafts read clearly
+  battleLight.position.copy(ship.position).add(tmp.set(0, 60, 18));
+  battleLight.target.position.copy(ship.position);
+  shipGlow.position.set(ship.position.x, ship.position.y - 1.5, ship.position.z + 1);
+  shipGlow.material.opacity = 0.55 * gunBoost;
+  shipGlow.visible = gunBoost > 0.01;
   ship.radius = SHIP_RADIUS * state.shipScale;
   if (play && ship.kinematic) {
     const cfg = campaign.cfg;
-    const auto = campaign.phase === 'journey';
+    const auto = campaign.phase === 'journey' && portal.state === 'in' && ship.position.z - portal.group.position.z < 300;
     const sx = auto ? clamp((LANE.x - ship.position.x) / 10, -1, 1) : cfg.steer ? input.dirX : 0;
     const sy = auto ? clamp((LANE.y - ship.position.y) / 6, -1, 1) : cfg.steer ? input.dirY : 0;
     ship.rail(dt, cfg.speed, sx, sy, LANE, BOUNDS);
@@ -1145,9 +1229,7 @@ function frame() {
     campaign.update(dt, campaignCtx);
     if (campaign.phase === 'cleared' && !seen.has('meteors')) {
       introduce('meteors', [
-        { text: 'Meteor field ahead! Steer with ◀ ▶', focus: ['#controls .pad'], time: 2.8 },
-        { text: 'Hold FIRE to blast the meteors.', focus: ['#controls .act.fire'], time: 2.6 },
-        { text: 'LOCK aims for you. SHIELD blocks hits.', focus: ['#controls .act.lock', '#controls .act.shield'], time: 3.0 },
+        { text: 'Meteor field! LOCK aims for you. SHIELD blocks hits.', focus: ['#controls .act.lock', '#controls .act.shield'], time: 3.2 },
       ]);
     }
     if (campaign.phase === 'finale') startFinale();
@@ -1188,7 +1270,7 @@ function frame() {
     if (turret.overheated && !wasHot) { hud.alert('Overheated', 'warn'); audio.overheat(); }
   }
   state.cannonFlash = Math.max(0, state.cannonFlash - dt * 8);
-  ship.setCannonGlow(turret.heat, state.cannonFlash);
+  ship.setCannonGlow(Math.max(turret.heat, battlePhase() ? 0.55 : 0), state.cannonFlash);
   radar.update(dt, {
     yaw: turret.yaw, want: turret.desiredYaw, firing: play && input.fire && !turret.overheated, shot: fired,
     aiming: state.aiming, top: rig.mode === 'top', heat: turret.heat, locked: !!state.locked, show: play && !battlePhase(), time: t,
@@ -1206,6 +1288,7 @@ function frame() {
   playerBolts.update(dt, playerHitTest, onPlayerBolt);
   enemyBolts.update(dt, enemyHitTest, onEnemyBolt);
   field.update(dt, t, ship.position, camera.position);
+  trash.update(dt, ship.position);
   if (play) updateScenery(dt);
   scenery.update(dt, t, ship.position, camera.position);
   if (play && dt > 0) collideShip();
@@ -1214,9 +1297,6 @@ function frame() {
   if (play) updateQuiz(dt, t);
   else angleOverlay.update(dt, t, quizCenter, camera);
   if (portal.update(dt, t, ship.position)) crossPortal();
-  // the journey is a short film: autopilot, no HUD or buttons, letterbox bars
-  const cinematic = play && campaign.phase === 'journey';
-  if (cinematic !== state.cinematic) { state.cinematic = cinematic; document.body.classList.toggle('cinematic', cinematic); }
 
   if (vitals.update(dt) && play) { shield.pulse(); audio.shieldUp(); }
   if (abilities.shield.t > 0) shield.pulse();

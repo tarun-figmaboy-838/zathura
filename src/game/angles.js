@@ -2,15 +2,15 @@
 //
 // All angles are yaws in the top view: 0 = straight up the screen (the ship's nose),
 // positive = anticlockwise. Every question is built around the real direction to the target
-// (tYaw): the cannon rests on a reference ray R, and the unknown angle "?" is the turn from R to
+// (tYaw): the cannon rests on a reference ray R, and the unknown angle "x" is the turn from R to
 // the target. Picking the right value turns the cannon exactly onto the target.
 //
-//  opposite   two lines cross at the ship; the angle opposite "?" is given   (? = given)
-//  linear     R and its extension form a straight line; the angle next to "?" is given   (? = 180 - given)
-//  complement R and a perpendicular P form a right angle; the other part is given   (? = 90 - given)
-//  point      R, T and a third ray X go all the way round; the other two angles are given (? = 360 - b - c)
+//  opposite   two lines cross at the ship; the angle opposite "x" is given   (x = given)
+//  linear     R and its extension form a straight line; the angle next to "x" is given   (x = 180 - given)
+//  complement R and a perpendicular P form a right angle; the other part is given   (x = 90 - given)
+//  point      R, T and a third ray X go all the way round; the other two angles are given (x = 360 - b - c)
 //  triangle   the ship, a point on R and a point on T make a triangle; its other two angles are
-//             given (? = 180 - b - c)
+//             given (x = 180 - b - c)
 
 const DEG = Math.PI / 180;
 const pick = (arr, r) => arr[Math.floor(r() * arr.length)];
@@ -40,21 +40,21 @@ export function makeQuestion(tYaw, type, r = Math.random, level = null) {
   if (type === 'opposite') {
     q.given = answer;
     q.known = { from: rYaw + Math.PI, sweep: s * A };
-    q.prompt = `Find ?  It is opposite the ${q.given}° angle`;
-    q.hint2 = `So ? = ${q.given}°`;
+    q.prompt = `Find x  It is opposite the ${q.given}° angle`;
+    q.hint2 = `So x = ${q.given}°`;
     q.explain = `Opposite angles are equal: ${answer}°`;
   } else if (type === 'linear') {
     q.given = 180 - answer;
     q.known = { from: tYaw, sweep: s * (Math.PI - A) };
-    q.prompt = `Find ?  It makes a straight line with ${q.given}°`;
-    q.hint2 = `? = 180° − ${q.given}°`;
+    q.prompt = `Find x  It makes a straight line with ${q.given}°`;
+    q.hint2 = `x = 180° − ${q.given}°`;
     q.explain = `${q.given}° + ${answer}° = 180°`;
   } else if (type === 'complement') {
     q.given = 90 - answer;
     q.pYaw = rYaw + s * Math.PI / 2;
     q.known = { from: tYaw, sweep: s * (Math.PI / 2 - A) };
-    q.prompt = `Find ?  With ${q.given}° it makes 90°`;
-    q.hint2 = `? = 90° − ${q.given}°`;
+    q.prompt = `Find x  With ${q.given}° it makes 90°`;
+    q.hint2 = `x = 90° − ${q.given}°`;
     q.explain = `${q.given}° + ${answer}° = 90°`;
   } else if (type === 'point') {
     // going on round from T: angle b to a third ray X, then angle c back to R
@@ -66,11 +66,11 @@ export function makeQuestion(tYaw, type, r = Math.random, level = null) {
     q.pYaw = tYaw + s * b * DEG;                                   // the third ray, dotted
     q.known = { from: tYaw, sweep: s * b * DEG };
     q.known2 = { from: q.pYaw, sweep: s * c * DEG };
-    q.prompt = `Find ?  ${b}°, ${c}° and ? go all the way round`;
-    q.hint2 = `? = 360° − ${b}° − ${c}°`;
+    q.prompt = `Find x  ${b}°, ${c}° and x go all the way round`;
+    q.hint2 = `x = 360° − ${b}° − ${c}°`;
     q.explain = `${b}° + ${c}° + ${answer}° = 360°`;
   } else {
-    // triangle: corners at the ship (angle ?), P on the cannon line (b), Q on the enemy line (c);
+    // triangle: corners at the ship (angle x), P on the cannon line (b), Q on the enemy line (c);
     // keep it close to isosceles so it always reads clearly
     const rest = 180 - answer;
     let b, c, tries = 0;
@@ -82,8 +82,8 @@ export function makeQuestion(tYaw, type, r = Math.random, level = null) {
     q.given2 = c;
     q.tri = { b, c };
     q.known = { from: 0, sweep: 0 };                               // drawn at the other corners
-    q.prompt = `Find ?  The triangle's angles make 180°`;
-    q.hint2 = `? = 180° − ${b}° − ${c}°`;
+    q.prompt = `Find x  The triangle's angles make 180°`;
+    q.hint2 = `x = 180° − ${b}° − ${c}°`;
     q.explain = `${b}° + ${c}° + ${answer}° = 180°`;
   }
   q.options = level ? [...level.options] : makeOptions(answer, q.given, type, r, q.given2);

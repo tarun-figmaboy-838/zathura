@@ -2,8 +2,9 @@ import * as THREE from 'three';
 import { clamp, damp } from './math.js';
 
 const ease = (x) => x * x * (3 - 2 * x);
-// top-view camera height: low enough that the ship is big in the middle of the screen
-const TOP_HEIGHT = 108;
+// top-view camera height for a given screen shape: close on wide screens (the radar fills the
+// space between the question and the answers), higher on portrait so side targets stay in view
+export const topHeight = (aspect) => (aspect >= 1 ? 82 : 108 / Math.pow(aspect, 0.62));
 
 // Gameplay camera with three framings and smooth blends between them:
 //  chase  – behind and above the ship, looking down the route
@@ -52,7 +53,7 @@ export class CameraRig {
     const narrow = Math.min(1, this.camera.aspect);
     if (this.mode === 'top') {
       this.zoom = damp(this.zoom, this.topZoom, 1.2, dt);
-      d.position.set(p.x, p.y + (TOP_HEIGHT * this.zoom) / Math.pow(narrow, 0.62), p.z + 0.001);
+      d.position.set(p.x, p.y + topHeight(this.camera.aspect) * this.zoom, p.z + 0.001);
       d.up.set(0, 0, -1);
       d.lookAt(p.x, p.y, p.z);
       out.fov = 52;

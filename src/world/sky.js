@@ -25,19 +25,28 @@ const fragmentShader = /* glsl */ `
     return fract((p.xxy + p.yxx) * p.zyx);
   }
 
-  // one layer of point stars: a jittered point per 3D cell around the unit sphere
+  // One layer of point stars: a jittered point per 3D cell around the unit sphere. The 3x3x3
+  // neighbouring cells are checked too, so a star near a cell edge is never cut off (cut-off
+  // glows showed up as soft squares), and brightness is capped so bloom stays round.
   vec3 starLayer(vec3 d, float scale, float density, float size, float bright) {
-    vec3 cell = floor(d * scale);
-    vec3 h = hash33(cell);
-    if (h.x > density) return vec3(0.0);
-    vec3 sp = normalize((cell + hash33(cell + 17.31)) / scale + d * 1e-4);
-    float ang = length(d - sp);
-    float b = bright * (0.12 + 7.0 * pow(clamp(h.y, 0.0, 1.0), 7.0));            // many faint, a few brilliant
-    float ka = ang / size;
-    float core = exp(-ka * ka);
-    float glow = exp(-ang / (size * 3.5)) * 0.06 * smoothstep(0.85, 1.0, h.y);
-    vec3 tint = mix(vec3(1.0, 0.74, 0.52), vec3(0.68, 0.8, 1.0), h.z);   // warm to blue-white
-    return mix(tint, vec3(1.0), 0.45) * (core + glow) * b;
+    vec3 base = floor(d * scale);
+    vec3 col = vec3(0.0);
+    for (int k = -1; k <= 1; k++) for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
+      vec3 cell = base + vec3(float(i), float(j), float(k));
+      vec3 h = hash33(cell);
+      if (h.x > density) continue;
+      vec3 sp = normalize((cell + hash33(cell + 17.31)) / scale + 1e-4);
+      float ang = length(d - sp);
+      if (ang > 1.5 / scale) continue;
+      float b = bright * (0.12 + 2.6 * pow(clamp(h.y, 0.0, 1.0), 7.0));         // many faint, a few brilliant
+      float ka = ang / size;
+      float core = exp(-ka * ka);
+      float kg = ang / (size * 2.2);
+      float glow = exp(-kg * kg) * 0.08 * smoothstep(0.85, 1.0, h.y);
+      vec3 tint = mix(vec3(1.0, 0.74, 0.52), vec3(0.68, 0.8, 1.0), h.z);         // warm to blue-white
+      col += mix(tint, vec3(1.0), 0.45) * (core + glow) * b;
+    }
+    return col;
   }
 
   // gnomonic projection of d onto the sky plane around c, in units of the angular radius R,

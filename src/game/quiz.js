@@ -17,6 +17,9 @@ export class AngleQuiz {
     this.root = $('quiz');
     this.box = $('quiz-prompt');
     this.textEl = $('quiz-text');
+    this.timerEl = $('quiz-timer');
+    this.limit = 0;
+    this.timeLeft = 0;
     this.buttons = [...this.root.querySelectorAll('.opt')];
     this.buttons.forEach((b, i) => {
       b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); this.choose(i); });
@@ -30,7 +33,10 @@ export class AngleQuiz {
   get busy() { return this.state === 'aim' || this.state === 'fire'; }
 
   // target: { kind, obj, part, pos (live Vector3), radius }
-  ask(target, q, index, total, geom) {
+  // limit: seconds to answer (0 = no limit); when it runs out the target attacks and it restarts
+  ask(target, q, index, total, geom, limit = 0) {
+    this.limit = limit;
+    this.timeLeft = limit;
     this.target = target;
     this.q = q;
     this.state = 'ask';
@@ -66,14 +72,27 @@ export class AngleQuiz {
     this.ctx.audio.hit(false);
   }
 
-  update(dt, turretYaw) {
+  // hold: freeze the clock (while the game is explaining something)
+  update(dt, turretYaw, hold = false) {
     if (this.state === 'off') return;
     this.t += dt;
+    this.drawTimer();
     const q = this.q;
     const b = this.buttons[this.choice];
     switch (this.state) {
       case 'ask':
         this.aimYaw = q.rYaw;
+        if (this.limit && !hold) {
+          const before = Math.ceil(this.timeLeft);
+          this.timeLeft -= dt;
+          const now = Math.ceil(this.timeLeft);
+          if (now < before && now <= 3 && now > 0) this.ctx.audio.tick();
+          if (this.timeLeft <= 0) {
+            this.timeLeft = this.limit;
+            this.flash('bad');
+            this.ctx.timeout(this.target);
+          }
+        }
         break;
       case 'aim': {
         const k = Math.min(1, this.t / 0.75);
@@ -95,7 +114,7 @@ export class AngleQuiz {
           b.classList.add('correct');
           b.querySelector('img').src = 'assets/ui/opt-ok.png';
           // confirm in the narration box: "? = 55°" takes the place of "Find ?"
-          this.say(q.explain ? `Correct!  ${q.explain}` : `? = ${q.answer}°`, 'ok');
+          this.say(q.explain ? `Correct!  ${q.explain}` : `x = ${q.answer}°`, 'ok');
           this.ctx.audio.correct();
           this.ctx.solved(this.target, this.tries === 0);
         } else {
@@ -140,6 +159,14 @@ export class AngleQuiz {
     if (!mood) return;
     void this.box.offsetWidth;
     this.box.classList.add(mood);
+  }
+
+  drawTimer() {
+    const k = this.limit ? Math.max(0, this.timeLeft / this.limit) : 1;
+    this.timerEl.style.transform = `scaleX(${k.toFixed(3)})`;
+    this.timerEl.classList.toggle('warn', k < 0.45 && k >= 0.22);
+    this.timerEl.classList.toggle('danger', k < 0.22);
+    this.timerEl.parentElement.style.visibility = this.limit ? '' : 'hidden';
   }
 
   stop() {
