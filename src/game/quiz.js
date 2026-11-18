@@ -137,7 +137,7 @@ export class AngleQuiz {
         break;
       case 'result':
         if (this.correct) {
-          if (this.t > 1.25) this.stop();
+          if (this.t > 2.9) this.stop();     // time to read the working (grade 7 pacing)
         } else if (this.t > 1.2) {
           this.overlay.clearAim();
           this.state = 'ask';

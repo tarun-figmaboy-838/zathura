@@ -87,7 +87,7 @@ export class Dialogue {
     if (!l) return;
     if (this.chars < l.text.length) {
       const before = Math.floor(this.chars / 3);
-      this.chars = Math.min(l.text.length, this.chars + dt * 42);
+      this.chars = Math.min(l.text.length, this.chars + dt * 30);   // readable typing speed
       if (Math.floor(this.chars / 3) > before && l.text[Math.floor(this.chars) - 1] !== ' ') this.voice?.(l.who);
       const n = Math.floor(this.chars);
       this.typedEl.textContent = l.text.slice(0, n);
@@ -97,6 +97,6 @@ export class Dialogue {
     if (this.restEl.textContent) { this.typedEl.textContent = l.text; this.restEl.textContent = ''; }
     if (this.root.classList.contains('typing')) { this.root.classList.remove('typing'); this.root.classList.add('done'); }
     this.hold += dt;
-    if (this.hold >= (l.hold ?? 1.6)) this.next();
+    if (this.hold >= Math.max(2, l.hold ?? 2.2)) this.next();   // at least 2 s to read it
   }
 }

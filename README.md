@@ -28,7 +28,7 @@ jump, the portal implodes behind it, and the victory screen rates the run out of
 ## Angle battles
 
 Each level is one raider: it flies in, holds position and keeps firing short bursts at you. Every
-question has a time limit (Angle Hunt's curve: 14 s on L1, down to 9 s): if it runs out, the raider
+question has a time limit (25 s on L1, easing down to 15 s; 18 s for the Warden): if it runs out, the raider
 destroys your ship and you retry the level. A radar ring is drawn around your ship in thin, crisp
 lines (the stars and glow dim during battles so it reads clearly). No timer is shown; in the last
 seconds the clock ticks and the screen edge pulses red, then the raider fires: a bright beam shows where your

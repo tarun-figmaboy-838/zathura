@@ -150,7 +150,7 @@ export class Campaign {
         break;
       case 'won':
         // a beat to read the worked answer, then the next journey (or the sector's meteor field)
-        if (this.t > 1.6) {
+        if (this.t > 3.1) {
           if (L.groupEnd) {
             this.enter('cleared');
             ctx.announce('CLEAR', '');

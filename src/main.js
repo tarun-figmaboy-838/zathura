@@ -894,8 +894,8 @@ const campaignCtx = {
     audio.waveHorn();
     introduce('portal', [
       { time: 1.5 },
-      { text: 'Steer with ◀ ▲ ▼ ▶ and shoot the rocks and space junk!', focus: ['#controls .pad', '#controls .act.fire'], time: 3.6 },
-      { text: 'Then fly through the portal to start Level 1.', time: 3 },
+      { text: 'Steer with ◀ ▲ ▼ ▶ and shoot the rocks and space junk!', focus: ['#controls .pad', '#controls .act.fire'], time: 4.5 },
+      { text: 'Then fly through the portal to start Level 1.', time: 3.6 },
     ]);
     if (campaign.firstOfGroup) state.sector = { asked: 0, first: 0 };
     state.levelStartScore = state.score;                   // Retry restarts this level with these points
@@ -910,8 +910,8 @@ const campaignCtx = {
     state.wardenTalk = false;
     audio.alarm();
     introduce('boss', [
-      { text: 'The Warden is here!', cam: camBoss, time: 2.6 },
-      { text: 'Break its 4 turrets, then hit its core.', cam: camBoss, time: 2.8 },
+      { text: 'The Warden is here!', cam: camBoss, time: 3.2 },
+      { text: 'Break its 4 turrets, then hit its core.', cam: camBoss, time: 4 },
     ]);
   },
   announce(title, sub) { hud.banner(title, sub, 2.2); audio.waveHorn(); },
@@ -931,7 +931,7 @@ const campaignCtx = {
     r.taunted = false;
     fx.warp(pos, tmp.copy(ship.position).sub(pos).normalize());
     audio.warp(pos);
-    introduce('raider', [{ text: 'Raider incoming! It shoots at your ship.', cam: camRaider(r), time: 2.6 }]);
+    introduce('raider', [{ text: 'Raider incoming! It shoots at your ship.', cam: camRaider(r), time: 3.4 }]);
   },
   spawnMeteor(p, size, v) { field.spawn(V(p.x, p.y, p.z), size, V(v.x, v.y, v.z)); },
   levelComplete(level) {
@@ -1160,15 +1160,15 @@ function introduceQuestion(q) {
   if (first) {
     seen.add('battle');
     saveSeen();
-    steps.push({ text: 'This bright line is your cannon.', cam: camCannon, time: 2.6 });
-    steps.push({ text: 'Turn it by the angle x to hit the target.', focus: ['.ang-label.unknown'], time: 2.8 });
+    steps.push({ text: 'This bright line is your cannon.', cam: camCannon, time: 3.6 });
+    steps.push({ text: 'Turn it by the angle x to hit the target.', focus: ['.ang-label.unknown'], time: 4 });
   }
   if (!seen.has(q.type)) {
     seen.add(q.type);
     saveSeen();
-    steps.push({ text: RULES[q.type], cam: camDiagram, time: 2.8 });
+    steps.push({ text: RULES[q.type], cam: camDiagram, time: 5 });
   }
-  if (first) steps.push({ text: 'Tap the right angle!', focus: ['.quiz-options'], time: 2.4 });
+  if (first) steps.push({ text: 'Tap the right angle!', focus: ['.quiz-options'], time: 3 });
   if (steps.length) director.play(steps);
 }
 
@@ -1335,7 +1335,8 @@ function quizTimeout(target) {
 }
 
 // seconds to answer: Angle Hunt's curve, 14 s on the first level down to 9 s; 9 s for the Warden
-const timeLimit = () => (campaign.L.boss ? 9 : Math.max(9, 14 - 0.55 * Math.min(campaign.level, 9)));
+// grade 7 pacing: 25 s on L1 easing to 15 s; 18 s for each of the Warden's targets
+const timeLimit = () => (campaign.L.boss ? 18 : Math.max(15, 25 - 1.2 * Math.min(campaign.level, 9)));
 
 function quizSolved(target, firstTry) {
   state.timeScale = 0.35;   // a beat of slow motion on the hit
@@ -1643,7 +1644,7 @@ function frame() {
     else campaign.update(dt, campaignCtx);
     if (campaign.phase === 'cleared' && !seen.has('meteors')) {
       introduce('meteors', [
-        { text: 'Meteor field! LOCK aims for you. SHIELD blocks hits.', focus: ['#controls .act.lock', '#controls .act.shield'], time: 3.2 },
+        { text: 'Meteor field! LOCK aims for you. SHIELD blocks hits.', focus: ['#controls .act.lock', '#controls .act.shield'], time: 4.5 },
       ]);
     }
     if (campaign.phase === 'finale') startFinale();
