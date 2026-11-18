@@ -15,8 +15,9 @@ Built with **Three.js** (rendering and game, ES modules, no build step) and **he
 | **The math is the weapon** | The answer is the angle the cannon turns. Right lands on the target, wrong visibly misses. |
 | **Learn by seeing** | A clean radar diagram per question; the rule appears when you miss, the working when you hit. |
 | **Cinematic space** | Real-looking galaxies and stars, a lensed black hole, asteroid journeys, drone camera shots. |
-| **Explain everything once** | Each new thing (enemy, radar, rule, buttons, boss) is introduced the first time, then never again. |
-| **Minimal UI** | No clutter: one narration box, answer buttons, score and pause. |
+| **Explain everything** | Each new thing (enemy, radar, rule, buttons, boss) is introduced the first time it appears in a visit. |
+| **Minimal UI** | No clutter: narration, one question card with the answers, enemy comms, score and pause, each in its own slot. |
+| **Fun enemies** | Comic comms banter: raiders with silly callsigns taunt, mock and panic; the Warden boasts. |
 
 ## 2. The run
 
@@ -24,7 +25,7 @@ Built with **Three.js** (rendering and game, ES modules, no build step) and **he
 2. **Launch**: the camera leaves the cockpit; the ship is released from the Haven-9 station.
 3. **Black hole**: the ship dives in (redshift, time dilation, infalling matter) and emerges beyond.
 4. **12 levels** from *Angle Hunt* (angle-game.vercel.app), in three sectors of four:
-   - before every level: a short letterboxed journey through an asteroid belt, ending in a portal
+   - before every level: a short playable journey (steer, shoot rocks and space junk), ending in a portal
    - the level: one raider flies in and holds position; answer its angle question to destroy it
    - end of each sector: a meteor field (aim and fire), then the sector report
 5. **The Warden** (boss): 4 turrets, then its core (3 hits), every target an angle question.
@@ -74,9 +75,9 @@ src/ship/               ship, turret, engines, shield, radar ring
 src/enemies/            raiders, the Warden
 src/combat/             projectiles, explosions, trails
 src/game/               intro (cockpit + launch + black hole), campaign (levels), angle questions,
-                        quiz flow, director (introductions)
+                        quiz flow, director (introductions), banter (enemy comms lines)
 src/audio/              synthesized sound and music
-src/ui/                 HUD, on-screen controls
+src/ui/                 HUD, on-screen controls, comms dialogue
 assets/models/          generated .glb models
 assets/ui/              title, cockpit and button art
 blender/                headless Blender build scripts

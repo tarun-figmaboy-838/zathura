@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createRenderer, createComposer } from './core/renderer.js';
 import { Input } from './core/input.js';
-import { CameraRig, topHeight } from './core/cameraRig.js';
+import { CameraRig, topHeight, wideLayout, battleFrame, bossZoom } from './core/cameraRig.js';
 import { clamp, damp, intercept, rand, segmentPointDistSq, segOut, wrapAngle } from './core/math.js';
 import { createSky } from './world/sky.js';
 import { createStars } from './world/stars.js';
@@ -34,13 +34,21 @@ import { Campaign, masteryLevel, answerOf } from './game/campaign.js';
 import { AudioEngine } from './audio/audio.js';
 import { Hud } from './ui/hud.js';
 import { Controls } from './ui/controls.js';
+import { Dialogue } from './ui/dialogue.js';
+import { raiderName, enemyLine, crewLine, wardenIntro, WARDEN } from './game/banter.js';
 
 const SUN_DIR = new THREE.Vector3(-0.72, 0.4, -0.56).normalize();
 const BOLT_SPEED = 560;
 const SHIELD_RADIUS = 7;
 const SHIP_RADIUS = 6;
 const BATTLE_SCALE = 1.45;   // the ship is drawn bigger in top-view battles so it reads at a glance
-const QUIZ_DIST = 32;        // how far from the cannon a raider hovers (just outside the radar ring)
+// how far from the cannon a raider hovers (just outside the radar ring); wide screens give it the
+// whole left side of the screen, so it can wait further out
+const TAN_HALF_FOV = Math.tan((52 * Math.PI) / 360);
+// how far out the raider holds: on wide screens it is framed left of the console column
+// (portrait: as far out as still fits the screen on the diagonal, so the radar fills the width)
+const quizDist = () => (wideLayout(camera.aspect) ? battleFrame(camera.aspect).dist * topHeight(camera.aspect) * TAN_HALF_FOV
+  : camera.aspect < 1 ? 33.5 : 32);
 let MOUNT_SCALE = 1.35;      // the turret's own scale from the model (read at load)
 const LANE = new THREE.Vector3(0, 6.5, 0);
 const BOUNDS = { x: 30, y: 11 };
@@ -170,14 +178,16 @@ const input = new Input(canvas);
 const controls = new Controls(input);
 const rig = new CameraRig(camera);
 const hud = new Hud();
+const dialogue = new Dialogue();
 const audio = new AudioEngine();
 const intro = new Intro(station, ship, fx, audio, rig, blackhole);
+dialogue.voice = (who) => audio.chatter(who);
 const campaign = new Campaign();
 const director = new Director(rig);
-// what has been introduced already: remembered on this device, so returning players skip it
-const SEEN_KEY = 'driftbound.seen';
-const seen = new Set((() => { try { return JSON.parse(localStorage.getItem(SEEN_KEY)) || []; } catch { return []; } })());
-const saveSeen = () => { try { localStorage.setItem(SEEN_KEY, JSON.stringify([...seen])); } catch { /* storage unavailable */ } };
+// what has been introduced already in this visit (every fresh visit introduces everything again)
+const seen = new Set();
+const saveSeen = () => {};
+try { localStorage.removeItem('driftbound.seen'); } catch { /* storage unavailable */ }
 const quiz = new AngleQuiz(angleOverlay, {
   audio,
   fire: (correct) => quizFire(correct),
@@ -311,6 +321,8 @@ function clearCombat() {
   portal.hide();
   quiz.stop();
   director.clear();
+  dialogue.clear();
+  state.doom = 0;
   state.volley = null;
   state.bossSolved = 0;
   for (const a of Object.values(abilities)) { a.t = 0; a.cool = 0; }
@@ -357,10 +369,18 @@ function pause() { if (state.mode === 'play') setMode('paused'); }
 function resume() { if (state.mode === 'paused') setMode('play'); }
 
 function die() {
+  // who beat us: the question's target, else the boss or any raider still flying
+  const t = quiz.target;
+  state.lastQ = quiz.active ? quiz.q : null;
+  state.killer = t ? (t.kind === 'raider' ? { kind: 'raider', obj: t.obj } : { kind: 'boss' })
+    : boss.active && !boss.dying ? { kind: 'boss' }
+    : (() => { const r = raiders.list.find((x) => x.alive); return r ? { kind: 'raider', obj: r } : null; })();
   quiz.stop();
   director.clear();
+  dialogue.clear();
   buzz([120, 60, 200]);
   setMode('dying');
+  state.deathTalk = false;
   ship.model.visible = false;
   shield.mesh.visible = false;
   fx.explosion(ship.position, 4.5, ship.velocity, { scrap: true, core: SHIP_CORE, chain: 4 });
@@ -380,6 +400,8 @@ function saveBest() {
 
 function gameOver() {
   saveBest();
+  $('go-title').textContent = state.deathCause === 'time' ? "Time's up!" : 'Destroyed';
+  state.deathCause = null;
   $('go-score').textContent = state.score.toLocaleString('en-US');
   $('go-level').textContent = campaign.L.label;
   setMode('gameover');
@@ -451,7 +473,7 @@ $('retry').addEventListener('click', retryLevel);
 $('restart').addEventListener('click', restartFromStation);
 $('again').addEventListener('click', restartFromStation);
 $('pause-btn').addEventListener('click', () => input.tap('pause'));
-canvas.addEventListener('pointerdown', () => { if (state.mode === 'launch') intro.skip(); });
+canvas.addEventListener('pointerdown', () => { if (state.mode === 'launch') intro.skip(); else if (state.mode === 'dying') dialogue.skip(); });
 $('skip').addEventListener('pointerdown', () => intro.skip());
 addEventListener('keydown', (e) => {
   if (state.mode === 'launch' && (e.code === 'Space' || e.code === 'Escape' || e.code === 'Enter')) intro.skip();
@@ -520,6 +542,7 @@ function onBossHit(part, point, amount = 1) {
   if (res === 'defeated') {
     addScore(5000, boss.corePos);
     hud.banner('WARDEN DOWN', '+5,000', 2.4);
+    dialogue.say(enemyLine(WARDEN, 'wardenDown', 1.8));
   }
 }
 
@@ -726,11 +749,12 @@ const campaignCtx = {
     if (campaign.firstOfGroup) state.sector = { asked: 0, first: 0 };
   },
   spawnBoss() {
-    boss.spawn(ship, state.time, Math.PI + (Math.random() < 0.5 ? -1 : 1) * (camera.aspect < 1 ? rand(0.4, 0.55) : rand(0.8, 1.05)));
+    boss.spawn(ship, state.time, Math.PI + (wideLayout(camera.aspect) ? 1 : Math.random() < 0.5 ? -1 : 1) * (camera.aspect < 1 ? rand(0.4, 0.55) : rand(0.8, 1.05)));
     boss.quiz = true;
     boss.holdAngle = boss.angle;
     state.bossHoldT = 0;
     state.bossSolved = 0;
+    state.wardenTalk = false;
     audio.alarm();
     introduce('boss', [
       { text: 'The Warden is here!', cam: camBoss, time: 2.6 },
@@ -740,14 +764,18 @@ const campaignCtx = {
   announce(title, sub) { hud.banner(title, sub, 2.2); audio.waveHorn(); },
   spawnRaider(skill) {
     // anywhere around the ship except straight up (question bar) or straight down (answers)
-    const side = Math.random() < 0.5 ? 1 : -1;
-    const yaw = side * (camera.aspect >= 1 ? rand(1.05, Math.PI - 1.05) : rand(0.55, 0.95) + (Math.random() < 0.5 ? 0 : Math.PI - 1.5));
-    const off = V(-Math.sin(yaw) * QUIZ_DIST, 0, -Math.cos(yaw) * QUIZ_DIST);
+    const side = wideLayout(camera.aspect) || Math.random() < 0.5 ? 1 : -1;
+    const tilt = rand(0.4, 0.68);   // portrait: up or down along the long side, clear of the question and answers
+    const yaw = side * (camera.aspect >= 1 ? rand(1.05, Math.PI - 1.05) : Math.random() < 0.5 ? tilt : Math.PI - tilt);
+    const D = quizDist();
+    const off = V(-Math.sin(yaw) * D, 0, -Math.cos(yaw) * D);
     // it warps in far out along its bearing and flies in to its spot (see Raiders.holdUpdate)
     const pos = off.clone().multiplyScalar(2.9).add(ship.position);
     const r = raiders.spawn(pos, ship.position, skill, state.time, true);
     if (!r) return;
     r.hold = off;
+    r.callsign = raiderName();
+    r.taunted = false;
     fx.warp(pos, tmp.copy(ship.position).sub(pos).normalize());
     audio.warp(pos);
     introduce('raider', [{ text: 'Raider incoming! It shoots at your ship.', cam: camRaider(r), time: 2.6 }]);
@@ -878,6 +906,46 @@ function computeAim() {
   for (const w of boss.weakPoints()) consider(w.obj, w.pos, w.vel);
   if (!top) for (const r of field.rocks) if (r.alive && r.pos.z < ship.position.z) consider(r, r.pos, r.vel);
   return 'pointer';
+}
+
+// ------------------------------------------------------------------ defeat
+const RULE_REMINDERS = {
+  linear: 'Angles on a straight line add up to 180°.',
+  opposite: 'Vertically opposite angles are equal.',
+  complement: 'The two parts of a right angle add up to 90°.',
+  point: 'Angles around a point add up to 360°.',
+  triangle: 'The angles in a triangle add up to 180°.',
+};
+function defeatLines() {
+  const k = state.killer;
+  const boss_ = k && k.kind === 'boss';
+  const name = boss_ ? WARDEN : (k && k.obj && k.obj.callsign) || 'RAIDER';
+  const key = (boss_ ? 'warden' : 'raider') + (state.deathCause === 'time' ? 'WinTime' : 'Win');
+  const q = state.lastQ;
+  const tip = q ? `Remember: ${RULE_REMINDERS[q.type] || q.hint} Try again!` : 'Hull breached! Dodge the rocks or shoot them first.';
+  const lines = [];
+  if (k) lines.push(enemyLine(name, key, 1.6));
+  lines.push({ who: 'crew', name: 'CO-PILOT', text: tip, hold: 2.0 });
+  return lines;
+}
+
+// a slow push-in on the enemy that won
+const _death = { pos: new THREE.Vector3(), target: new THREE.Vector3(), up: new THREE.Vector3(0, 1, 0), fov: 50 };
+function deathShot(dt) {
+  const k = state.killer;
+  if (k.kind === 'raider' && !k.obj.alive) { state.killer = null; return; }
+  if (k.kind === 'raider') camRaider(k.obj, true)(_death); else camBoss(_death);
+  const push = Math.min(1, (state.modeT - 0.9) / 5);          // creep a little closer while it talks
+  _death.pos.lerp(_death.target, 0.1 * push);
+  if (rig.mode !== 'drone') {
+    rig.dronePos.copy(_death.pos); rig.droneTarget.copy(_death.target); rig.droneFov = _death.fov;
+    rig.setMode('drone', 1.3);
+  }
+  const s = 1 - Math.exp(-5 * dt);
+  rig.dronePos.lerp(_death.pos, s);
+  rig.droneTarget.lerp(_death.target, s);
+  rig.droneUp.copy(_death.up);
+  rig.droneFov += (_death.fov - rig.droneFov) * s;
 }
 
 // ------------------------------------------------------------------ feel
@@ -1012,12 +1080,13 @@ const _cB = new THREE.Vector3();
 // low and close, beside the raider's nose, as it flies in and brakes
 // narrow (portrait) screens: the drone backs off so the whole subject stays in frame
 const dronePull = () => Math.pow(Math.max(1, 1.1 / camera.aspect), 0.65);
-const camRaider = (r) => (o) => {
-  const k = dronePull();
+// exact: aim dead-centre on the raider (the defeat shot); otherwise lead a little toward the ship
+const camRaider = (r, exact = false) => (o) => {
+  const k = dronePull() * (r.root.scale.x / 1.35) * (exact ? 1.35 : 1);   // pull back as the raider grows
   _cA.copy(ship.position).sub(r.position).setY(0).normalize();          // raider -> ship
   _cB.set(_cA.z, 0, -_cA.x);                                            // its side
   o.pos.copy(r.position).addScaledVector(_cA, 7 * k).addScaledVector(_cB, 12 * k).add(tmp.set(0, 6 * k, 0));
-  o.target.copy(r.position).lerp(ship.position, camera.aspect < 1 ? 0 : 0.12);
+  o.target.copy(r.position).lerp(ship.position, exact || camera.aspect < 1 ? 0 : 0.12);
   o.up.set(0, 1, 0);
   o.fov = 42 / Math.sqrt(Math.min(1, camera.aspect));   // wider lens on portrait screens
 };
@@ -1070,7 +1139,7 @@ function updateQuiz(dt, t) {
   quizCenter.y = ship.position.y;
   if (!battlePhase()) {
     if (quiz.active) quiz.stop();
-  } else if (!quiz.active && !director.camera) {
+  } else if (!quiz.active && !director.camera && state.mode === 'play') {
     const tgt = nextQuizTarget(dt);
     if (tgt) {
       const dx = tgt.pos.x - quizCenter.x, dz = tgt.pos.z - quizCenter.z;
@@ -1080,15 +1149,17 @@ function updateQuiz(dt, t) {
       state.sector.asked++;
       // the radar ring must fit between the question box and the answer buttons on any screen
       const camH = topHeight(camera.aspect) * rig.topZoom;
-      const halfH = camH * Math.tan((52 * Math.PI) / 360);
-      const ringMax = Math.min(halfH * 0.66, halfH * camera.aspect * 0.9);
+      const halfH = camH * TAN_HALF_FOV;
+      const wide = wideLayout(camera.aspect);
+      const ringMax = wide ? halfH * battleFrame(camera.aspect).ring : Math.min(halfH * 0.66, halfH * camera.aspect * 0.9);
       // the ring stays clear of the raider: the enemy line runs on past it to the target
-      quiz.ask(tgt, q, tgt.index, tgt.total, { len: Math.min(dist - 8.5, ringMax), tLen: dist, arcR: 13 * rig.topZoom }, timeLimit());
+      const gap = wide && tgt.kind === 'raider' ? Math.max(8.5, 0.25 * halfH) : 8.5;
+      quiz.ask(tgt, q, tgt.index, tgt.total, { len: Math.min(dist - gap, ringMax), tLen: dist, arcR: 13 * Math.min(rig.topZoom, 1.65) }, timeLimit());
       introduceQuestion(q);
     }
   }
   if (director.active && quiz.busy) director.clear();      // answering ends the walkthrough
-  quiz.update(dt, turret.yaw, director.active);
+  quiz.update(dt, turret.yaw, director.active || dialogue.active);   // reading time: the clock waits
   angleOverlay.update(dt, t, quizCenter, camera);
 }
 
@@ -1100,18 +1171,26 @@ function quizFire(correct) {
 
 function quizPunish(target) {
   buzz([70, 50, 70]);
+  dialogue.say(target.kind === 'raider' ? enemyLine(target.obj.callsign, 'raiderMock') : enemyLine(WARDEN, 'wardenMock'));
   if (target.kind === 'raider') raiders.punish(target.obj, state.time);
   else boss.punish(state.time, bossCtx);
   audio.alarm();
 }
 
 // time ran out: the target makes a heavy attack (Angle Hunt: the meteor reaches the core)
+// Time ran out: instant fail. The enemy fires its finishing burst, the ship is destroyed, and
+// Retry restarts this level.
 function quizTimeout(target) {
-  buzz([90, 50, 90, 50, 90]);
+  if (state.mode !== 'play' || state.doom > 0) return;
+  quiz.stop();
+  director.clear();
+  buzz([90, 50, 90, 50, 200]);
   audio.alarm();
-  hud.alert("Time's up!", 'danger', 1.4);
+  hud.alert("Time's up!", 'danger', 2);
   if (target.kind === 'raider') raiders.punish(target.obj, state.time, true);
-  else { boss.punish(state.time, bossCtx); boss.punish(state.time + 0.4, bossCtx); }
+  else { boss.punish(state.time, bossCtx); boss.punish(state.time + 0.2, bossCtx); }
+  state.doom = 0.55;
+  state.deathCause = 'time';
 }
 
 // seconds to answer: Angle Hunt's curve, 14 s on the first level down to 9 s; 9 s for the Warden
@@ -1123,20 +1202,39 @@ function quizSolved(target, firstTry) {
   if (target.kind === 'raider') {
     const r = target.obj;
     if (r.alive) { raiders.kill(r); raiderDestroyed(r, true); }
+    dialogue.say(enemyLine(r.callsign || 'RAIDER', 'raiderHit', 1.3));
   } else {
     if (target.kind === 'turret' && target.obj.alive) onBossHit(target.part, target.pos.clone(), 99);
+    if (target.kind === 'turret') dialogue.say(enemyLine(WARDEN, 'wardenTurret', 1.3));
     // the core always takes exactly three right answers, however many of the volley's shots land
     if (target.kind === 'core' && !boss.dying) {
       const hitsLeft = Math.max(0, 3 - (state.bossSolved - 4) - 1);
       const want = Math.ceil((CORE_HP * hitsLeft) / 3);
       if (boss.coreHp > want) onBossHit(target.part, target.pos.clone(), boss.coreHp - want);
+      if (!boss.dying) dialogue.say(enemyLine(WARDEN, 'wardenCore', 1.3));
     }
     state.bossSolved++;
-    boss.holdAngle = Math.PI + (Math.random() < 0.5 ? -1 : 1) * (camera.aspect < 1 ? rand(0.4, 0.55) : rand(0.8, 1.05));
+    boss.holdAngle = Math.PI + (wideLayout(camera.aspect) ? 1 : Math.random() < 0.5 ? -1 : 1) * (camera.aspect < 1 ? rand(0.4, 0.55) : rand(0.8, 1.05));
     state.bossHoldT = 0;
   }
   if (firstTry) { addScore(50, tmp.copy(target.pos).add(V(0, 0, -9))); state.sector.first++; }
   buzz(20);
+}
+
+// enemy banter: a raider taunts once it has flown in, the Warden boasts after its introduction
+function updateBanter() {
+  if (director.active || state.doom > 0) return;
+  for (const r of raiders.list) {
+    if (!r.alive || !r.hold || r.taunted || !raiders.arrived(r)) continue;
+    r.taunted = true;
+    const lines = [enemyLine(r.callsign, 'raiderArrive', 1.3)];
+    if (Math.random() < 0.35) lines.push(crewLine('crewReply', 1.2));
+    dialogue.play(lines);
+  }
+  if (boss.active && !boss.dying && state.wardenTalk === false) {
+    state.wardenTalk = true;
+    dialogue.play(wardenIntro());
+  }
 }
 
 // in-world enemy markers: radar blips around the cannon and health rings under each enemy
@@ -1193,11 +1291,15 @@ function frame() {
   ship.root.scale.setScalar(state.shipScale);
   const gunBoost = (state.shipScale - 1) / (BATTLE_SCALE - 1);          // 0 cruising .. 1 in battle
   ship.nodes.TurretMount.scale.setScalar(MOUNT_SCALE * (1 + 0.7 * gunBoost));
-  battleLight.intensity = 2.2 * gunBoost;                // overhead light so both crafts read clearly
+  battleLight.intensity = 1.2 * gunBoost;                // soft overhead light so both crafts read clearly
   battleLight.position.copy(ship.position).add(tmp.set(0, 60, 18));
   battleLight.target.position.copy(ship.position);
   shipGlow.position.set(ship.position.x, ship.position.y - 1.5, ship.position.z + 1);
-  shipGlow.material.opacity = 0.55 * gunBoost;
+  shipGlow.material.opacity = 0.2 * gunBoost;
+  // battles: dim the sky and the stars so the radar lines and both crafts are the brightest things
+  scene.backgroundIntensity = 1 - 0.6 * gunBoost;
+  stars.brightness = 1 - 0.6 * gunBoost;
+  state.battleDim = gunBoost;
   shipGlow.visible = gunBoost > 0.01;
   ship.radius = SHIP_RADIUS * state.shipScale;
   if (play && ship.kinematic) {
@@ -1215,6 +1317,7 @@ function frame() {
 
   // ---- camera
   director.update(dt);
+  if (mode === 'dying' && state.killer && state.modeT > 0.9) deathShot(dt);
   if (play) {
     if (director.camera) rig.setMode('drone', 0.95);      // drone shot: zoom in on what is introduced
     else rig.setMode(campaign.cfg.view, 1.15);            // ...and back out
@@ -1222,7 +1325,18 @@ function frame() {
   rig.update(dt, ship, t);
   if (intro.active) intro.applyCamera(camera, t);
   controls.setMode((play ? campaign.cfg.view === 'top' : rig.mode === 'top') ? 'top' : 'chase');
-  if (mode === 'dying' && state.modeT > 2.6) gameOver();
+  // defeat: after the blast, a drone shot pushes in on the enemy while the comms play
+  if (mode === 'dying') {
+    if (!state.deathTalk && state.modeT > 1.0) { state.deathTalk = true; dialogue.play(defeatLines(), () => { if (state.mode === 'dying') gameOver(); }); }
+    if (!state.killer && !dialogue.active && state.deathTalk && state.modeT > 2.6) gameOver();
+  }
+  if (play) updateBanter();
+  if (mode !== 'paused') dialogue.update(dt);
+  // comms sit in the battle layout (console column / top strip) during battles; a line that is
+  // still playing keeps its place until it ends
+  const battleUI = play && battlePhase();
+  if (battleUI || !dialogue.active) document.body.classList.toggle('battle', battleUI);
+  if (play && state.doom > 0 && (state.doom -= dt) <= 0) { state.doom = 0; die(); }
 
   // ---- campaign + aiming + firing
   if (play) {
@@ -1283,7 +1397,7 @@ function frame() {
   bossCtx.shipAlive = play && !director.active;
   if (play || mode === 'dying') boss.update(dt, t, bossCtx);
   campaign.bossIntegrity = boss.active ? boss.integrity : 0;
-  rig.topZoom = campaign.phase === 'boss' ? 1.65 : 1;
+  rig.topZoom = campaign.phase === 'boss' ? bossZoom(camera.aspect) : 1;
   bossBolts.update(dt, enemyHitTest, onEnemyBolt);
   playerBolts.update(dt, playerHitTest, onPlayerBolt);
   enemyBolts.update(dt, enemyHitTest, onEnemyBolt);
@@ -1292,7 +1406,7 @@ function frame() {
   if (play) updateScenery(dt);
   scenery.update(dt, t, ship.position, camera.position);
   if (play && dt > 0) collideShip();
-  updateHolo(t, play || mode === 'dying');
+  updateHolo(t, play);
   rings.mesh.visible = !director.camera;   // lock-on brackets would float oddly in a low close-up
   if (play) updateQuiz(dt, t);
   else angleOverlay.update(dt, t, quizCenter, camera);
@@ -1329,16 +1443,18 @@ function frame() {
     : 1;
   blackhole.uniforms.uIntensity.value = 0.32 + 0.68 * near;
   blackhole.uniforms.uDisk.value = 0.7;
-  bloom.strength = BLOOM_STRENGTH * (blackhole.object.visible ? 0.3 + 0.45 * near : 1);
+  bloom.strength = BLOOM_STRENGTH * (blackhole.object.visible ? 0.3 + 0.45 * near : 1) * (1 - 0.6 * (state.battleDim || 0));
   sun.update(dt, camera, ship.position, [...planets, blackhole]);
 
   state.damage = damp(state.damage, 0, 2.5, dt);
   const lowHull = play && vitals.hullFrac < 0.3 ? 0.25 + 0.2 * Math.sin(t * 6) : 0;
+  const hurry = play && quiz.state === 'ask' && quiz.limit && quiz.timeLeft < 3 && !director.active
+    ? (0.3 + 0.25 * Math.sin(t * 10)) * (1 - quiz.timeLeft / 3) : 0;
   lens.uniforms.uTime.value = t;
   lens.uniforms.uSun.value.copy(sun.state.screen);
   lens.uniforms.uSunVis.value = sun.state.visibility;
   lens.uniforms.uFlash.value = damp(lens.uniforms.uFlash.value, 0, 7, dt);
-  lens.uniforms.uDamage.value = Math.max(state.damage, lowHull);
+  lens.uniforms.uDamage.value = Math.max(state.damage, lowHull, hurry);
   const pxScale = fx.setViewport(renderer.getDrawingBufferSize(bufferSize).y, camera.fov);
   playerBolts.setViewport(pxScale);
   enemyBolts.setViewport(pxScale);

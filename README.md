@@ -15,17 +15,27 @@ Music is synthesized live and changes with the action (cruise, battle, boss).
 
 The first time something new appears (the portal, a raider, the battle radar, each angle rule, the
 meteor field and its buttons, the boss) the game introduces it: one short line in the narration box,
-with a drone camera shot that zooms in on it and back out. Tap the line to skip ahead. The game remembers
-what it has introduced, so returning players skip it.
+with a drone camera shot that zooms in on it and back out. Tap the line to skip ahead. Every fresh visit introduces everything again.
 
 ## Angle battles
 
-Each level is one raider: it flies in, holds position and keeps firing short bursts at you, so think
-fast. A radar ring is drawn around your ship: a bright beam shows where your cannon points, a red line
-runs to the enemy, and there is one marked angle and a **?** angle. Pick the value of **?** and the
-cannon turns by that angle: the right answer lands on the enemy and destroys it, and the narration box
-shows the working (for example "76° + 104° = 180°"). A wrong answer misses, the enemy fires back, and the
-narration box shows the rule (after a second miss, the working).
+Each level is one raider: it flies in, holds position and keeps firing short bursts at you. Every
+question has a time limit (Angle Hunt's curve: 14 s on L1, down to 9 s): if it runs out, the raider
+destroys your ship and you retry the level. A radar ring is drawn around your ship in thin, crisp
+lines (the stars and glow dim during battles so it reads clearly): a bright beam shows where your
+cannon points, a red line runs to the enemy, and there is one marked angle and an **x** angle. Pick the
+value of **x** and the cannon turns by that angle: the right answer lands on the enemy and destroys it,
+and the question card shows the working (for example "76° + 104° = 180°"). A wrong answer misses, the
+enemy fires back, and the card shows the rule (after a second miss, the working).
+
+On wide screens the right side is one console column: introductions at the top, the question card
+(question, timer, answers) in the middle, enemy comms at the bottom. Phones stack the question at the
+top and the answers at the bottom, with comms in the top corner.
+
+Enemies talk back, like comms chatter in an arcade shooter: each raider gets a silly callsign, taunts
+you when it arrives, mocks a wrong answer and panics when hit, and the Warden boasts and sulks
+(`src/game/banter.js`). The timer waits while someone is talking. After a defeat the enemy gloats and
+the co-pilot reminds you of the rule.
 
 | Levels | Rules (Angle Hunt) |
 |---|---|

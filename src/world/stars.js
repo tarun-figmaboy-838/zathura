@@ -44,7 +44,7 @@ export function createStars(count = 2600, radius = 18000) {
     transparent: true,
     depthWrite: false,
     blending: THREE.AdditiveBlending,
-    uniforms: { uTime: { value: 0 }, uPR: { value: PIXEL_RATIO } },
+    uniforms: { uTime: { value: 0 }, uPR: { value: PIXEL_RATIO }, uBright: { value: 1 } },
     vertexShader: /* glsl */ `
       attribute vec3 aColor; attribute float aSize; attribute float aPhase;
       uniform float uTime, uPR;
@@ -56,12 +56,13 @@ export function createStars(count = 2600, radius = 18000) {
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }`,
     fragmentShader: /* glsl */ `
+      uniform float uBright;
       varying vec3 vColor;
       void main() {
         float d = length(gl_PointCoord - 0.5);
         float a = smoothstep(0.5, 0.0, d);
         a = a * a;
-        gl_FragColor = vec4(vColor * a, a);
+        gl_FragColor = vec4(vColor * a * uBright, a);
       }`,
   });
   const points = new THREE.Points(geo, mat);
@@ -69,6 +70,8 @@ export function createStars(count = 2600, radius = 18000) {
   points.renderOrder = -10;
   return {
     object: points,
+    // 0..1: dimmed during battles so the radar reads clearly
+    set brightness(v) { mat.uniforms.uBright.value = v; },
     update(camera, time) {
       points.position.copy(camera.position);
       mat.uniforms.uTime.value = time;

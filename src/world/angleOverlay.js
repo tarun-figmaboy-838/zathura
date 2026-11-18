@@ -18,7 +18,7 @@ const ease = (x) => { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); };
 export class AngleOverlay {
   constructor(scene, labelRoot) {
     this.u = {
-      uRing: { value: 31 }, uTLen: { value: 27 }, uR: { value: 13 }, uMax: { value: 34 },
+      uPx: { value: 0.1 }, uRing: { value: 31 }, uTLen: { value: 27 }, uR: { value: 13 }, uMax: { value: 34 },
       uAxis: { value: 0 }, uT: { value: 0 }, uP: { value: 0 }, uHasP: { value: 0 }, uExtR: { value: 0 }, uExtT: { value: 0 },
       uKnown: { value: new THREE.Vector2() }, uUnknown: { value: new THREE.Vector2() }, uRight: { value: new THREE.Vector2() },
       uKnown2: { value: new THREE.Vector2() }, uTri: { value: new THREE.Vector4() }, uTriOn: { value: 0 }, uTriR: { value: 4 },
@@ -42,7 +42,7 @@ export class AngleOverlay {
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }`,
       fragmentShader: /* glsl */ `
-        uniform float uRing, uTLen, uR, uMax, uAxis, uT, uP, uHasP, uExtR, uExtT, uDraw, uAlpha, uSweep, uSweepA, uTime, uAimOn, uResult, uFlash, uTriOn, uTriR;
+        uniform float uPx, uRing, uTLen, uR, uMax, uAxis, uT, uP, uHasP, uExtR, uExtT, uDraw, uAlpha, uSweep, uSweepA, uTime, uAimOn, uResult, uFlash, uTriOn, uTriR;
         uniform vec2 uKnown2;
         uniform vec4 uTri;
         uniform vec2 uKnown, uUnknown, uRight;
@@ -66,97 +66,105 @@ export class AngleOverlay {
         void over(inout vec4 acc, vec3 c, float a) { a = clamp(a, 0.0, 1.0); acc.rgb = mix(acc.rgb, c, a); acc.a += a * (1.0 - acc.a); }
         // (perpendicular distance, position along) for the line through the centre at angle a
         vec2 lineCoord(vec2 p, float a) { vec2 v = dirOf(a); return vec2(abs(p.x * v.y - p.y * v.x), dot(p, v)); }
-        float solid(vec2 lc, float w, float from, float to) {
-          return (1.0 - smoothstep(w, w + 0.18, lc.x)) * smoothstep(from, from + 0.4, lc.y) * (1.0 - smoothstep(to - 0.4, to, lc.y));
+
+        // every line is a thin stroke of a fixed screen width (uPx = world units per pixel) with a
+        // dark outline under it, so it reads on bright stars and on empty space alike. Colours stay
+        // at or below 1.0, so the lines stay crisp instead of blooming into halos.
+        float band(float d, float wPx) { float h = 0.5 * wPx * uPx; return 1.0 - smoothstep(h - 0.6 * uPx, h + 0.6 * uPx, d); }
+        void stroke(inout vec4 acc, float d, float wPx, vec3 c, float a) {
+          over(acc, vec3(0.0, 0.015, 0.04), 0.6 * a * band(d, wPx + 3.0));
+          over(acc, c, a * band(d, wPx));
         }
-        float dotted(vec2 lc, float from, float to) {
-          float k = fract(lc.y / 1.7) - 0.5;
-          return (1.0 - smoothstep(0.16, 0.26, length(vec2(lc.x, k * 1.7)))) * step(from, lc.y) * step(lc.y, to);
+        float along(vec2 lc, float from, float to) { return smoothstep(from, from + 0.4, lc.y) * (1.0 - smoothstep(to - 0.4, to, lc.y)); }
+        float dots(vec2 lc, float from, float to) {
+          float sp = 9.0 * uPx;
+          float k = (fract(lc.y / sp) - 0.5) * sp;
+          return band(length(vec2(lc.x, k)), 2.6) * step(from, lc.y) * step(lc.y, to);
         }
 
         void main() {
           float r = length(vP);
           if (r > uMax) discard;
           float ang = atan(-vP.x, -vP.y);
-          vec3 cyan = vec3(0.4, 0.92, 1.0);
-          vec3 enemy = vec3(1.0, 0.2, 0.13);
-          vec3 orange = vec3(1.0, 0.64, 0.18);
+          vec3 cyan = vec3(0.2, 0.85, 1.0);           // saturated: ACES tone mapping washes pale colours out
+          vec3 enemy = vec3(1.0, 0.13, 0.08);
+          vec3 orange = vec3(1.0, 0.68, 0.22);
           vec3 white = vec3(1.0);
-          vec3 good = vec3(0.35, 1.0, 0.5);
+          vec3 good = vec3(0.4, 1.0, 0.55);
           vec4 acc = vec4(0.0);
           float ring = uRing * uDraw;
 
-          // radar: a faint glass tint (lets the stars through), the ring, ticks, a slow sweep
-          over(acc, vec3(0.02, 0.05, 0.1), 0.22 * (1.0 - smoothstep(uRing - 1.0, uRing, r)));
-          over(acc, cyan * 1.2, 0.75 * gauss((r - ring) * 3.0));
+          // radar glass: dims the stars inside the ring (and softly just outside it) so the lines stand out
+          over(acc, vec3(0.008, 0.02, 0.045), 0.58 * (1.0 - smoothstep(uRing - 1.0, uRing + 6.0, r)));
+          stroke(acc, abs(r - ring), 2.0, cyan, 0.9);
           float t10 = abs(fract(ang / TAU * 36.0 + 0.5) - 0.5) * (TAU / 36.0) * r;
           float t30 = abs(fract(ang / TAU * 12.0 + 0.5) - 0.5) * (TAU / 12.0) * r;
-          over(acc, cyan, 0.5 * (1.0 - smoothstep(0.06, 0.14, t10)) * step(ring - 0.9, r) * step(r, ring));
-          over(acc, cyan, 0.8 * (1.0 - smoothstep(0.08, 0.16, t30)) * step(ring - 1.8, r) * step(r, ring));
+          over(acc, cyan, 0.55 * band(t10, 1.4) * step(ring - 7.0 * uPx, r) * step(r, ring));
+          over(acc, cyan, 0.9 * band(t30, 1.8) * step(ring - 13.0 * uPx, r) * step(r, ring));
 
           // dotted extensions and the perpendicular (only the ones the rule needs)
-          if (uExtR > 0.5) over(acc, cyan, 0.7 * dotted(lineCoord(vP, uAxis + 3.14159265), 5.0, ring - 0.6));
-          if (uExtT > 0.5) over(acc, enemy, 0.7 * dotted(lineCoord(vP, uT + 3.14159265), 5.0, ring - 0.6));
-          if (uHasP > 0.5) over(acc, cyan, 0.7 * dotted(lineCoord(vP, uP), 5.0, ring - 0.6));
+          if (uExtR > 0.5) over(acc, cyan, 0.8 * dots(lineCoord(vP, uAxis + 3.14159265), 5.0, ring - 0.6));
+          if (uExtT > 0.5) over(acc, enemy, 0.8 * dots(lineCoord(vP, uT + 3.14159265), 5.0, ring - 0.6));
+          if (uHasP > 0.5) over(acc, cyan, 0.8 * dots(lineCoord(vP, uP), 5.0, ring - 0.6));
 
-          // the asked and given angles
+          // the asked and given angles: a light fill and a thin arc
           float ku = arcPos(ang, uUnknown);
           float kk = arcPos(ang, uKnown);
-          vec3 uCol = mix(white, good, step(0.5, uResult) * max(uFlash, 0.6));
-          over(acc, uCol, 0.07 * inside(ku, uDraw) * step(5.0, r) * (1.0 - smoothstep(uR - 0.4, uR, r)));
-          over(acc, orange, 0.07 * inside(kk, uDraw) * step(5.0, r) * (1.0 - smoothstep(uR - 0.4, uR, r)));
-          over(acc, uCol * 1.4, inside(ku, uDraw) * gauss((r - uR) / 0.34));
-          over(acc, orange * 1.5, inside(kk, uDraw) * gauss((r - uR) / 0.34));
-          // second given angle (angles around a point)
           float kk2 = arcPos(ang, uKnown2);
-          over(acc, orange, 0.07 * inside(kk2, uDraw) * step(5.0, r) * (1.0 - smoothstep(uR - 0.4, uR, r)));
-          over(acc, orange * 1.5, inside(kk2, uDraw) * gauss((r - uR) / 0.34));
-          // triangle: the third side, the given angles at its two far corners, white corner knobs
+          float disc = step(5.0, r) * (1.0 - smoothstep(uR - 0.4, uR, r));
+          vec3 uCol = mix(white, good, step(0.5, uResult) * max(uFlash, 0.6));
+          over(acc, uCol, 0.08 * inside(ku, uDraw) * disc);
+          over(acc, orange, 0.1 * inside(kk, uDraw) * disc);
+          over(acc, orange, 0.1 * inside(kk2, uDraw) * disc);
+          stroke(acc, abs(r - uR), 2.5, uCol, inside(ku, uDraw));
+          stroke(acc, abs(r - uR), 2.5, orange, inside(kk, uDraw));
+          stroke(acc, abs(r - uR), 2.5, orange, inside(kk2, uDraw));
+          // triangle: the third side, the given angles at its two far corners, corner knobs
           if (uTriOn > 0.5) {
             vec2 P = uTri.xy, Q = uTri.zw;
-            over(acc, white * 1.2, (1.0 - smoothstep(0.16, 0.32, segDist(vP, P, Q))) * uDraw);
+            stroke(acc, segDist(vP, P, Q), 2.0, white, uDraw);
             vec2 wp = vP - P, wq = vP - Q;
             float inP = wedge(wp, normalize(-P), normalize(Q - P));
             float inQ = wedge(wq, normalize(-Q), normalize(P - Q));
             float lp = length(wp), lq = length(wq);
-            over(acc, orange, 0.2 * inP * (1.0 - smoothstep(uTriR - 0.4, uTriR, lp)) * uDraw);
-            over(acc, orange, 0.2 * inQ * (1.0 - smoothstep(uTriR - 0.4, uTriR, lq)) * uDraw);
-            over(acc, orange * 1.5, inP * gauss((lp - uTriR) / 0.3) * uDraw);
-            over(acc, orange * 1.5, inQ * gauss((lq - uTriR) / 0.3) * uDraw);
+            over(acc, orange, 0.16 * inP * (1.0 - smoothstep(uTriR - 0.4, uTriR, lp)) * uDraw);
+            over(acc, orange, 0.16 * inQ * (1.0 - smoothstep(uTriR - 0.4, uTriR, lq)) * uDraw);
+            stroke(acc, abs(lp - uTriR), 2.5, orange, inP * uDraw);
+            stroke(acc, abs(lq - uTriR), 2.5, orange, inQ * uDraw);
             float knob = min(lp, lq);
-            over(acc, vec3(0.05, 0.25, 0.48), (1.0 - smoothstep(0.85, 1.05, knob)) * uDraw);
-            over(acc, white * 1.3, (1.0 - smoothstep(0.55, 0.72, knob)) * uDraw);
+            over(acc, vec3(0.02, 0.1, 0.22), band(knob, 11.0) * uDraw);
+            over(acc, white, band(knob, 6.0) * uDraw);
           }
-          // right-angle questions: the textbook square in the corner between the two dotted/solid lines
+          // right-angle questions: the textbook square in the corner between the two lines
           if (abs(uRight.y) > 0.01) {
             vec2 ax = dirOf(uRight.x), ay = dirOf(uRight.x + sign(uRight.y) * 1.5707963);
             vec2 sq = vec2(dot(vP, ax), dot(vP, ay));
             float S = uR * 0.62;
-            float e1 = (1.0 - smoothstep(0.16, 0.3, abs(sq.x - S))) * step(0.0, sq.y) * step(sq.y, S);
-            float e2 = (1.0 - smoothstep(0.16, 0.3, abs(sq.y - S))) * step(0.0, sq.x) * step(sq.x, S);
-            over(acc, white * 1.3, max(e1, e2) * uDraw);
+            stroke(acc, abs(sq.x - S), 2.0, white, step(0.0, sq.y) * step(sq.y, S) * uDraw);
+            stroke(acc, abs(sq.y - S), 2.0, white, step(0.0, sq.x) * step(sq.x, S) * uDraw);
           }
 
           // the line to the enemy
           vec3 tCol = mix(enemy, good, step(0.5, uResult) * max(uFlash, 0.6));
           vec2 tc = lineCoord(vP, uT);
-          over(acc, tCol * 1.3, solid(tc, 0.16, 4.5, uTLen * uDraw));
-          // the cannon beam (reference line): bright, with a soft glow and a dot where it meets the ring
+          stroke(acc, tc.x, 2.5, tCol, along(tc, 4.5, uTLen * uDraw));
+          // the cannon beam (reference line): a little bolder than the rest, a dot where it meets the ring
           vec2 rc = lineCoord(vP, uAxis);
-          float beamTo = uAimOn > 0.5 ? ring : ring;
-          over(acc, cyan, 0.3 * solid(rc, 0.7, 4.5, beamTo));
-          over(acc, cyan * 1.6, solid(rc, 0.2, 4.5, beamTo));
-          over(acc, cyan * 1.8, 1.0 - smoothstep(0.55, 0.8, length(vP - dirOf(uAxis) * ring)));
+          over(acc, cyan, 0.14 * band(rc.x, 9.0) * along(rc, 4.5, ring));
+          stroke(acc, rc.x, 3.2, cyan, along(rc, 4.5, ring));
+          float tip = length(vP - dirOf(uAxis) * ring);
+          over(acc, vec3(0.0, 0.015, 0.04), 0.7 * band(tip, 12.0));
+          over(acc, cyan, band(tip, 8.0));
 
           // the player's answer: a beam turning from the cannon line by the picked angle
           if (uAimOn > 0.5) {
             vec2 aimArc = vec2(uAim.x, uAim.y * uAim.z);
             vec3 aCol = uResult > 0.5 ? good : uResult < -0.5 ? enemy : vec3(0.85, 1.0, 1.0);
             float ka = arcPos(ang, aimArc);
-            over(acc, aCol, 0.2 * inside(ka, 1.0) * step(5.0, r) * (1.0 - smoothstep(uR * 0.8, uR * 0.8 + 0.5, r)));
+            over(acc, aCol, 0.14 * inside(ka, 1.0) * step(5.0, r) * (1.0 - smoothstep(uR * 0.8, uR * 0.8 + 0.5, r)));
             vec2 ac = lineCoord(vP, aimArc.x + aimArc.y);
-            over(acc, aCol * (1.5 + uFlash), solid(ac, 0.28, 4.5, ring));
-            over(acc, aCol, 0.35 * solid(ac, 0.9, 4.5, ring));
+            over(acc, aCol, (0.12 + 0.2 * uFlash) * band(ac.x, 10.0) * along(ac, 4.5, ring));
+            stroke(acc, ac.x, 3.2, aCol, along(ac, 4.5, ring));
           }
           gl_FragColor = vec4(acc.rgb, acc.a * uAlpha);
         }`,
@@ -230,7 +238,7 @@ export class AngleOverlay {
     u.uResult.value = 0;
     u.uFlash.value = 0;
     this.lbKnown.textContent = `${q.given}°`;
-    u.uMax.value = Math.max(len, tLen) + 2.5;          // the enemy line may run past the radar ring
+    u.uMax.value = Math.max(len + 7, tLen + 2.5);          // the enemy line may run past the radar ring
     this.mesh.scale.setScalar(u.uMax.value + 0.5);
     this.mesh.visible = true;
   }
@@ -279,6 +287,7 @@ export class AngleOverlay {
     // labels are sized in world units, so they keep their place in the picture on any screen
     const pxPerUnit = H / (2 * camera.position.distanceTo(center) * Math.tan((camera.fov * Math.PI) / 360));
     this.labelRoot.style.setProperty('--u', `${pxPerUnit.toFixed(2)}px`);
+    u.uPx.value = 1 / pxPerUnit;
     const place = (el, yaw, radius, show) => placeAt(el, -Math.sin(yaw) * radius, -Math.cos(yaw) * radius, show);
     // x/z: world offset from the centre of the radar
     const placeAt = (el, x, z, show) => {

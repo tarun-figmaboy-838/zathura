@@ -335,6 +335,20 @@ export class AudioEngine {
     this.osc('square', 150, 120, 0.2, 0.5, f, t + 0.16);
   }
 
+  // comic "talk" blips while a comms line types: low and grumbly for enemies, bright for the crew
+  chatter(who) {
+    if (!this.ready() || !this.limit('chatter', 55)) return;
+    const t = this.ctx.currentTime;
+    const enemy = who === 'enemy';
+    const f = (enemy ? 150 : 420) * (0.8 + Math.random() * 0.5);
+    const o = this.out(enemy ? 0.16 : 0.12);
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = enemy ? 1400 : 2600;
+    lp.connect(o);
+    this.osc(enemy ? 'sawtooth' : 'square', f, f * (Math.random() < 0.5 ? 1.25 : 0.8), 0.06, 0.5, lp, t, 0.005);
+  }
+
   // the last seconds of the time limit
   tick() {
     if (!this.ready()) return;

@@ -187,6 +187,67 @@ body.narrating .quiz-prompt, body.narrating #banner { opacity: 0 !important; }
 .spot { animation: spot 0.9s ease-in-out infinite !important; }
 @keyframes spot { 50% { scale: 1.08; filter: drop-shadow(0 0 14px rgba(255, 226, 110, 1)) brightness(1.15); } }
 
+/* wide screens: one console column on the right, so the radar, the ship and the enemy own the rest
+   of the screen. Top: the introductions. Middle: one card with the question, the timer and the
+   answers. Bottom: the comms (enemy banter). Each has its own slot; nothing overlaps. */
+@media (min-aspect-ratio: 6/5) {
+  #quiz { inset: auto; right: calc(32px + env(safe-area-inset-right)); top: 50%; translate: 0 calc(-50% + 12px); width: min(30vw, 400px);
+    display: flex; flex-direction: column; gap: 14px; padding: 16px 16px 18px; border-radius: 22px;
+    background: linear-gradient(180deg, rgba(14, 26, 54, 0.92), rgba(7, 13, 31, 0.92));
+    border: 2px solid rgba(111, 227, 255, 0.28); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    opacity: 0; transition: opacity 0.3s ease, translate 0.35s var(--spring), border-color 0.2s, box-shadow 0.2s; }
+  #quiz.show { opacity: 1; translate: 0 -50%; }
+  #quiz:has(.quiz-prompt.ok) { border-color: rgba(77, 255, 136, 0.9); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), 0 0 28px rgba(77, 255, 136, 0.35); }
+  #quiz:has(.quiz-prompt.bad) { border-color: rgba(255, 106, 79, 0.9); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), 0 0 28px rgba(255, 90, 60, 0.35); }
+  #quiz .quiz-prompt, #quiz.show .quiz-prompt { position: relative; left: auto; top: auto; translate: none; opacity: 1 !important; width: auto;
+    display: block; padding: 4px 6px 18px; background: none; border: 0; box-shadow: none; white-space: normal; text-align: left; animation: none; }
+  #quiz .quiz-prompt .text { display: block; font-size: clamp(17px, 1.45vw, 20px); line-height: 1.3; text-wrap: balance; }
+  #quiz .quiz-prompt .find { display: block; margin: 0 0 4px; font-size: clamp(22px, 1.9vw, 27px); }
+  #quiz .quiz-prompt .timer { left: 6px; right: 6px; bottom: 2px; height: 5px; }
+  #quiz .quiz-options { position: static; translate: none; width: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+  #quiz .opt { width: 100%; }
+  #quiz .opt span { font-size: clamp(24px, 2.1vw, 30px); }
+  /* the introductions sit at the top of the column while a question is up */
+  body.quiz-on .narrate { left: auto; right: calc(32px + env(safe-area-inset-right)); top: 76px; width: min(30vw, 400px);
+    translate: 0 -10px; text-align: left; padding: 12px 18px; font-size: clamp(16px, 1.4vw, 19px); }
+  body.quiz-on .narrate.show { translate: 0 0; }
+  body.narrating #quiz .quiz-prompt { opacity: 1 !important; }
+  /* short alerts sit just under the card, banners at the top of the column; the boss bar is
+     centred over the battle area */
+  body.quiz-on #alert { top: calc(50% + 158px); bottom: auto; left: auto; right: calc(32px + env(safe-area-inset-right) + min(15vw, 200px));
+    transform: translateX(50%); }
+  body.quiz-on #banner { top: 70px; left: auto; right: calc(32px + env(safe-area-inset-right)); width: min(30vw, 400px); transform: none; }
+  body.quiz-on #banner.show { transform: none; }
+  body.quiz-on:has(#banner.show) .quiz-prompt { opacity: 1; }
+  body.quiz-on:has(#banner.show) .narrate { opacity: 0; }
+  body.battle #bossbar { left: calc((100vw - min(30vw, 400px) - 56px) / 2); }
+  /* comms during battles: the bottom of the column */
+  body.battle .dialog { left: auto; right: calc(32px + env(safe-area-inset-right)); bottom: calc(24px + env(safe-area-inset-bottom));
+    width: min(30vw, 400px); translate: 0 16px; padding: 12px 16px 14px 12px; gap: 2px 12px; }
+  body.battle .dialog.show { translate: 0 0; }
+  body.battle .dialog .badge { width: 46px; height: 46px; }
+  body.battle .dialog .badge svg { width: 26px; height: 26px; }
+  body.battle .dialog .line { font-size: clamp(15px, 1.3vw, 18px); min-height: 2.6em; }
+}
+
+/* comms dialogue: a speaker badge, a name and the line typing out, at the bottom like a real game
+   (enemy banter in battles, the taunt and the co-pilot's tip after a defeat) */
+.dialog { position: fixed; left: 50%; bottom: calc(28px + env(safe-area-inset-bottom)); translate: -50% 20px; z-index: 7; width: min(92vw, 620px);
+  display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px 16px; padding: 16px 22px 18px 16px; border-radius: 18px;
+  background: rgba(8, 14, 32, 0.92); border: 2px solid rgba(255, 90, 70, 0.85); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+  opacity: 0; pointer-events: none; cursor: pointer; transition: opacity 0.25s ease, translate 0.35s var(--spring); }
+.dialog.show { opacity: 1; translate: -50% 0; pointer-events: auto; }
+.dialog[data-who='crew'] { border-color: rgba(111, 227, 255, 0.85); }
+.dialog .who { grid-row: span 2; display: grid; justify-items: center; gap: 6px; }
+.dialog .badge { display: none; width: 58px; height: 58px; border-radius: 50%; place-items: center; }
+.dialog .badge svg { width: 34px; height: 34px; fill: #fff; }
+.dialog .badge.enemy { background: radial-gradient(circle at 50% 35%, #ff7a5c, #b3180f); box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85), 0 0 22px rgba(255, 70, 50, 0.6); }
+.dialog .badge.crew { background: radial-gradient(circle at 50% 35%, #8ff0ff, #1b7fc4); box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85), 0 0 22px rgba(111, 227, 255, 0.6); }
+.dialog[data-who='enemy'] .badge.enemy, .dialog[data-who='crew'] .badge.crew { display: grid; }
+.dialog .name { font: 400 15px var(--font-game); letter-spacing: 0.08em; color: #ff8a6a; }
+.dialog[data-who='crew'] .name { color: var(--accent); }
+.dialog .line { margin: 0; min-height: 2.6em; font: 700 clamp(16px, 1.8vw, 21px)/1.3 'Inter', sans-serif; color: #fff; }
+
 /* in-world angle labels */
 .ang-label { position: absolute; left: 0; top: 0; translate: -50% -50%; font: 400 clamp(17px, calc(var(--u, 7px) * 3.7), 30px) var(--font-game); letter-spacing: 0.02em; color: #ffb547;
   white-space: nowrap; text-shadow: var(--ink-outline), 0 0 12px rgba(255, 150, 40, 0.6); pointer-events: none; }
@@ -301,12 +362,21 @@ body.narrating .quiz-prompt, body.narrating #banner { opacity: 0 !important; }
   .pad { left: 8px; bottom: 10px; transform: scale(0.8); transform-origin: bottom left; }
   .actions { right: 8px; bottom: 10px; transform: scale(0.8); transform-origin: bottom right; }
   .act kbd { display: none; }
-  .narrate { top: 104px; width: 92vw; }
-  .quiz-prompt { top: 104px; width: 92vw; white-space: normal; text-align: center; justify-content: center; padding: 10px 14px; }
+  .narrate { top: 104px; width: min(92vw, 560px); }
+  .quiz-prompt { top: 104px; width: min(92vw, 560px); white-space: normal; text-align: center; justify-content: center; padding: 10px 14px; }
   body.quiz-on #alert { bottom: 168px; }
   body.quiz-on #banner { top: 104px; }
   .quiz-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
-  .opt { width: 44vw; }
+  .opt { width: min(44vw, 230px); }
+  body.battle .dialog { left: calc(8px + env(safe-area-inset-left)); top: calc(8px + env(safe-area-inset-top)); bottom: auto;
+    width: min(calc(100vw - 132px), 460px); translate: 0 -12px; padding: 8px 12px 9px 8px; gap: 0 10px; border-radius: 14px; }
+  body.battle .dialog.show { translate: 0 0; }
+  body.battle .dialog .who { gap: 3px; }
+  body.battle .dialog .badge { width: 36px; height: 36px; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85); }
+  body.battle .dialog .badge svg { width: 22px; height: 22px; }
+  body.battle .dialog .name { font-size: 11px; }
+  body.battle .dialog .line { font-size: 14px; line-height: 1.25; min-height: 2.5em; }
+  body.battle.talking #bossbar { opacity: 0; }
 }
 @media (pointer: coarse) { .act kbd { display: none; } }
 

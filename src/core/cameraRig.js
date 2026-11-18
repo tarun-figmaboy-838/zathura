@@ -4,7 +4,27 @@ import { clamp, damp } from './math.js';
 const ease = (x) => x * x * (3 - 2 * x);
 // top-view camera height for a given screen shape: close on wide screens (the radar fills the
 // space between the question and the answers), higher on portrait so side targets stay in view
-export const topHeight = (aspect) => (aspect >= 1 ? 82 : 108 / Math.pow(aspect, 0.62));
+// top-view camera height. Portrait: low enough that the radar fills ~90% of the width, high enough
+// that the raider (up or down, along the long side of the screen) clears the question and answers
+export const topHeight = (aspect) => (aspect >= 1 ? 82 : Math.max(135, 57 / aspect));
+// the boss fight's zoom-out, sized so the Warden is framed as it was designed (at 108 / aspect^0.62)
+export const bossZoom = (aspect) => 1.65 * (aspect >= 1 ? 1 : 108 / Math.pow(aspect, 0.62) / topHeight(aspect));
+// wide screens put the question and answers in a panel on the right, so battles are framed with
+// the ship left of centre (at 40% of the width); returns that sideways offset in world units
+export const wideLayout = (aspect) => aspect >= 1.2;
+const TAN_HALF_FOV = Math.tan((52 * Math.PI) / 360);
+// Wide screens: a console column on the right (question card, answers, comms) is panelPx wide; the
+// radar, the ship and the enemy are framed in the space left of it, the enemy outside the ring on
+// the left. Sizes are in units of the half view height; shift moves the camera so the ship sits there.
+export const panelPx = (w) => Math.min(0.3 * w, 400) + 56;
+export function battleFrame(aspect, wPx = window.innerWidth) {
+  const free = 2 * aspect * (1 - panelPx(wPx) / wPx);              // free width left of the column
+  const ring = Math.max(0.4, Math.min(0.72, (free - 0.6) / 2));    // room for the enemy (0.25 out, 0.22 half size)
+  const slack = Math.max(0, free - 0.1 - (2 * ring + 0.47));
+  const shipX = -aspect + 0.05 + 0.47 + ring + slack / 2;
+  return { ring, dist: ring + 0.25, shift: -shipX };
+}
+export const topShift = (aspect, height) => (wideLayout(aspect) ? battleFrame(aspect).shift * height * TAN_HALF_FOV : 0);
 
 // Gameplay camera with three framings and smooth blends between them:
 //  chase  – behind and above the ship, looking down the route
@@ -53,9 +73,11 @@ export class CameraRig {
     const narrow = Math.min(1, this.camera.aspect);
     if (this.mode === 'top') {
       this.zoom = damp(this.zoom, this.topZoom, 1.2, dt);
-      d.position.set(p.x, p.y + topHeight(this.camera.aspect) * this.zoom, p.z + 0.001);
+      const h = topHeight(this.camera.aspect) * this.zoom;
+      const sx = topShift(this.camera.aspect, h);
+      d.position.set(p.x + sx, p.y + h, p.z + 0.001);
       d.up.set(0, 0, -1);
-      d.lookAt(p.x, p.y, p.z);
+      d.lookAt(p.x + sx, p.y, p.z);
       out.fov = 52;
     } else if (this.mode === 'drone') {
       d.position.copy(this.dronePos);
