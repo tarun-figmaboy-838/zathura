@@ -27,6 +27,8 @@ export class Dialogue {
     this.line = null;
     this.onDone = null;
     this.voice = null;
+    this.onLine = null;      // (line | null): a line starts, or the talking stops (voice-over)
+    this.busy = null;        // () => true while the line's voice is still speaking
     this.root.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); this.skip(); });
   }
 
@@ -44,6 +46,7 @@ export class Dialogue {
   next() {
     this.line = this.queue.shift() || null;
     if (!this.line) {
+      this.onLine?.(null);
       this.root.classList.remove('show');
       document.body.classList.remove('talking');
       const done = this.onDone;
@@ -66,6 +69,7 @@ export class Dialogue {
     void this.root.offsetWidth;
     this.root.classList.add('show');
     document.body.classList.add('talking');
+    this.onLine?.(this.line);
   }
 
   skip() {
@@ -78,6 +82,7 @@ export class Dialogue {
     this.queue.length = 0;
     this.line = null;
     this.onDone = null;
+    this.onLine?.(null);
     this.root.classList.remove('show', 'typing', 'done');
     document.body.classList.remove('talking');
   }
@@ -97,6 +102,6 @@ export class Dialogue {
     if (this.restEl.textContent) { this.typedEl.textContent = l.text; this.restEl.textContent = ''; }
     if (this.root.classList.contains('typing')) { this.root.classList.remove('typing'); this.root.classList.add('done'); }
     this.hold += dt;
-    if (this.hold >= Math.max(2, l.hold ?? 2.2)) this.next();   // at least 2 s to read it
+    if (this.hold >= Math.max(2, l.hold ?? 2.2) && !this.busy?.()) this.next();   // at least 2 s to read it, and the voice done
   }
 }

@@ -19,7 +19,7 @@ const CREW = 'CO-PILOT';
 const POOLS = {
   raiderArrive: [
     'Ha! A tiny ship! This will be easy.',
-    "Nobody gets past {name}! ...That's me.",
+    'Nobody gets past ME! ...Probably.',
     'Prepare to become space dust!',
     "Bet you can't even find x!",
     'I polished my lasers just for you!',

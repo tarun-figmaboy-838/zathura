@@ -57,6 +57,18 @@ the co-pilot reminds you of the rule.
 Every 4 levels the stars you earned pop up for a moment (every target hit on the first try = 3,
 at least 60% = 2, otherwise 1); the victory screen rates the whole run out of 3 stars.
 
+## Voice-over
+
+Every comms line, the co-pilot's introductions and tips are voiced with **Kokoro** (open source,
+Apache-2.0, runs locally for free). Each character has its own voice: a goofy pitched-up raider, a
+deep metallic Warden, a cheerful robot co-pilot on the radio, with comic delivery per kind of line
+(panic is fast and squeaky, gloating is slow). The music dips while someone speaks.
+
+Files live in `assets/vo/` (named by a hash of the line's text, listed in `manifest.json`). After
+changing a line, regenerate them: `python tools/vo/make_vo.py` (Python 3.10-3.12 with
+`pip install kokoro soundfile scipy numpy`; uses macOS `afconvert`). A line without a voice file
+just plays the talk blips.
+
 ## Play
 
 The game has to be served over http. Opening `index.html` directly won't load the 3D models.

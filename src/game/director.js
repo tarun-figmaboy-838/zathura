@@ -36,6 +36,7 @@ export class Director {
     this.fresh = true;
     const s = this.step;
     document.body.classList.toggle('narrating', !!(s && s.text));
+    this.onText?.(s && s.text ? s : null);       // voice-over for the line (or silence)
     if (!s) { this.box.classList.remove('show'); return; }
     if (s.text) {
       this.textEl.textContent = s.text;

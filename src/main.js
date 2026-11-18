@@ -36,6 +36,7 @@ import { AudioEngine } from './audio/audio.js';
 import { Hud } from './ui/hud.js';
 import { Controls } from './ui/controls.js';
 import { Dialogue } from './ui/dialogue.js';
+import { Voice } from './audio/vo.js';
 import { raiderName, enemyLine, crewLine, wardenIntro, WARDEN } from './game/banter.js';
 
 const SUN_DIR = new THREE.Vector3(-0.72, 0.4, -0.56).normalize();
@@ -225,9 +226,19 @@ const wormTube = new WormholeTube(scene, blackhole.uniforms.uR.value);
 intro.tube = wormTube;
 const portalTube = new WormholeTube(scene, 22.5, { length: 560, segments: 140, radial: 72, throat: 0.84, warm: 0.35 });
 const riding = () => (state.mode === 'launch' && intro.stage === 'tunnel') || state.tunnel > 0;
-dialogue.voice = (who) => audio.chatter(who);
+const vo = new Voice(audio);
+// a voiced line speaks (the talk blips only fill in for lines without a voice); the line waits for it
+dialogue.voice = (who) => { if (!vo.speaking) audio.chatter(who); };
+dialogue.onLine = (line) => { if (line) vo.play(line.text); else vo.stop(); };
+dialogue.busy = () => vo.speaking;
 const campaign = new Campaign();
 const director = new Director(rig);
+// the co-pilot reads the introductions; a step lasts at least as long as its voice
+director.onText = (step) => {
+  if (!step) { if (!dialogue.active) vo.stop(); return; }
+  const d = vo.play(step.text);
+  if (d) step.time = Math.max(step.time || 0, d + 0.6);
+};
 // what has been introduced already in this visit (every fresh visit introduces everything again)
 const seen = new Set();
 const saveSeen = () => {};
@@ -316,6 +327,7 @@ function launch() {
   if (state.mode !== 'title' && state.mode !== 'gameover' && state.mode !== 'victory') return;
   audio.start();
   audio.uiConfirm();
+  vo.preload();                    // decode the voices now that audio can play
   setWhiteout('white', 0);
   intro.start();
   setMode('launch');

@@ -349,6 +349,25 @@ export class AudioEngine {
     this.osc(enemy ? 'sawtooth' : 'square', f, f * (Math.random() < 0.5 ? 1.25 : 0.8), 0.06, 0.5, lp, t, 0.005);
   }
 
+  // voice-over: its own channel (with the master, so mute covers it)
+  voiceBus() {
+    if (!this.vo) {
+      this.vo = this.ctx.createGain();
+      this.vo.gain.value = 1.15;
+      this.vo.connect(this.master);
+    }
+    return this.vo;
+  }
+
+  // music dips under a voice, and comes back after it
+  duckMusic(on, seconds = 0) {
+    if (!this.duckG) return;
+    const g = this.duckG.gain, t = this.ctx.currentTime;
+    g.cancelScheduledValues(t);
+    g.setTargetAtTime(on ? 0.3 : 1, t, on ? 0.05 : 0.25);
+    if (on && seconds) g.setTargetAtTime(1, t + seconds, 0.3);
+  }
+
   // the last seconds of the time limit
   tick() {
     if (!this.ready()) return;
@@ -374,7 +393,9 @@ export class AudioEngine {
     const ctx = this.ctx;
     this.music = ctx.createGain();
     this.music.gain.value = 0;
-    this.music.connect(this.master);
+    this.duckG = ctx.createGain();               // dips the music while someone speaks
+    this.duckG.connect(this.master);
+    this.music.connect(this.duckG);
     const bus = (v) => { const g = ctx.createGain(); g.gain.value = v; g.connect(this.music); return g; };
     this.mPad = bus(0);
     this.mArp = bus(0);

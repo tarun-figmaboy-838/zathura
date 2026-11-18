@@ -1,8 +1,1 @@
-blender
-tools
-start.command
-start.bat
-PLAN.md
-.DS_Store
-**/.DS_Store
-serve.py
+tools/
