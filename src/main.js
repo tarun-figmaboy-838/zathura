@@ -929,7 +929,7 @@ function defeatLines() {
   const tip = q ? `Remember: ${RULE_REMINDERS[q.type] || q.hint} Try again!` : 'Hull breached! Dodge the rocks or shoot them first.';
   const lines = [];
   if (k) lines.push(enemyLine(name, key, 1.6));
-  lines.push({ who: 'crew', name: 'CO-PILOT', text: tip, hold: 2.0 });
+  lines.push({ who: 'crew', name: 'CO-PILOT', text: tip, hold: 2.0, face: 'crew', mood: 'cheer' });
   return lines;
 }
 
@@ -1240,30 +1240,35 @@ function placeComms() {
   const W = window.innerWidth, H = window.innerHeight;
   const ringPx = angleOverlay.ringPx || 0.6 * H / 2;
   const bands = [[16, W / 2 - ringPx - 16], [W / 2 + ringPx + 16, W - 16]];
-  const bh = dlgEl.offsetHeight;                 // read before writing: one layout pass per frame
-  let x, y, tail = '', tailX = 0, bw;
+  let ex = 0, ey = 0, band;
   if (l.src) {
     tmp.copy(l.src).project(camera);
-    const ex = (tmp.x * 0.5 + 0.5) * W, ey = (-tmp.y * 0.5 + 0.5) * H;
+    ex = (tmp.x * 0.5 + 0.5) * W; ey = (-tmp.y * 0.5 + 0.5) * H;
     lastSpeaker = ex < W / 2 ? 0 : 1;
-    const [b0, b1] = bands[lastSpeaker];
-    bw = Math.max(190, Math.min(300, b1 - b0));
-    x = clamp(ex - bw / 2, Math.max(12, b0), Math.min(W - 12, b1) - bw);   // stays in the side space
-    const off = 0.2 * H;                          // clear of the craft itself
+    band = bands[lastSpeaker];
+  } else band = bands[lastSpeaker === 0 ? 1 : 0];   // the crew: the side without the enemy
+  // the box hugs its text, up to the side space's width; place it by its real size
+  const maxW = Math.max(190, Math.min(320, band[1] - band[0]));
+  if (!dlgEl.classList.contains('bubble')) dlgEl.classList.add('bubble');
+  dlgEl.style.maxWidth = `${maxW.toFixed(0)}px`;
+  const bw = dlgEl.offsetWidth, bh = dlgEl.offsetHeight;
+  let x, y, tail = '', tailX = 0;
+  const lo = Math.max(12, band[0]), hi = Math.min(W - 12, band[1]) - bw;   // stays in the side space
+  if (l.src) {
+    x = clamp(ex - bw / 2, lo, Math.max(lo, hi));
     const above = ey > H / 2;
-    y = above ? ey - off - bh : ey + off;
+    y = above ? ey - 0.2 * H - bh : ey + 0.2 * H;  // clear of the craft itself
     tail = above ? 'down' : 'up';
     tailX = clamp(ex - x, 22, bw - 22);
   } else {
-    const [b0, b1] = bands[lastSpeaker === 0 ? 1 : 0];   // the crew: the side without the enemy
-    bw = Math.max(190, Math.min(300, b1 - b0));
-    x = clamp((b0 + b1) / 2 - bw / 2, Math.max(12, b0), Math.min(W - 12, b1) - bw);
+    x = clamp((band[0] + band[1]) / 2 - bw / 2, lo, Math.max(lo, hi));
     y = H / 2 - bh / 2;
   }
-  y = clamp(y, 112, H - 118 - bh);              // between the question bar and the answers
-  if (!dlgEl.classList.contains('bubble')) dlgEl.classList.add('bubble');
+  y = clamp(y, 112, H - 118 - bh);                // between the question bar and the answers
   dlgEl.dataset.tail = tail;
-  dlgEl.style.cssText = `left:${x.toFixed(0)}px;top:${y.toFixed(0)}px;width:${bw.toFixed(0)}px;--tail-x:${tailX.toFixed(0)}px`;
+  dlgEl.style.left = `${x.toFixed(0)}px`;
+  dlgEl.style.top = `${y.toFixed(0)}px`;
+  dlgEl.style.setProperty('--tail-x', `${tailX.toFixed(0)}px`);
 }
 
 // enemy banter: a raider taunts once it has flown in, the Warden boasts after its introduction

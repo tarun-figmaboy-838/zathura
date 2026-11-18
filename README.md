@@ -32,7 +32,8 @@ Layout: the question bar on top, the radar in the middle and the answers along t
 landscape screens, 2×2 on phones). On landscape screens the enemy flies in from the side and its comms
 appear as a speech bubble beside it; on phones the comms sit in the top corner.
 
-Enemies talk back, like comms chatter in an arcade shooter: each raider gets a silly callsign, taunts
+Enemies talk back, like comms chatter in an arcade shooter, in a game-style dialogue box with character
+portraits (made with Figma AI) that act out each line: each raider gets a silly callsign, taunts
 you when it arrives, mocks a wrong answer and panics when hit, and the Warden boasts and sulks
 (`src/game/banter.js`). The timer waits while someone is talking. After a defeat the enemy gloats and
 the co-pilot reminds you of the rule.
@@ -91,7 +92,7 @@ you fire; the ring around the Fire button shows the cannon's heat.
 index.html        page, HUD and on-screen controls
 src/              game code (Three.js ES modules)
 assets/models/    ship, raider, boss, station and asteroid models (.glb)
-assets/ui/        title, cockpit and button art (Figma: answer capsules from the POLYGON kit, the rest made with Figma AI)
+assets/ui/        title, cockpit, button art and character portraits (Figma: answer capsules from the POLYGON kit, the rest made with Figma AI)
 blender/          the Python scripts that generate every model
 PLAN.md           design plan and milestones
 ```

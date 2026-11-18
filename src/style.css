@@ -151,11 +151,15 @@ button:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
 .quiz-prompt.bad { border-color: #ff6a4f; box-shadow: 0 0 26px rgba(255, 90, 60, 0.45); animation: box-pop 0.35s var(--spring); }
 @keyframes box-pop { 40% { scale: 1.05; } }
 .quiz-options { position: absolute; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom)); translate: -50% 0; display: flex; gap: 16px; }
-.opt { pointer-events: auto; position: relative; width: clamp(140px, 13vw, 186px); aspect-ratio: 420 / 153; padding: 0; border: 0; background: none;
+.opt { pointer-events: auto; position: relative; width: clamp(140px, 13vw, 186px); aspect-ratio: 420 / 153; padding: 0; border: 0;
+  background: url(../assets/ui/opt.png) center / contain no-repeat;
   display: grid; place-items: center; cursor: pointer; opacity: 0; transition: transform 0.16s var(--spring), filter 0.12s; }
 #quiz.show .opt { animation: opt-in 0.45s var(--spring) both; }
 @keyframes opt-in { from { opacity: 0; transform: translateY(26px) scale(0.85); } to { opacity: 1; transform: none; } }
-.opt img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; -webkit-user-drag: none; }
+/* the capsule art is the button's background and its state picks the colour, so a button can never
+   lose its art (swapping <img> sources could leave a button blank in Safari) */
+.opt.correct { background-image: url(../assets/ui/opt-ok.png); }
+.opt.wrong { background-image: url(../assets/ui/opt-bad.png); }
 /* capsule kit from the POLYGON Figma file: gold acts, green and red are verdicts. Labels in the kit's
    Fredoka Bold: dark brown on gold, white with a toned outline on green and red */
 .opt span { position: relative; display: block; font: 700 clamp(26px, 2.4vw, 34px)/1 'Fredoka', 'Inter', sans-serif; letter-spacing: 0.01em;
@@ -195,35 +199,61 @@ body.narrating .quiz-prompt, body.narrating #banner { opacity: 0 !important; }
   body.quiz-on #alert { bottom: 100px; }
 }
 
-/* comms dialogue: a speaker badge, a name and the line typing out, at the bottom like a real game
-   (enemy banter in battles, the taunt and the co-pilot's tip after a defeat) */
-.dialog { position: fixed; left: 50%; bottom: calc(28px + env(safe-area-inset-bottom)); translate: -50% 20px; z-index: 7; width: min(92vw, 620px);
-  display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px 16px; padding: 16px 22px 18px 16px; border-radius: 18px;
-  background: rgba(8, 14, 32, 0.92); border: 2px solid rgba(255, 90, 70, 0.85); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
-  opacity: 0; pointer-events: none; cursor: pointer; transition: opacity 0.25s ease, translate 0.35s var(--spring); }
-.dialog.show { opacity: 1; translate: -50% 0; pointer-events: auto; }
-.dialog[data-who='crew'] { border-color: rgba(111, 227, 255, 0.85); }
-.dialog .who { grid-row: span 2; display: grid; justify-items: center; gap: 6px; }
-.dialog .badge { display: none; width: 58px; height: 58px; border-radius: 50%; place-items: center; }
-.dialog .badge svg { width: 34px; height: 34px; fill: #fff; }
-.dialog .badge.enemy { background: radial-gradient(circle at 50% 35%, #ff7a5c, #b3180f); box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85), 0 0 22px rgba(255, 70, 50, 0.6); }
-.dialog .badge.crew { background: radial-gradient(circle at 50% 35%, #8ff0ff, #1b7fc4); box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85), 0 0 22px rgba(111, 227, 255, 0.6); }
-.dialog[data-who='enemy'] .badge.enemy, .dialog[data-who='crew'] .badge.crew { display: grid; }
-.dialog .name { font: 400 15px var(--font-game); letter-spacing: 0.08em; color: #ff8a6a; }
-.dialog[data-who='crew'] .name { color: var(--accent); }
-.dialog .line { margin: 0; min-height: 2.6em; font: 700 clamp(16px, 1.8vw, 21px)/1.3 'Inter', sans-serif; color: #fff; }
+/* comms dialogue, built like a game UI piece: ink outline, a rim in the speaker's colour, gradient
+   face, gloss and lip. The portrait overhangs the top edge, a ribbon nameplate tags the box, and it
+   pops in with a spring. The portrait bobs while the line types; moods add a little acting (taunt
+   lean, laugh bounce, panic shake, cheer hop); a blinking arrow shows the line is done (tap = skip).
+   Used for enemy banter in battles and for the taunt + the co-pilot's tip after a defeat. */
+.dialog { --rim: #ff5a46; --plate1: #ff7d5e; --plate2: #cf2519; --face-top: #1d2a5c; --face-bot: #0b1230;
+  position: fixed; left: 50%; bottom: calc(30px + env(safe-area-inset-bottom)); translate: -50% 20px; z-index: 7; width: max-content; max-width: min(92vw, 560px);
+  display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 0 16px; padding: 14px 36px 16px 14px; border-radius: 22px;
+  background: linear-gradient(180deg, var(--face-top) 0%, #111a3d 55%, var(--face-bot) 100%);
+  box-shadow: 0 0 0 3px #060a1c, 0 6px 0 3px #060a1c, 0 16px 34px rgba(0, 0, 0, 0.55), inset 0 0 0 2px var(--rim), inset 0 -5px 0 rgba(0, 0, 0, 0.28);
+  opacity: 0; pointer-events: none; cursor: pointer; transition: opacity 0.2s ease, translate 0.35s var(--spring); }
+.dialog::before { content: ''; position: absolute; left: 16px; right: 16px; top: 5px; height: 36%; border-radius: 16px 16px 50% 50% / 16px 16px 100% 100%;
+  background: linear-gradient(rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0)); pointer-events: none; }
+.dialog.show { opacity: 1; translate: -50% 0; pointer-events: auto; animation: dlg-pop 0.45s var(--spring) both; }
+@keyframes dlg-pop { from { scale: 0.55; rotate: -5deg; } 60% { rotate: 1.5deg; } to { scale: 1; rotate: 0deg; } }
+.dialog[data-face='warden'] { --rim: #b26bff; --plate1: #c690ff; --plate2: #6a23c9; }
+.dialog[data-face='crew'] { --rim: #4fd8ff; --plate1: #74e8ff; --plate2: #1679c9; }
+.dialog .portrait { position: relative; align-self: start; width: 76px; height: 76px; margin: -32px 0 -6px; border-radius: 50%; overflow: hidden;
+  background: var(--face-bot); box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--rim), 0 0 0 9px #060a1c, 0 8px 16px rgba(0, 0, 0, 0.5); }
+.dialog .portrait img { display: block; width: 100%; height: 100%; object-fit: cover; transform-origin: 50% 90%; -webkit-user-drag: none; }
+.dialog .talk { min-width: 0; }
+.dialog .name { display: inline-block; margin: -30px 0 6px; padding: 4px 14px 5px; border-radius: 999px; rotate: -3deg;
+  font: 400 15px var(--font-game); letter-spacing: 0.07em; color: #fff; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+  background: linear-gradient(180deg, var(--plate1), var(--plate2)); box-shadow: 0 0 0 2.5px #060a1c, 0 3px 0 2.5px #060a1c, inset 0 2px 0 rgba(255, 255, 255, 0.35); }
+.dialog .line { margin: 0; font: 600 clamp(16px, 1.7vw, 20px)/1.3 'Fredoka', 'Inter', sans-serif; color: #fff; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35); }
+/* the whole line is laid out from the start (the untyped rest is invisible), so the box hugs the
+   text with no empty space and never grows while it types */
+.dialog .line .rest { color: transparent; text-shadow: none; }
+.dialog .more { position: absolute; right: 13px; bottom: 11px; width: 0; height: 0; border-left: 10px solid #ffe066; border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent; opacity: 0; filter: drop-shadow(0 1px 0 #060a1c); }
+.dialog.done .more { opacity: 1; animation: more 0.7s ease-in-out infinite; }
+@keyframes more { 50% { transform: translateX(4px); } }
+/* acting */
+.dialog.typing .portrait img { animation: talk 0.16s ease-in-out infinite alternate; }
+@keyframes talk { to { transform: translateY(-3px) scale(1.05) rotate(-2deg); } }
+.dialog.show[data-mood='taunt'] { animation: dlg-pop 0.45s var(--spring) both, taunt 0.9s ease-in-out 0.45s 2; }
+.dialog.show[data-mood='laugh'] { animation: dlg-pop 0.45s var(--spring) both, laugh 0.3s ease-in-out 0.4s 4; }
+.dialog.show[data-mood='panic'] { animation: dlg-pop 0.35s var(--spring) both, panic 0.1s linear 0.3s 8; }
+.dialog.show[data-mood='cheer'] { animation: dlg-pop 0.45s var(--spring) both, cheer 0.5s var(--spring) 0.45s 2; }
+.dialog.show[data-mood='panic'] .portrait { animation: panic 0.1s linear 0.3s 12; }
+@keyframes taunt { 50% { transform: rotate(-1.5deg) scale(1.03); } }
+@keyframes laugh { 50% { transform: translateY(-5px) rotate(1deg); } }
+@keyframes panic { 25% { transform: translateX(-5px) rotate(-1deg); } 75% { transform: translateX(5px) rotate(1deg); } }
+@keyframes cheer { 50% { transform: translateY(-7px); } }
 /* battles on landscape screens: a compact speech bubble next to whoever is talking, with a tail
    pointing at them (left/top/width and the tail are set by the game every frame) */
-.dialog.bubble { right: auto; bottom: auto; translate: 0 6px; padding: 10px 14px 12px 10px; gap: 2px 12px; border-radius: 16px; }
+.dialog.bubble { right: auto; bottom: auto; translate: 0 6px; padding: 10px 30px 12px 10px; gap: 0 12px; border-radius: 18px; }
+.dialog.bubble .more { right: 11px; bottom: 9px; }
 .dialog.bubble.show { translate: 0 0; }
-.dialog.bubble .badge { width: 40px; height: 40px; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85); }
-.dialog.bubble .badge svg { width: 23px; height: 23px; }
-.dialog.bubble .name { font-size: 12px; }
-.dialog.bubble .line { font-size: clamp(14px, 1.15vw, 17px); line-height: 1.3; min-height: 0; }
-.dialog.bubble::after { content: ''; position: absolute; left: var(--tail-x, 50%); width: 14px; height: 14px; margin-left: -7px;
-  background: rgb(8, 14, 32); border: inherit; rotate: 45deg; display: none; }
-.dialog.bubble[data-tail='down']::after { display: block; bottom: -9px; border-top: 0; border-left: 0; }
-.dialog.bubble[data-tail='up']::after { display: block; top: -9px; border-bottom: 0; border-right: 0; }
+.dialog.bubble .portrait { width: 58px; height: 58px; margin: -24px 0 -4px; }
+.dialog.bubble .name { font-size: 12.5px; margin: -24px 0 4px; padding: 3px 11px 4px; }
+.dialog.bubble .line { font-size: clamp(14px, 1.2vw, 17px); }
+.dialog.bubble::after { content: ''; position: absolute; left: var(--tail-x, 50%); width: 14px; height: 14px; margin-left: -7px; rotate: 45deg; display: none; }
+.dialog.bubble[data-tail='down']::after { display: block; bottom: -8px; background: var(--face-bot); box-shadow: 2px 2px 0 0 var(--rim), 5px 5px 0 0 #060a1c; }
+.dialog.bubble[data-tail='up']::after { display: block; top: -8px; background: var(--face-top); box-shadow: -2px -2px 0 0 var(--rim), -5px -5px 0 0 #060a1c; }
 
 /* in-world angle labels */
 .ang-label { position: absolute; left: 0; top: 0; translate: -50% -50%; font: 400 clamp(17px, calc(var(--u, 7px) * 3.7), 30px) var(--font-game); letter-spacing: 0.02em; color: #ffb547;
@@ -346,18 +376,17 @@ body.narrating .quiz-prompt, body.narrating #banner { opacity: 0 !important; }
   body.quiz-on #banner { top: 104px; }
   .quiz-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
   .opt { width: min(44vw, 230px); }
-  body.battle .dialog { left: calc(8px + env(safe-area-inset-left)); top: calc(8px + env(safe-area-inset-top)); bottom: auto;
-    width: min(calc(100vw - 132px), 460px); translate: 0 -12px; padding: 8px 12px 9px 8px; gap: 0 10px; border-radius: 14px; }
+  body.battle .dialog { left: calc(8px + env(safe-area-inset-left)); top: calc(10px + env(safe-area-inset-top)); bottom: auto;
+    width: max-content; max-width: calc(100vw - 156px); translate: 0 -12px; padding: 8px 24px 9px 8px; gap: 0 10px; border-radius: 15px; }
   body.battle .dialog.show { translate: 0 0; }
-  body.battle .dialog .who { gap: 3px; }
-  body.battle .dialog .badge { width: 36px; height: 36px; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85); }
-  body.battle .dialog .badge svg { width: 22px; height: 22px; }
-  body.battle .dialog .name { font-size: 11px; }
-  body.battle .dialog .line { font-size: 14px; line-height: 1.25; min-height: 2.5em; }
+  body.battle .dialog .portrait { width: 46px; height: 46px; margin: 0; align-self: center; box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--rim), 0 0 0 6px #060a1c; }
+  body.battle .dialog .name { font-size: 11px; margin: 0 0 3px; padding: 2px 9px 3px; }
+  body.battle .dialog .line { font-size: 14px; line-height: 1.25; }
+  body.battle .dialog .more { right: 9px; bottom: 7px; }
   body.battle.talking #bossbar { opacity: 0; }
 }
 @media (pointer: coarse) { .act kbd { display: none; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .title-logo, .play-btn, .play-btn .ping, .panel.small { animation: none !important; }
+  .title-logo, .play-btn, .play-btn .ping, .panel.small, .dialog, .dialog .portrait, .dialog .portrait img, .dialog .more { animation: none !important; }
 }

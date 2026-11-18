@@ -48,7 +48,6 @@ export class AngleQuiz {
       b.querySelector('span').textContent = `${q.options[i]}°`;
       b.disabled = false;
       b.className = 'opt';
-      b.querySelector('img').src = 'assets/ui/opt.png';
       b.style.animationDelay = `${0.25 + i * 0.06}s`;
     });
     this.root.classList.remove('hidden');
@@ -112,7 +111,6 @@ export class AngleQuiz {
         if (this.correct) {
           this.overlay.result(true);
           b.classList.add('correct');
-          b.querySelector('img').src = 'assets/ui/opt-ok.png';
           // confirm in the narration box: "? = 55°" takes the place of "Find ?"
           this.say(q.explain ? `Correct!  ${q.explain}` : `x = ${q.answer}°`, 'ok');
           this.ctx.audio.correct();
@@ -122,7 +120,6 @@ export class AngleQuiz {
           this.overlay.result(false);
           b.classList.add('wrong');
           b.disabled = true;
-          b.querySelector('img').src = 'assets/ui/opt-bad.png';
           this.say(this.tries >= 2 && q.hint2 ? q.hint2 : q.hint, 'bad');
           this.ctx.audio.wrong();
           this.ctx.punish(this.target);

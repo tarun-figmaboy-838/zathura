@@ -89,7 +89,16 @@ const POOLS = {
 
 // src: where the speaker is (a Vector3, live or a snapshot) so landscape screens can put the speech
 // bubble beside it
-const line = (who, name, key, hold = 1.5, src = null) => ({ who, name, text: pick(key, POOLS[key]).replace('{name}', name), hold, src });
+// a little acting for each kind of line (see .dialog[data-mood] in style.css)
+const MOOD = {
+  raiderArrive: 'taunt', wardenArrive: 'taunt', crewReply: 'cheer',
+  raiderMock: 'laugh', wardenMock: 'laugh', raiderWin: 'laugh', raiderWinTime: 'laugh', wardenWin: 'laugh', wardenWinTime: 'laugh',
+  raiderHit: 'panic', wardenTurret: 'panic', wardenCore: 'panic', wardenDown: 'panic',
+};
+const faceOf = (who, name) => (who === 'crew' ? 'crew' : name === WARDEN ? 'warden' : 'raider');
+const line = (who, name, key, hold = 1.5, src = null) => ({
+  who, name, text: pick(key, POOLS[key]).replace('{name}', name), hold, src, face: faceOf(who, name), mood: MOOD[key] || '',
+});
 export const enemyLine = (name, key, hold, src) => line('enemy', name, key, hold, src);
 export const crewLine = (key, hold) => line('crew', CREW, key, hold);
-export const wardenIntro = (src) => POOLS.wardenArrive.map((text) => ({ who: 'enemy', name: WARDEN, text, hold: 1.3, src }));
+export const wardenIntro = (src) => POOLS.wardenArrive.map((text) => ({ who: 'enemy', name: WARDEN, text, hold: 1.3, src, face: 'warden', mood: 'taunt' }));
