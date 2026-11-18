@@ -241,9 +241,11 @@ export class Effects {
     L.peak = peak; L.t = duration; L.max = duration;
   }
 
-  ring(pos, size, duration = 0.6) {
+  // color: optional [r, g, b] (default: the warm blast colour)
+  ring(pos, size, duration = 0.6, color = null) {
     const R = this.rings[this.ringCursor];
     this.ringCursor = (this.ringCursor + 1) % this.rings.length;
+    if (color) R.sp.material.color.setRGB(...color); else R.sp.material.color.setRGB(1.6, 1.1, 0.8);
     R.sp.position.copy(pos);
     R.sp.visible = true;
     R.t = R.max = duration;

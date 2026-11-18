@@ -462,46 +462,108 @@ function gameOver() {
 
 // Ending: a drone parks behind the ship and keeps zooming in as it burns away, so the ship stays
 // the same size on screen while space rushes past it, then it jumps home in a flash.
+// ------------------------------------------------------------------ the ending
+// The way home: a giant portal opens far ahead. The ship lights its engines and races at it; the
+// camera rides along, then lets it go (a long-lens shot of it rushing in). In the last moments it
+// stretches into a streak of light, like a time jump, and plunges in: gone. The portal flares,
+// implodes behind it with a shockwave, the stars settle, and the journey ends.
+const FIN = { ENTER: 3.4, DIST: 760, SCALE: 2.6, LET_GO: 300 };   // LET_GO: the camera stops this far from the portal
+const finale = { z0: 0, entered: false, enterT: 0, collapsed: false, pos: new THREE.Vector3() };
 function startFinale() {
   setMode('finale');
-  state.finaleSpeed = Math.max(130, -ship.velocity.z);
-  state.jumped = false;
-  state.crossT = 0;
-  rig.plungePos.copy(ship.position).add(tmp.set(10, 5, 24));
-  rig.focus.copy(ship.position);
-  rig.holdFov = 50;
-  rig.setMode('hold', 1.2);
+  director.clear();
+  dialogue.clear();
+  shield.mesh.visible = false;          // no shield bubble in the way of the camera
+  const f = finale;
+  f.letGo = false;
+  f.z0 = ship.position.z;
+  f.entered = false;
+  f.collapsed = false;
+  f.pos.set(ship.position.x, ship.position.y + 2, f.z0 - FIN.DIST);
+  field.clearAll();
+  trash.clearAll();
+  portal.show(f.pos, '', '');
+  portal.group.scale.setScalar(FIN.SCALE);
+  portalTube.place(f.pos, V(0, 0, -1));
+  portalTube.mesh.scale.setScalar(FIN.SCALE);
+  portalTube.alpha = 0;
+  portalTube.exit = 0;
+  rig.plungePos.copy(camera.position);
+  rig.focus.copy(ship.position).add(tmp.set(0, 0.5, -80));
+  rig.holdFov = camera.fov;
+  rig.setMode('hold', 0.6);
+  audio.warp(f.pos);
   audio.ignite();
 }
 
 function finaleUpdate(dt) {
-  const T = state.modeT;
-  if (!state.jumped) {
-    state.finaleSpeed = Math.min(3600, state.finaleSpeed + dt * (40 + T * 300));
-    ship.thrust = 1.6;
-    ship.boost = Math.min(1, ship.boost + dt * 1.5);
-    ship.velocity.set(0, 0, -state.finaleSpeed);
-    ship.position.addScaledVector(ship.velocity, dt);
-    rig.focus.lerp(ship.position, 1 - Math.exp(-10 * dt));
-    const d = ship.position.distanceTo(rig.plungePos);
-    rig.holdFov = clamp((2 * Math.atan(26 / d) * 180) / Math.PI, 12, 52);
-    rig.plungePos.y += dt * 1.5;
-    rig.addShake(dt * 0.4);
-    if (d > 520 || T > 4.5) {
-      state.jumped = true;
-      state.crossT = T;
+  const T = state.modeT, f = finale;
+  const k = clamp(T / FIN.ENTER, 0, 1);
+  if (!f.entered) {
+    // the run at the portal: gentle at first, then flat out
+    const prevZ = ship.position.z;
+    ship.position.z = f.z0 - FIN.DIST * Math.pow(k, 2.6);
+    ship.position.x += (f.pos.x - ship.position.x) * (1 - Math.exp(-3 * dt));
+    ship.position.y += (f.pos.y - ship.position.y) * (1 - Math.exp(-3 * dt));
+    ship.velocity.set(0, 0, (ship.position.z - prevZ) / Math.max(dt, 1e-4));
+    ship.thrust = 1.0;
+    ship.boost = Math.min(0.35, ship.boost + dt * 1.5);   // enough to roar, not so much the glare hides the ship
+    // the time jump: it stretches into a streak of light and the view warps
+    const st = clamp((k - 0.8) / 0.2, 0, 1);
+    ship.visual.scale.set(1 - 0.55 * st, 1 - 0.55 * st, 1 + 8 * st * st);
+    state.warp = Math.max(state.warp || 0, st * 1.3);
+    portalTube.alpha = 0.9 * clamp((k - 0.15) / 0.5, 0, 1);
+    rig.addShake(dt * (0.3 + 1.2 * st));
+    if (k >= 1) {
+      f.entered = true;
+      f.enterT = T;
       ship.model.visible = false;
       shield.mesh.visible = false;
-      fx.warp(ship.position, tmp.set(0, 0, -1));
-      fx.ring(ship.position, 120, 0.6);
-      lens.uniforms.uFlash.value = 0.75;
-      audio.warp(camera.position);
+      ship.velocity.set(0, 0, 0);
+      fx.warp(f.pos, tmp.set(0, 0, -1));
+      lens.uniforms.uFlash.value = 0.45;
+      audio.boostWhoosh();
     }
   } else {
-    ship.velocity.set(0, 0, 0);
-    const f = clamp((T - state.crossT - 0.7) / 1.3, 0, 1);
-    setWhiteout('black', f);
-    if (f >= 1) victory();
+    // gone: the vortex spins up and brightens around where it vanished, then the portal implodes
+    // to a point and bursts
+    const e = T - f.enterT;
+    portalTube.exit = 0.3 * clamp(e / 0.35, 0, 1);
+    const shrink = clamp((e - 0.35) / 0.6, 0, 1);
+    const sc = FIN.SCALE * (1 - shrink * shrink * shrink);
+    if (!f.collapsed) {
+      portal.group.scale.setScalar(Math.max(0.001, sc));
+      portalTube.mesh.scale.setScalar(Math.max(0.001, sc));
+      portal.uniforms.uFlash.value = Math.max(portal.uniforms.uFlash.value, 0.6 * (1 - shrink));
+      portal.spinBoost = 10 * clamp(e / 0.9, 0, 1);
+    }
+    if (!f.collapsed && shrink >= 1) {
+      f.collapsed = true;
+      portal.hide();
+      portalTube.alpha = 0;
+      portalTube.exit = 0;
+      fx.ring(f.pos, 340, 1.0, [0.8, 1.4, 2.0]);       // blue-white shockwaves: a time jump, not a blast
+      fx.ring(f.pos, 160, 0.55, [1.6, 1.7, 2.0]);
+      lens.uniforms.uFlash.value = 0.6;
+      rig.addShake(0.7);
+      audio.horizon();
+    }
+    const fade = clamp((e - 2.6) / 1.0, 0, 1);
+    setWhiteout('black', fade);
+    if (fade >= 1) victory();
+  }
+  // the camera rides close behind the ship as the portal grows ahead; when the portal fills the
+  // view it stops and lets the ship streak the last stretch into the middle of it
+  if (!f.letGo && ship.position.z - f.pos.z > FIN.LET_GO && !f.entered) {
+    // locked to the ship (an eased follow lags further and further behind as it speeds up); the
+    // switch into this shot is smoothed by the rig's blend
+    rig.plungePos.copy(ship.position).add(tmp2.set(4, 5, 18));
+    rig.focus.copy(ship.position).lerp(f.pos, 0.35).add(tmp2.set(0, 1.5, 0));
+    rig.holdFov += (58 - rig.holdFov) * (1 - Math.exp(-4 * dt));
+  } else {
+    f.letGo = true;
+    rig.focus.lerp(f.pos, 1 - Math.exp(-3 * dt));
+    rig.holdFov += (50 - rig.holdFov) * (1 - Math.exp(-2 * dt));
   }
 }
 
@@ -811,7 +873,9 @@ const campaignCtx = {
   sector(level) {
     const L = campaign.L;
     portal.show(tmp.set(LANE.x, LANE.y, ship.position.z - (campaign.journeyTime - 0.4) * 123), L.boss ? 'FINAL' : L.title, L.name);
+    portal.group.scale.setScalar(1);
     portalTube.place(portal.group.position, V(0, 0, -1));
+    portalTube.mesh.scale.setScalar(1);
     portalTube.alpha = 0;
     portalTube.exit = 0;
     state.portalPassed = false;
@@ -1568,7 +1632,7 @@ function frame() {
   rings.mesh.visible = !director.camera;   // lock-on brackets would float oddly in a low close-up
   if (play) updateQuiz(dt, t);
   else angleOverlay.update(dt, t, quizCenter, camera);
-  if (portal.state === 'in') portalTube.alpha = 0.85 * clamp(1 - (ship.position.z - portal.group.position.z - 30) / 240, 0, 1);
+  if (portal.state === 'in' && mode === 'play') portalTube.alpha = 0.85 * clamp(1 - (ship.position.z - portal.group.position.z - 30) / 240, 0, 1);
   if (portal.update(dt, t, ship.position) && mode === 'play') crossPortal();
 
   if (vitals.update(dt) && play) { shield.pulse(); audio.shieldUp(); }

@@ -106,6 +106,7 @@ export class Portal {
     this.state = 'off';
     this.alpha = 0;
     this.t = 0;
+    this.spinBoost = 0;
   }
 
   draw(top, name) {
@@ -134,6 +135,8 @@ export class Portal {
 
   show(pos, top, name) {
     this.draw(top, name);
+    this.label.visible = !!(top || name);       // the ending's portal has no sign
+    this.spinBoost = 0;
     this.group.position.copy(pos);
     this.group.visible = true;
     this.state = 'in';
@@ -162,7 +165,7 @@ export class Portal {
     }
     this.alpha = this.state === 'in' ? Math.min(1, this.t / 0.8) : damp(this.alpha, 0, 3, dt);
     // the vortex spins up as the ship closes in
-    u.uSpin.value = 1 + 2.5 * Math.max(0, 1 - Math.abs(dz) / 400);
+    u.uSpin.value = 1 + 2.5 * Math.max(0, 1 - Math.abs(dz) / 400) + this.spinBoost;   // spinBoost: the ending's spin-up
     u.uAlpha.value = this.alpha;
     u.uFlash.value = Math.max(0, u.uFlash.value - dt * 2);
     this.haloMat.opacity = this.alpha * 0.25;
