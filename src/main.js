@@ -1636,10 +1636,8 @@ function frame() {
   }
   state.cannonFlash = Math.max(0, state.cannonFlash - dt * 8);
   ship.setCannonGlow(Math.max(turret.heat, battlePhase() ? 0.55 : 0), state.cannonFlash);
-  radar.update(dt, {
-    yaw: turret.yaw, want: turret.desiredYaw, firing: play && input.fire && !turret.overheated, shot: fired,
-    aiming: state.aiming, top: rig.mode === 'top', heat: turret.heat, locked: !!state.locked, show: play && !battlePhase(), time: t,
-  });
+  // no radar ring on the journeys (it cluttered the view); battles have the angle radar instead
+  radar.mesh.visible = false;
 
   // ---- simulation
   raiderCtx.shipAlive = play && !director.active;
