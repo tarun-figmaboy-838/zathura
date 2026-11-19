@@ -113,9 +113,10 @@ you fire; the ring around the Fire button shows the cannon's heat.
 ```
 index.html        page, HUD and on-screen controls
 src/              game code (Three.js ES modules)
-assets/models/    ship, raider, boss, station and asteroid models (.glb)
-assets/ui/        title, cockpit, button art and character portraits (made with Figma AI; the answer capsules are drawn in CSS after the POLYGON kit)
-blender/          the Python scripts that generate every model
+assets/models/    ship, raider, boss, station and asteroid models (.glb, normals and colours stored compactly)
+assets/ui/        title, cockpit, button art and character portraits, all WebP (made with Figma AI; the answer capsules are drawn in CSS after the POLYGON kit)
+assets/vo/        the voice lines (.m4a: AAC plays in every browser, Safari included) and manifest.json
+blender/          the Python scripts that generate every model, and compact_glb.py (makes them smaller)
 PLAN.md           design plan and milestones
 ```
 
@@ -126,3 +127,7 @@ Install Blender (the scripts were built and tested with Blender 5.2), then from 
 ```
 BLENDER=/path/to/blender ./blender/build_all.sh
 ```
+
+After exporting, it runs `blender/compact_glb.py`, which stores each model's normals as bytes and its
+vertex colours as one byte per channel (the glTF `KHR_mesh_quantization` extension, read natively by
+three.js). The shapes, pivots and names stay exactly the same; the files are about 30% smaller.

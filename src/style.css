@@ -383,8 +383,6 @@ body.narrating .quiz-prompt, body.narrating #banner { opacity: 0 !important; }
 .stars i.on { background: linear-gradient(180deg, #fff6b0, #ffd23f 45%, #ff9d1c); animation: star-pop 0.45s var(--spring) both; }
 .stars.big i { width: 58px; }
 .stars.big i:nth-child(2) { translate: 0 -10px; width: 66px; }
-.stars.mini { gap: 2px; filter: drop-shadow(0 1px 0 var(--ink)); }
-.stars.mini i { width: 15px; }
 @keyframes star-pop { from { scale: 0.2; rotate: -40deg; } 70% { scale: 1.25; } to { scale: 1; rotate: 0deg; } }
 /* pause menu: round ink sound button */
 .round-btn { width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center; cursor: pointer; padding: 0;

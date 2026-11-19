@@ -15,8 +15,6 @@
 const DEG = Math.PI / 180;
 const pick = (arr, r) => arr[Math.floor(r() * arr.length)];
 
-export const QUESTION_TYPES = ['opposite', 'linear', 'complement', 'point', 'triangle'];
-
 export const HINTS = {
   opposite: 'Opposite angles are equal',
   linear: 'Angles on a straight line add up to 180°',
