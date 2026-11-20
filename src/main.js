@@ -803,7 +803,7 @@ const SCENERY = [
   { p: 0.55, size: [6, 14], x: [80, 140], y: [-45, 60] },
 ];
 function spawnScenery(zAhead, bigOnly = false) {
-  if (gate.state === 'in' && ship.position.z - zAhead < gate.group.position.z + gate.radius + 60) return;   // not inside the planet
+  if (gate.state === 'in' && ship.position.z - zAhead < gate.group.position.z + (gate.keepOut ?? gate.radius) + 60) return;   // not inside the gate
   let roll = bigOnly ? 0 : Math.random();
   const k = SCENERY.find((s) => (roll -= s.p) < 0) || SCENERY[1];
   const side = Math.random() < 0.5 ? -1 : 1;
@@ -865,7 +865,7 @@ function updateScenery(dt) {
     return;
   }
   // a satellite or a small outpost beside the route every few seconds, and maybe one UFO visit
-  if (ph === 'journey' && gate.state === 'in' && ship.position.z - gate.group.position.z > gate.radius + 900) {
+  if (ph === 'journey' && gate.state === 'in' && ship.position.z - gate.group.position.z > (gate.keepOut ?? gate.radius) + 900) {
     if ((state.propT -= dt) <= 0) {
       state.propT = rand(3.5, 5.5);
       const side = Math.random() < 0.5 ? -1 : 1;
@@ -1013,6 +1013,7 @@ const campaignCtx = {
     // name shows on a banner (no sign in the middle of the view)
     gate = L.boss ? planetGate : gates[campaign.level % gates.length];
     for (const g of gates) if (g !== gate) g.hide();
+    planets[0].enabled = !(gate instanceof RingGate);     // one ringed giant at a time
     gate.show(tmp.set(LANE.x, LANE.y, ship.position.z - (campaign.journeyTime - 0.4) * 123), L.group);
     state.propT = rand(1.5, 3);
     state.ufoAt = campaign.level > 0 && Math.random() < 0.55 ? rand(3, Math.max(3.5, campaign.journeyTime - 6)) : -1;
@@ -1779,6 +1780,7 @@ function frame() {
 
   if (vitals.update(dt) && play) { shield.pulse(); audio.shieldUp(); }
   if (mode === 'launch' && !riding()) shield.mesh.visible = ship.redshift < 0.02;
+  shield.dim = battlePhase() ? 0.35 : 1;
   shield.update(dt, vitals.shieldFrac);
   if (play && vitals.hullFrac < 0.45 && (state.smokeT -= dt) <= 0) {
     state.smokeT = 0.05;
@@ -1815,7 +1817,9 @@ function frame() {
   sun.update(dt, camera, ship.position, SUN_OCCLUDERS);
 
   state.damage = damp(state.damage, 0, 2.5, dt);
-  const lowHull = play && vitals.hullFrac < 0.3 ? 0.25 + 0.2 * Math.sin(t * 6) : 0;
+  // the red low-hull pulse only where the ship can really be lost (battles); a crash on a journey
+  // can't destroy it, so there it only flashes on the hit
+  const lowHull = play && battlePhase() && vitals.hullFrac < 0.3 ? 0.25 + 0.2 * Math.sin(t * 6) : 0;
   const hurry = play && quiz.state === 'ask' && quiz.limit && quiz.timeLeft < 3 && !director.active
     ? (0.3 + 0.25 * Math.sin(t * 10)) * (1 - quiz.timeLeft / 3) : 0;
   // after a portal or the black hole: a lens warp (colour split) that settles in a moment

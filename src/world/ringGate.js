@@ -1,16 +1,21 @@
 import * as THREE from 'three';
 import { GateBase, seeded } from './gateBase.js';
 
-// A journey gate: a banded gas giant beside the route whose rings stand across the flight path,
-// tilted toward you. The lane goes through the dark gap between two ring bands (like Saturn's
-// Cassini division); ice chunks line the gap's edges and sparkle as you shoot through. The ring
-// plane crosses the lane at the gate's middle.
+// A journey gate: a banded gas giant like Saturn, below the route, its rings round its equator at
+// a gentle tilt. You fly in over the planet's top and dive through the dark gap between two ring
+// bands (like the Cassini division); ice chunks line the gap's edges and sparkle as you shoot
+// through. The ring plane crosses the lane at the gate's middle.
 
-const A = Math.PI / 6;                         // how far the ring plane is turned from facing you
-const PR = 230;                                // the planet's radius
-const C = new THREE.Vector3(330, 30, -330 * Math.tan(A));   // its centre: the plane meets the lane at 0
-const GAP = [330, 440];                        // the gap (ring radii); the lane crosses near 380
-const RINGS = [272, 650];
+const B = (35 * Math.PI) / 180;                // the ring plane's tilt from flat...
+const G = 0.35;                                // ...and its roll, so the rings cross the view on a slant
+const CROSS = 385;                             // where (ring radius) the lane goes through the plane
+const PR = 170;                                // the planet's radius
+// the ring plane's normal, and the planet's centre: in that plane, CROSS from where the lane meets
+// it (the gate's middle), on the low side, so the planet sits below and to the left of the route
+const N = new THREE.Vector3(-Math.sin(G) * Math.cos(B), Math.cos(G) * Math.cos(B), Math.sin(B));
+const C = new THREE.Vector3(0, 1, 0).addScaledVector(N, -N.y).normalize().multiplyScalar(-CROSS);
+const GAP = [330, 440];                        // the gap (ring radii)
+const RINGS = [208, 545];
 
 // per sector: the planet's band colours and the rings' tint
 const LOOKS = [
@@ -67,13 +72,14 @@ const ringFragment = /* glsl */ `
 export class RingGate extends GateBase {
   constructor(scene, { rockGeometry = null } = {}) {
     super(scene, 140);
-    const n = new THREE.Vector3(Math.sin(A), 0, Math.cos(A));          // the ring plane's normal
+    this.keepOut = C.z + PR + 40;                  // keep scenery out of the planet, which reaches toward you
+    const n = N;
     const tilt = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), n);
 
     this.planetMat = new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0, envMapIntensity: 0.4 });
     const planet = new THREE.Mesh(new THREE.SphereGeometry(PR, 96, 64), this.planetMat);
     planet.position.copy(C);
-    planet.rotation.set(0.35, 0, 0.25);          // stripes run across, the way you expect a gas giant to look
+    planet.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);   // its stripes follow the rings
     this.planet = planet;
     this.group.add(planet);
 

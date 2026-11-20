@@ -8,6 +8,7 @@ import * as THREE from 'three';
 export class GateBase {
   constructor(scene, radius) {
     this.radius = radius;
+    this.keepOut = radius;                  // how far toward the ship scenery must stay away (a gate may reach further)
     this.group = new THREE.Group();
     this.group.visible = false;
     scene.add(this.group);

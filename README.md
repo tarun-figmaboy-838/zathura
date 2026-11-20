@@ -15,8 +15,10 @@ planet), each coloured for its sector and each open in the middle so it never hi
    (`src/world/stationGate.js`).
 3. **Crystal cave**: through a cave bored right through a giant asteroid, lined with glowing
    crystals (`src/world/caveGate.js`).
-4. **Ringed giant**: through the dark gap between two bands of a gas giant's rings, which stand
-   across your path, past the ice chunks along its edges (`src/world/ringGate.js`).
+4. **Ringed giant**: a Saturn-like gas giant below and to the left of the route, its rings round
+   its equator on a slant; you fly in over it and dive through the dark gap between two ring bands,
+   past the ice chunks along its edges (`src/world/ringGate.js`). The route's other ringed planet
+   hides meanwhile, so there is only one.
 5. **Starship wreck**: in at the shattered bow of a giant derelict ship and out of its stern, between
    bare ribs and torn plates, past flickering warning lamps (`src/world/wreckGate.js`).
 The level's name shows on a banner at the start. On the journey, asteroids are moving obstacles in the flight path, each timed to be on

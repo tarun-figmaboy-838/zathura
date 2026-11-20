@@ -13,6 +13,7 @@ export class ShieldFX {
       uHits: { value: this.hits },
       uStrength: { value: 1 },
       uPulse: { value: 0 },
+      uDim: { value: 1 },          // < 1 in the angle battles, so a hit never hides the radar diagram
     };
     const mat = new THREE.ShaderMaterial({
       uniforms: this.uniforms,
@@ -30,7 +31,7 @@ export class ShieldFX {
         }`,
       fragmentShader: /* glsl */ `
         uniform vec4 uHits[${HITS}];
-        uniform float uStrength, uPulse;
+        uniform float uStrength, uPulse, uDim;
         varying vec3 vLocal; varying vec3 vN; varying vec3 vView;
         vec3 hash33(vec3 p) {
           p = fract(p * vec3(0.1031, 0.1030, 0.0973));
@@ -65,7 +66,7 @@ export class ShieldFX {
           }
           float a = glow * mix(0.35, 1.0, uStrength) + uPulse * fres * (0.35 + edge) + fres * edge * 0.04 * uStrength;
           vec3 col = mix(vec3(1.0, 0.32, 0.22), vec3(0.3, 0.65, 1.0), uStrength);
-          gl_FragColor = vec4(col * a * 2.2, 1.0);
+          gl_FragColor = vec4(col * a * 2.2 * uDim, 1.0);
         }`,
     });
     this.mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 40), mat);
@@ -85,6 +86,7 @@ export class ShieldFX {
   }
 
   pulse() { this.uniforms.uPulse.value = 1; }
+  set dim(v) { this.uniforms.uDim.value = v; }
 
   update(dt, strength) {
     for (const h of this.hits) h.w += dt;
