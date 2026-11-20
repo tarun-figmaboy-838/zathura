@@ -83,6 +83,13 @@ body.warping #hud, body.warping #controls { opacity: 0; }
 #hitmarker { position: absolute; left: -7px; top: -7px; width: 44px; height: 44px; opacity: 0; }
 #hitmarker line { stroke: #fff; stroke-width: 3; stroke-linecap: round; }
 #hitmarker.kill line { stroke: var(--warn); }
+/* the friendly alien's greeting: a small white comic bubble over its saucer */
+.alien-say { position: absolute; left: 0; top: 0; padding: 5px 12px 6px; border-radius: 14px; background: #fff; color: #1d2340;
+  font: 700 15px/1.1 'Fredoka', 'Inter', sans-serif; white-space: nowrap; pointer-events: none; opacity: 0; scale: 0.6;
+  box-shadow: 0 0 0 2.5px #1d2340, 0 4px 10px rgba(0, 0, 0, 0.35); transition: opacity 0.15s ease, scale 0.25s var(--spring); }
+.alien-say::after { content: ''; position: absolute; left: 50%; bottom: -8px; width: 12px; height: 12px; margin-left: -6px; background: #fff;
+  rotate: 45deg; box-shadow: 2.5px 2.5px 0 #1d2340; }
+.alien-say.show { opacity: 1; scale: 1; }
 /* a rock about to hit the ship: a pulsing red ring with a "!" badge */
 .hazard { position: absolute; left: 0; top: 0; border-radius: 50%; border: 2.5px solid #ff4a3a; pointer-events: none;
   box-shadow: 0 0 0 1.5px rgba(6, 10, 28, 0.5), 0 0 10px rgba(255, 74, 58, 0.55);

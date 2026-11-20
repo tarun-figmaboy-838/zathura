@@ -7,26 +7,34 @@ The game opens on the bridge of your gunship, looking out through the windshield
 camera leaves the cockpit to watch the ship released from the Haven-9 station, then it dives into a black
 hole. On the far side there are **12 levels**, taken from *Angle Hunt* (angle-game.vercel.app): before
 every level the ship makes a short playable journey through an asteroid belt and flies through the
-level's portal. On the journey, asteroids are moving obstacles in the flight path, each timed to be on
+level's gate. The gate takes turns: the jagged, mountain-like crack of a broken planet (dark crust,
+glowing veins, a molten core; its colours change each sector, `src/world/brokenPlanet.js`) or the
+lit docking tunnel of a turning ring space station (`src/world/stationGate.js`). Both stay out of the
+middle of the view while you fly, and the level's name shows on a banner. On the journey, asteroids are moving obstacles in the flight path, each timed to be on
 your line just as you get there, tumbling as they come: a rock sweeping in from the side and across
 your path, two rocks crossing from opposite sides one after the other, a boulder drifting onto your
 line, or (from level 2) a rock wall with one gap that slides sideways so the gap moves; plus some
 space junk. Later levels move faster. They are light stone with a soft warm rim so they read against the calm, sparse sky
 without glaring, and they grow in rather than pop up; a rock about to hit the ship gets a red ring
 with a "!" (the two soonest only; steer away and it goes). Fly round them or shoot them; the far belt
-beside the lane is dim scenery only. The levels come in three sectors of four; each sector ends with a meteor field and a
+beside the lane is dim scenery only. Rock and junk crashes cost shield and hull but can never destroy the
+ship (the hull stops at 15%), and the ship is repaired as it flies through the gate, so only the
+battles decide a level. Along the way a few satellites and small outposts drift by off to the
+sides, and now and then a friendly UFO flies alongside for a few seconds: the little green alien in
+its dome waves and says hello ("Hey!", "Nice ship!"), then zips off with a goodbye. They cannot be
+shot or locked onto (`src/world/props.js`). The levels come in three sectors of four; each sector ends with a meteor field and a
 quick look at the stars earned. After the third sector comes the boss, the
 Warden: a giant virus drone with one huge eye on top (its core) and four turrets
 (`src/enemies/wardenDrone.js`), and then you jump home.
 
 Music is synthesized live and changes with the action (cruise, battle, boss).
 
-The first time something new appears (the portal, a virus drone, the battle radar, each angle rule, the
+The first time something new appears (the gate, a virus drone, the battle radar, each angle rule, the
 meteor field and its buttons, the boss) the game introduces it: one short line in the narration box,
 with a drone camera shot that zooms in on it and back out. Tap the line to skip ahead. Every fresh visit introduces everything again.
 
-After the ship crosses the black hole's horizon, and every time it flies through a portal, it rides a
-wormhole: a real 3D funnel anchored where it opens (inside the hole, behind the portal's ring), seen
+After the ship crosses the black hole's horizon it rides a wormhole: a real 3D funnel anchored
+where it opens (inside the hole), seen
 opening as the ship approaches. Swirling gas, light streaks and sparks rush past, and the light at
 the far end swells until it carries the ship out (`src/world/wormhole.js`).
 

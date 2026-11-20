@@ -20,7 +20,8 @@ export class Vitals {
   get hullFrac() { return this.hull / this.maxHull; }
 
   // returns 'shield' | 'break' | 'hull' | 'dead' | 'none'
-  damage(amount) {
+  // floor: the hull never drops below this (crashes into rocks bruise the ship but never end the game)
+  damage(amount, floor = 0) {
     if (this.dead) return 'none';
     this.sinceHit = 0;
     if (this.shield > 0) {
@@ -28,11 +29,11 @@ export class Vitals {
       if (this.shield > 0) return 'shield';
       const spill = -this.shield;
       this.shield = 0;
-      this.hull = Math.max(0, this.hull - spill * 0.5);
+      this.hull = Math.max(Math.min(this.hull, floor), this.hull - spill * 0.5);
       if (this.hull <= 0) { this.dead = true; return 'dead'; }
       return 'break';
     }
-    this.hull -= amount;
+    this.hull = Math.max(Math.min(this.hull, floor), this.hull - amount);
     if (this.hull > 0) return 'hull';
     this.hull = 0;
     this.dead = true;

@@ -322,6 +322,16 @@ export class AudioEngine {
     [660, 830, 990, 1320].forEach((f, i) => this.osc('triangle', f, f, 0.22, 0.45, o, t + i * 0.06));
   }
 
+  // the friendly alien says hi: a little warbly "bee-doo" chirp
+  alienHi() {
+    if (!this.ready() || !this.limit('alien', 400)) return;
+    const t = this.ctx.currentTime;
+    const o = this.out(0.18);
+    this.osc('sine', 880, 1320, 0.11, 0.5, o, t);
+    this.osc('sine', 1180, 760, 0.16, 0.45, o, t + 0.12);
+    this.osc('triangle', 1500, 1900, 0.08, 0.25, o, t + 0.3);
+  }
+
   // wrong answer: short low double buzz
   wrong() {
     if (!this.ready()) return;

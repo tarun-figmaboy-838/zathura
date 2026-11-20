@@ -64,11 +64,11 @@ function buildLevels() {
     groupEnd: i % 4 === 3,
     skill: group,
     meteors: [8, 10, 12][group],
-    journey: i === 0 ? 14 : 10,
+    journey: i === 0 ? 15 : 12,
   });
   HUNT.forEach((q, i) => add(q, i, Math.floor(i / 4)));
   for (let i = 8; i < 12; i++) add(masteryLevel(), i, 2);
-  levels.push({ label: 'BOSS', title: 'FINAL', name: 'The Warden', boss: true, group: 3, groupEnd: true, skill: 4, meteors: 0, journey: 8 });
+  levels.push({ label: 'BOSS', title: 'FINAL', name: 'The Warden', boss: true, group: 3, groupEnd: true, skill: 4, meteors: 0, journey: 10 });
   return levels;
 }
 

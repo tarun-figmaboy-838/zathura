@@ -14,6 +14,9 @@ import { createDust } from './world/dust.js';
 import { WormholeTube } from './world/wormhole.js';
 import { TargetRings } from './world/holo.js';
 import { Portal } from './world/portal.js';
+import { PlanetGate } from './world/brokenPlanet.js';
+import { StationGate } from './world/stationGate.js';
+import { Props } from './world/props.js';
 import { SpaceTrash } from './world/trash.js';
 import { AngleOverlay } from './world/angleOverlay.js';
 import { AngleQuiz } from './game/quiz.js';
@@ -197,6 +200,7 @@ const field = new AsteroidField(scene, rockGltf, {
   managed: true, capacity: 72,
   tints: [C3(1.3, 1.22, 1.12), C3(1.24, 1.2, 1.16), C3(1.34, 1.15, 1.0)],
   rim: C3(0.55, 0.3, 0.12),
+  fill: 0.16,                     // the shadow side stays readable against the dark planet
 });
 field.material.envMapIntensity = 1.15;
 const trash = new SpaceTrash(scene);
@@ -213,7 +217,16 @@ const raiders = new Raiders(scene, raiderGltf
   ? [{ key: 'raider', model: raiderGltf.scene, trail: [1.15, 0.38, 0.16], count: 10 }]
   : DRONE_KINDS.map((k) => ({ ...k, model: k.make() })), trails);
 const boss = new Boss(scene, bossGltf ? bossGltf.scene : makeWardenDrone());
-const portal = new Portal(scene);
+const portal = new Portal(scene);                 // the way home (the ending)
+// the end of a journey takes turns: fly through the crack of a broken planet, or through a space
+// station's docking tunnel (the Warden's level ends at a broken planet)
+const planetGate = new PlanetGate(scene, { rockGeometry: field.pools[0].low.geometry, sunDir: SUN_DIR });
+const stationGate = new StationGate(scene);
+const gates = [planetGate, stationGate];
+let gate = planetGate;
+// satellites, small outposts and now and then a friendly UFO beside the route
+const props = new Props(scene, $('markers'));
+props.onSay = () => audio.alienHi();
 const rings = new TargetRings(scene);
 const angleOverlay = new AngleOverlay(scene, $('markers'));
 const fx = new Effects(scene, field.pools[2].low.geometry, field.material);
@@ -401,6 +414,8 @@ function clearCombat() {
   scenery.clearAll();
   trash.clearAll();
   portal.hide();
+  for (const g of gates) g.hide();
+  props.clear();
   quiz.stop();
   director.clear();
   dialogue.clear();
@@ -749,16 +764,17 @@ function onPlayerBolt(target, point, bolt) {
   } else addScore(10, rock.pos);
 }
 
-// flying through a sector portal: a flash of light, and the sector begins
+// through the broken planet's core: a flash of its light, and the level begins
 function crossPortal() {
   state.portalPassed = true;
   lens.uniforms.uFlash.value = 0.12;
   state.warp = 0.6;
   field.clearAll();
   trash.clearAll();
-  // straight on into the funnel behind the ring; the level starts when the ride ends (endPortalRide)
+  // on through the rest of the gate at a rush; it ends in white and the level starts (endPortalRide)
   state.tunnel = PORTAL_RIDE;
-  portalTube.alpha = 1;
+  vitals.reset();                // repaired on the way through: crashes on the journey never weigh on the battle
+  state.warnedHull = false;
   rig.addShake(0.5);
   fx.ring(ship.position, 60, 0.7);
   audio.warp(ship.position);
@@ -786,6 +802,7 @@ const SCENERY = [
   { p: 0.55, size: [6, 14], x: [80, 140], y: [-45, 60] },
 ];
 function spawnScenery(zAhead, bigOnly = false) {
+  if (gate.state === 'in' && ship.position.z - zAhead < gate.group.position.z + gate.radius + 60) return;   // not inside the planet
   let roll = bigOnly ? 0 : Math.random();
   const k = SCENERY.find((s) => (roll -= s.p) < 0) || SCENERY[1];
   const side = Math.random() < 0.5 ? -1 : 1;
@@ -843,16 +860,32 @@ function spawnObstacle(z) {
 function updateScenery(dt) {
   const ph = campaign.phase;
   if (battlePhase()) {
-    if (rig.mode === 'top' && rig.t > 0.55 && scenery.liveCount) scenery.clearAll();
+    if (rig.mode === 'top' && rig.t > 0.55 && scenery.liveCount) { scenery.clearAll(); props.clear(); }
     return;
+  }
+  // a satellite or a small outpost beside the route every few seconds, and maybe one UFO visit
+  if (ph === 'journey' && gate.state === 'in' && ship.position.z - gate.group.position.z > gate.radius + 900) {
+    if ((state.propT -= dt) <= 0) {
+      state.propT = rand(3.5, 5.5);
+      const side = Math.random() < 0.5 ? -1 : 1;
+      if (Math.random() < 0.7) props.spawn('sat', V(LANE.x + side * rand(60, 105), LANE.y + rand(-12, 30), ship.position.z - rand(650, 850)));
+      else props.spawn('outpost', V(LANE.x + side * rand(150, 230), LANE.y + rand(-30, 50), ship.position.z - rand(750, 900)));
+    }
+    if (state.ufoAt > 0 && campaign.t > state.ufoAt) {
+      state.ufoAt = -1;
+      props.visit(ship, Math.random() < 0.5 ? -1 : 1);
+    }
   }
   // the journey: asteroids placed in the flight path to dodge or shoot, and some space junk; more
   // and harder patterns on later levels (none in the last stretch before the portal)
-  if (ph === 'journey' && portal.state === 'in' && ship.position.z - portal.group.position.z > 420) {
+  if (ph === 'journey' && gate.state === 'in') {
     state.hazardT = (state.hazardT ?? 1.0) - dt;
     if (state.hazardT <= 0) {
       state.hazardT = campaign.level === 0 ? rand(1.8, 2.4) : Math.max(1.1, rand(1.5, 2.0) - campaign.level * 0.04);
-      spawnObstacle(ship.position.z - rand(470, 540));
+      // always between the ship and the gate (never behind it): late ones start a little closer
+      const room = ship.position.z - (gate.group.position.z + gate.radius + 80);
+      const ahead = Math.min(rand(470, 540), room);
+      if (ahead > 260) spawnObstacle(ship.position.z - ahead);
     }
   }
   if (ph === 'contact' && (field.liveCount || trash.liveCount)) { field.clearAll(); trash.clearAll(); }
@@ -883,9 +916,11 @@ function onEnemyBolt(target, point, bolt) {
   else fx.impact(point, tmp.copy(point).sub(target.pos).normalize());
 }
 
-function playerDamage(amount, point) {
+// crash: a rock or junk (it can bruise the ship down to 15% hull, never destroy it: only the
+// battles can end a level)
+function playerDamage(amount, point, crash = false) {
   if (state.mode !== 'play') return;
-  const res = vitals.damage(amount);
+  const res = vitals.damage(amount, crash ? vitals.maxHull * 0.15 : 0);
   if (res === 'shield' || res === 'break') {
     shield.hit(point);
     audio.shieldHit();
@@ -911,7 +946,7 @@ function collideShip() {
     trash.kill(junk);
     fx.explosion(junk.pos, 0.9, ship.velocity, { scrap: true });
     audio.explosion(junk.pos, 0.8);
-    playerDamage(8, tmp2.copy(junk.pos));
+    playerDamage(8, tmp2.copy(junk.pos), true);
   }
   const rock = field.overlap(ship.position, ship.radius * 0.8);
   if (!rock) return;
@@ -920,7 +955,7 @@ function collideShip() {
   fx.explosion(p, THREE.MathUtils.clamp(rock.size / 4, 0.8, 3), ship.velocity);
   audio.explosion(p, 1);
   if (!rock.fragment) campaign.missed++;
-  playerDamage(Math.min(30, 10 + rock.size * 2.5), p);
+  playerDamage(Math.min(25, 8 + rock.size * 2.2), p, true);
 }
 field.onPassed = () => { campaign.missed++; };
 
@@ -974,10 +1009,14 @@ const campaignCtx = {
   portalPassed: () => state.portalPassed,
   sector(level) {
     const L = campaign.L;
-    portal.show(tmp.set(LANE.x, LANE.y, ship.position.z - (campaign.journeyTime - 0.4) * 123), L.boss ? 'FINAL' : L.title, L.name);
-    portal.group.scale.setScalar(1);
-    portalTube.place(portal.group.position, V(0, 0, -1));
-    portalTube.mesh.scale.setScalar(1);
+    // the broken planet waits at the end of the journey, in the sector's colours; the level's
+    // name shows on a banner (no sign in the middle of the view)
+    gate = L.boss || campaign.level % 2 === 0 ? planetGate : stationGate;
+    for (const g of gates) if (g !== gate) g.hide();
+    gate.show(tmp.set(LANE.x, LANE.y, ship.position.z - (campaign.journeyTime - 0.4) * 123), L.group);
+    state.propT = rand(1.5, 3);
+    state.ufoAt = campaign.level > 0 && Math.random() < 0.55 ? rand(3, Math.max(3.5, campaign.journeyTime - 6)) : -1;
+    hud.banner(L.boss ? 'FINAL' : L.title, L.name, 2.6);
     portalTube.alpha = 0;
     portalTube.exit = 0;
     state.portalPassed = false;
@@ -987,7 +1026,7 @@ const campaignCtx = {
       { time: 1.5 },
       { text: 'Fly with the joystick. Dodge the rocks!', focus: ['#stick'], time: 3.6 },
       { text: 'The X aims for you. Press FIRE to shoot!', focus: ['#crosshair', '#controls .act.fire'], time: 3.8 },
-      { text: 'Then fly through the portal to start Level 1.', time: 3.6 },
+      { text: 'Then fly through the broken planet to start Level 1.', time: 3.6 },
     ]);
     if (campaign.firstOfGroup) state.sector = { asked: 0, first: 0 };
     vitals.reset();                                        // repaired between levels: earlier hits never end a later one
@@ -1592,10 +1631,10 @@ function frame() {
   ship.radius = SHIP_RADIUS * state.shipScale;
   if (play && ship.kinematic) {
     const cfg = campaign.cfg;
-    const auto = (campaign.phase === 'journey' && portal.state === 'in' && ship.position.z - portal.group.position.z < 300) || state.tunnel > 0;
+    const auto = (campaign.phase === 'journey' && gate.state === 'in' && ship.position.z - gate.group.position.z < gate.radius + 120) || state.tunnel > 0;
     const sx = auto ? clamp((LANE.x - ship.position.x) / 10, -1, 1) : cfg.steer ? input.dirX : 0;
     const sy = auto ? clamp((LANE.y - ship.position.y) / 6, -1, 1) : cfg.steer ? input.dirY : 0;
-    ship.rail(dt, state.tunnel > 0 ? 320 : cfg.speed, sx, sy, LANE, BOUNDS);   // the portal's tunnel rushes
+    ship.rail(dt, state.tunnel > 0 ? 320 : cfg.speed, sx, sy, LANE, BOUNDS);   // a rush out through the crack
   } else if (mode === 'finale') {
     finaleUpdate(dt);
   } else if (mode === 'dying') {
@@ -1649,7 +1688,7 @@ function frame() {
   // ---- campaign + aiming + firing
   if (play) {
     if (state.tunnel > 0) {
-      // the light at the end of the portal's tunnel swells to white, then the level begins
+      // the planet's light swells to white as the ship rushes out of the crack, then the level begins
       const e = clamp((PORTAL_RIDE - state.tunnel - (PORTAL_RIDE - 0.55)) / 0.55, 0, 1);
       portalTube.exit = e;
       setWhiteout('white', e * e * e);
@@ -1715,6 +1754,7 @@ function frame() {
   enemyBolts.update(dt, enemyHitTest, onEnemyBolt);
   field.update(dt, t, ship.position, camera.position);
   trash.update(dt, ship.position);
+  props.update(dt, t, ship, camera);
   if (play) updateScenery(dt);
   scenery.update(dt, t, ship.position, camera.position);
   if (play && dt > 0) collideShip();
@@ -1726,8 +1766,8 @@ function frame() {
   document.body.classList.toggle('focusing', focusNow);
   if (play) updateQuiz(dt, t);
   else angleOverlay.update(dt, t, quizCenter, camera);
-  if (portal.state === 'in' && mode === 'play') portalTube.alpha = 0.85 * clamp(1 - (ship.position.z - portal.group.position.z - 30) / 240, 0, 1);
-  if (portal.update(dt, t, ship.position) && state.mode === 'play') crossPortal();   // live mode: it may have died this frame
+  portal.update(dt, t, ship.position);                                          // the ending's portal (see finaleUpdate)
+  if (gate.update(dt, t, ship.position) && state.mode === 'play') crossPortal();   // live mode: it may have died this frame
 
   if (vitals.update(dt) && play) { shield.pulse(); audio.shieldUp(); }
   if (mode === 'launch' && !riding()) shield.mesh.visible = ship.redshift < 0.02;
@@ -1817,7 +1857,8 @@ $('load-msg').textContent = '';
 // handy for tuning from the devtools console
 window.game = {
   THREE, scene, camera, renderer, ship, turret, rig, field, fx, raiders, boss, vitals, intro, campaign, state, input, audio, hud,
-  portal, rings, director, blackhole, planets, quiz, angleOverlay, launch, setMode,
+  portal, rings, director, blackhole, planets, quiz, angleOverlay, launch, setMode, props, gates,
+  get gate() { return gate; },
   debug: {
     fire(on) { input.virtual.fire = on; },
     key(code, on) { if (on) input.keys.add(code); else input.keys.delete(code); },

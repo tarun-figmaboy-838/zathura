@@ -56,6 +56,7 @@
   "77b472ae",
   "7b1b1063",
   "7cdea476",
+  "7ce66b4c",
   "7e380f6f",
   "82bee507",
   "83d4003c",
@@ -71,7 +72,6 @@
   "96d34eb3",
   "975a3a6a",
   "985b0431",
-  "9d27ecc5",
   "9e589899",
   "9f0a8f9b",
   "a2072841",
@@ -647,10 +647,10 @@
    "text": "Rock wall! Fly through the gap.",
    "seconds": 2.72
   },
-  "9d27ecc5": {
+  "7ce66b4c": {
    "who": "crew",
-   "text": "Then fly through the portal to start Level 1.",
-   "seconds": 3.5
+   "text": "Then fly through the broken planet to start Level 1.",
+   "seconds": 4.17
   },
   "eb4e6c56": {
    "who": "crew",
