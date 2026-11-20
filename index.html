@@ -46,8 +46,13 @@
   <div id="hud" class="hidden">
     <div id="markers"></div>
     <div id="turret-marker"></div>
-    <!-- the target X: it sits ahead of the ship, moves with it, and sets itself on what is in front -->
-    <div id="crosshair"><svg class="x" viewBox="-20 -20 40 40" aria-hidden="true"><path class="ink" d="M-11,-11 L11,11 M11,-11 L-11,11" /><path d="M-11,-11 L11,11 M11,-11 L-11,11" /></svg>
+    <!-- the target: a sight (ring, four ticks, an X at the centre) ahead of the ship that moves with it;
+         when it sets itself on a rock, junk or a drone, red brackets snap around that (#lockbox) -->
+    <div id="lockbox" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <div id="crosshair"><svg class="x" viewBox="-30 -30 60 60" aria-hidden="true">
+        <g class="ink"><circle r="17" /><path d="M0,-27 V-20 M0,20 V27 M-27,0 H-20 M20,0 H27 M-6,-6 L6,6 M6,-6 L-6,6" /></g>
+        <g class="line"><circle r="17" /><path d="M0,-27 V-20 M0,20 V27 M-27,0 H-20 M20,0 H27 M-6,-6 L6,6 M6,-6 L-6,6" /></g>
+      </svg>
       <svg id="hitmarker" viewBox="-20 -20 40 40" aria-hidden="true">
         <line x1="-13" y1="-13" x2="-6" y2="-6" /><line x1="13" y1="-13" x2="6" y2="-6" />
         <line x1="-13" y1="13" x2="-6" y2="6" /><line x1="13" y1="13" x2="6" y2="6" />

@@ -80,7 +80,7 @@ export class AsteroidField {
         const rock = {
           alive: false, fragment: false, respawnAt: 0,
           pos: new THREE.Vector3(), vel: new THREE.Vector3(), axis: new THREE.Vector3(0, 1, 0),
-          base: new THREE.Quaternion(), angle: 0, spin: 0, size: 1, radius: 1, hp: 1, flash: 0, owner: this,
+          base: new THREE.Quaternion(), angle: 0, spin: 0, size: 1, radius: 1, hp: 1, flash: 0, owner: this, age: 0,
           tint: new THREE.Color(1, 1, 1),
         };
         slots.push(rock);
@@ -133,6 +133,7 @@ export class AsteroidField {
       rock.radius = size * 0.8;
       rock.hp = Math.ceil(size * 0.6);
       rock.flash = 0;
+      rock.age = fragment ? 1 : 0;
       if (this.tints) rock.tint.copy(this.tints[Math.floor(r() * this.tints.length)]);
       return rock;
     }
@@ -167,8 +168,11 @@ export class AsteroidField {
           if (rock.pos.z - center.z > R) rock.pos.z -= 2 * R; else if (rock.pos.z - center.z < -R) rock.pos.z += 2 * R;
         }
         rock.angle += rock.spin * dt;
+        rock.age += dt;
+        // a new rock grows in over half a second (no popping in out of nowhere)
+        const grow = rock.age >= 0.5 ? 1 : 1 - (1 - rock.age / 0.5) ** 3;
         _q.setFromAxisAngle(rock.axis, rock.angle).multiply(rock.base);
-        _m.compose(rock.pos, _q, _s.setScalar(rock.size));
+        _m.compose(rock.pos, _q, _s.setScalar(rock.size * grow));
         if (rock.flash > 0) rock.flash = Math.max(0, rock.flash - dt * 7);
         const f = rock.flash;
         _c.setRGB(rock.tint.r * (1 + f * 4), rock.tint.g * (1 + f * 2.2), rock.tint.b * (1 + f * 1.2));

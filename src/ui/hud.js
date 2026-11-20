@@ -17,6 +17,7 @@ export class Hud {
     this.el = {
       score: $('score'),
       banner: $('banner'), alert: $('alert'), crosshair: $('crosshair'), hit: $('hitmarker'), marker: $('turret-marker'),
+      lockbox: $('lockbox'),
     };
     const markers = $('markers');
     const make = (cls) => {
@@ -114,12 +115,31 @@ export class Hud {
     if (mv) this.el.marker.style.transform = `translate(${s.x}px, ${s.y}px) rotate(45deg)`;
     this.el.marker.classList.toggle('on', ctx.turret.onTarget);
 
-    // red warning rings on rocks about to hit the ship, sized to the rock
+    // the lock brackets snap around whatever the target has set itself on (sized to it)
     const focal = H / 2 / Math.tan((camera.fov * Math.PI) / 360);
+    const lb = ctx.lockBox, lock = this.el.lockbox;
+    const hazards = ctx.hazards || [];
+    if (lb && lb.pos && !ctx.hideAim && toScreen(lb.pos, s)) {
+      const px = Math.max(16, (lb.radius / Math.max(1, lb.pos.distanceTo(camera.position))) * focal * 1.25);
+      if (this.lockObj !== ctx.locked) {             // a new target: replay the snap-in
+        this.lockObj = ctx.locked;
+        lock.style.display = 'none';
+        void lock.offsetWidth;
+      }
+      lock.style.display = 'block';
+      lock.style.width = lock.style.height = `${Math.round(px * 2)}px`;
+      lock.style.transform = `translate(${(s.x - px).toFixed(1)}px, ${(s.y - px).toFixed(1)}px)`;
+      lock.classList.toggle('danger', hazards.includes(ctx.locked));
+    } else {
+      lock.style.display = 'none';
+      this.lockObj = null;
+    }
+
+    // red warning rings on the other rocks about to hit the ship, sized to the rock
     let k = 0;
-    for (const r of ctx.hazards || []) {
+    for (const r of hazards) {
       if (k >= this.hazards.length) break;
-      if (!toScreen(r.pos, s)) continue;
+      if (r === ctx.locked || !toScreen(r.pos, s)) continue;
       const px = Math.max(18, (r.radius / Math.max(1, r.pos.distanceTo(camera.position))) * focal * 1.3);
       const el = this.hazards[k++];
       el.style.display = 'block';

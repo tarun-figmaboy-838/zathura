@@ -191,14 +191,14 @@ const engines = new EngineFX(ship, scene);
 const shield = new ShieldFX(ship);
 const vitals = new Vitals();
 const C3 = (r, g, b) => new THREE.Color(r, g, b);
-// the rocks in the flight path (obstacles and meteoroids): light warm stone with a hot orange rim,
-// so they stand out from the dark sky and the far belt at a glance
+// the rocks in the flight path (obstacles and meteoroids): light warm stone with a soft warm rim,
+// so they read clearly against the dark sky and the far belt without glaring
 const field = new AsteroidField(scene, rockGltf, {
   managed: true, capacity: 72,
-  tints: [C3(1.55, 1.42, 1.28), C3(1.45, 1.38, 1.32), C3(1.6, 1.3, 1.08)],
-  rim: C3(1.25, 0.5, 0.14),
+  tints: [C3(1.3, 1.22, 1.12), C3(1.24, 1.2, 1.16), C3(1.34, 1.15, 1.0)],
+  rim: C3(0.55, 0.3, 0.12),
 });
-field.material.envMapIntensity = 1.3;
+field.material.envMapIntensity = 1.15;
 const trash = new SpaceTrash(scene);
 // the far belt along the route, well outside the lane: only scenery (it never collides), so it
 // stays dim and muted and never looks like an obstacle
@@ -812,15 +812,15 @@ function spawnObstacle(z) {
     const gap = 1 + Math.floor(Math.random() * 3);
     for (let i = 0; i < 6; i++) {
       if (i === gap || i === gap + 1) continue;
-      rockAt(lerpLane('x', i / 5) + rand(-1.5, 1.5), LANE.y + rand(-2.5, 2.5), z + rand(-8, 8), rand(5.5, 7), 0.3);
+      rockAt(lerpLane('x', i / 5) + rand(-1.5, 1.5), LANE.y + rand(-2.5, 2.5), z + rand(-8, 8), rand(4.8, 5.8), 0.3);
     }
     introduce('wall', [{ text: 'Rock wall! Fly through the gap.', focus: ['#stick'], time: 3 }]);
   } else if (roll < 0.62) {
-    rockAt(p.x + rand(-5, 5), p.y + rand(-3, 3), z, rand(8, 12));
+    rockAt(p.x + rand(-5, 5), p.y + rand(-3, 3), z, rand(6.5, 9));
   } else if (roll < 0.85) {
     const side = Math.random() < 0.5 ? -1 : 1;
-    rockAt(p.x + rand(-4, 4), p.y + rand(-3, 3), z, rand(4.5, 6.5));
-    rockAt(p.x + side * rand(16, 22), p.y + rand(-4, 4), z - rand(30, 70), rand(4.5, 6.5));
+    rockAt(p.x + rand(-4, 4), p.y + rand(-3, 3), z, rand(4, 5.5));
+    rockAt(p.x + side * rand(16, 22), p.y + rand(-4, 4), z - rand(30, 70), rand(4, 5.5));
   } else {
     trash.spawn(V(p.x + rand(-10, 10), p.y + rand(-5, 5), z), rand(1.4, 2.2), V(rand(-3, 3), rand(-1.5, 1.5), rand(14, 28)));
   }
@@ -838,7 +838,7 @@ function updateScenery(dt) {
   if (ph === 'journey' && portal.state === 'in' && ship.position.z - portal.group.position.z > 420) {
     state.hazardT = (state.hazardT ?? 1.0) - dt;
     if (state.hazardT <= 0) {
-      state.hazardT = campaign.level === 0 ? rand(1.5, 2.0) : Math.max(0.95, rand(1.25, 1.75) - campaign.level * 0.04);
+      state.hazardT = campaign.level === 0 ? rand(1.8, 2.4) : Math.max(1.1, rand(1.5, 2.0) - campaign.level * 0.04);
       spawnObstacle(ship.position.z - rand(470, 540));
     }
   }
@@ -911,8 +911,8 @@ function collideShip() {
 }
 field.onPassed = () => { campaign.missed++; };
 
-// rocks about to hit the ship (on its current course, within 3 s) get a red warning ring on screen:
-// steer away and the ring goes
+// rocks about to hit the ship (on its current course, within ~2 s) get a red warning ring on screen,
+// the two soonest only so the view stays clear: steer away and the ring goes
 const hazards = [];
 const _hzP = new THREE.Vector3();
 const _hzV = new THREE.Vector3();
@@ -927,8 +927,10 @@ function findHazards() {
     const vv = _hzV.lengthSq();
     if (vv < 1) continue;
     const tc = -_hzP.dot(_hzV) / vv;                       // time of closest approach
-    if (tc > 0 && tc < 3 && _hzP.addScaledVector(_hzV, tc).length() < r.radius + R) hazards.push(r);
+    if (tc > 0 && tc < 2.2 && _hzP.addScaledVector(_hzV, tc).length() < r.radius + R) { r.hitIn = tc; hazards.push(r); }
   }
+  hazards.sort((a, b) => a.hitIn - b.hitIn);
+  if (hazards.length > 2) hazards.length = 2;
   return hazards;
 }
 
@@ -1038,6 +1040,7 @@ const AIM_LEAD = 0.9;      // seconds of sideways motion it leads by
 const xBase = { x: 0, y: 0 };
 const xPt = { x: 0, y: 0 };
 const lockPt = new THREE.Vector3();
+const lockBox = { pos: null, radius: 1 };     // what the X has set itself on, for the lock brackets
 
 // where the cannon should point this frame
 function computeAim() {
@@ -1055,17 +1058,17 @@ function computeAim() {
   aim.set(p.x + v.x * AIM_LEAD, p.y + v.y * AIM_LEAD, p.z - AIM_DIST);
   if (!toScreen(aim, xBase)) return;
   let bestPx = Math.min(window.innerWidth, window.innerHeight) * 0.13;
-  const consider = (obj, pos, vel) => {
+  const consider = (obj, pos, vel, rad) => {
     if (pos.z > p.z - 15 || pos.distanceToSquared(p) > 650 * 650) return;
     intercept(turretPos, v, pos, vel, BOLT_SPEED, pip);
     if (!toScreen(pip, xPt)) return;
     const d = Math.hypot(xPt.x - xBase.x, xPt.y - xBase.y);
-    if (d < bestPx) { bestPx = d; lockPt.copy(pip); state.locked = obj; }
+    if (d < bestPx) { bestPx = d; lockPt.copy(pip); state.locked = obj; lockBox.pos = pos; lockBox.radius = rad; }
   };
-  for (const r of raiders.list) if (r.alive) consider(r, r.position, r.vel);
-  for (const j of trash.list) if (j.alive) consider(j, j.pos, j.vel);
-  for (const r of field.rocks) if (r.alive) consider(r, r.pos, r.vel);
-  for (const w of boss.weakPoints()) consider(w.obj, w.pos, w.vel);
+  for (const r of raiders.list) if (r.alive) consider(r, r.position, r.vel, 4);
+  for (const j of trash.list) if (j.alive) consider(j, j.pos, j.vel, j.radius);
+  for (const r of field.rocks) if (r.alive) consider(r, r.pos, r.vel, r.radius);
+  for (const w of boss.weakPoints()) consider(w.obj, w.pos, w.vel, 5);
   if (state.locked) aim.copy(lockPt);
 }
 
@@ -1776,7 +1779,7 @@ function frame() {
     toScreen(aim, crosshair);                             // the target X
     hud.update(dt, {
       camera, campaign, vitals, score: state.score, crosshair, markerPoint, showMarker: false, hideAim: battlePhase(),
-      turret, raiders, locked: state.locked, boss, hazards: findHazards(),
+      turret, raiders, locked: state.locked, lockBox: state.locked && !battlePhase() ? lockBox : null, boss, hazards: findHazards(),
     });
     controls.update({ heat: turret.heat, overheated: turret.overheated });
   }

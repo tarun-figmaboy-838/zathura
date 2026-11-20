@@ -9,9 +9,10 @@ hole. On the far side there are **12 levels**, taken from *Angle Hunt* (angle-ga
 every level the ship makes a short playable journey through an asteroid belt and flies through the
 level's portal. On the journey, asteroids are placed in the flight path as obstacles: a big boulder on
 your line, a pair of rocks, or (from level 2) a rock wall with one gap to fly through, plus some
-space junk. They glow at the edges in warm orange so they stand out from the calm, sparse sky, and a
-rock about to hit the ship gets a pulsing red ring with a "!" (steer away and it goes). Fly round
-them or shoot them; the far belt beside the lane is dim scenery only. The levels come in three sectors of four; each sector ends with a meteor field and a
+space junk. They are light stone with a soft warm rim so they read against the calm, sparse sky
+without glaring, and they grow in rather than pop up; a rock about to hit the ship gets a red ring
+with a "!" (the two soonest only; steer away and it goes). Fly round them or shoot them; the far belt
+beside the lane is dim scenery only. The levels come in three sectors of four; each sector ends with a meteor field and a
 quick look at the stars earned. After the third sector comes the boss, the
 Warden: a giant virus drone with one huge eye on top (its core) and four turrets
 (`src/enemies/wardenDrone.js`), and then you jump home.
@@ -114,8 +115,9 @@ leaves out the Blender scripts and local launchers.
 | Pause / mute | – | Esc / M | Pause button (the pause menu also has sound on/off and back to the station) |
 
 On the journeys and in the meteor fields only the joystick and FIRE show. The target **X** sits ahead
-of the ship and moves with it, leading the way you steer; when a rock, junk or a drone is near it, it
-sets itself on it (turns red) so FIRE hits. There is no mouse or tap aiming. The ring around the Fire
+of the ship inside a target sight (a ring with four ticks) and moves with it, leading the way you
+steer; when a rock, junk or a drone is near it, it sets itself on it: the sight turns red and red
+corner brackets snap around the target (pulsing if it is about to hit you), so FIRE hits. There is no mouse or tap aiming. The ring around the Fire
 button shows the cannon's heat. In the angle battles the controls hide and the answer buttons take over.
 
 ## Project layout
