@@ -129,7 +129,7 @@ export class Hud {
     const hazards = ctx.hazards || [];
     const danger = !!ctx.locked && hazards.includes(ctx.locked);
     this.el.crosshair.classList.toggle('danger', danger);
-    if (lb && lb.pos && !ctx.hideAim && toScreen(lb.pos, s)) {
+    if (lb && lb.pos && ctx.locked?.alive !== false && !ctx.hideAim && toScreen(lb.pos, s)) {
       // never smaller than the sight, so the brackets always frame it
       const px = Math.max(36, (lb.radius / Math.max(1, lb.pos.distanceTo(camera.position))) * focal * 1.25);
       if (this.lockObj !== ctx.locked) {             // a new target: replay the snap-in

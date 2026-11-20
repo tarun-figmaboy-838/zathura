@@ -83,7 +83,7 @@ export class WreckGate extends GateBase {
   animate(dt, time) {
     // the old lamps flicker on and off, each in its own rhythm
     for (const l of this.lamps) l.visible = Math.sin(time * 7 + l.userData.phase) + Math.sin(time * 2.3 + l.userData.phase * 2) > -0.4;
-    this.lamp.color.copy(this.lampBase).multiplyScalar(1 + this.flash);
+    this.lamp.color.copy(this.lampBase);
     for (const s of this.scraps) {
       s.rotation.x += s.userData.spin.x * dt * 0.6;
       s.rotation.y += s.userData.spin.y * dt * 0.6;

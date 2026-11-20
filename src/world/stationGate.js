@@ -137,7 +137,7 @@ export class StationGate {
     this.flash = Math.max(0, this.flash - dt * 1.2);
     // the guide lights pulse a little as the ship lines up for the tunnel (kept soft: no glare inside)
     const near = Math.min(1, Math.max(0, 1 - (-dz - this.radius) / 700));
-    this.M.light.color.copy(this.lightBase).multiplyScalar(0.8 + 0.25 * near * (0.5 + 0.5 * Math.sin(time * 6)) + this.flash);
+    this.M.light.color.copy(this.lightBase).multiplyScalar(0.8 + 0.25 * near * (0.5 + 0.5 * Math.sin(time * 6)));
     if (this.state === 'out' && dz > this.radius + 400) this.hide();
     return crossed;
   }

@@ -124,6 +124,6 @@ export class RingGate extends GateBase {
   animate(dt, time) {
     this.planet.rotateY(dt * 0.03);
     if (this.ice) this.ice.rotateZ(dt * 0.015);
-    this.u.uFlash.value = this.flash;
+    this.u.uFlash.value = 0;
   }
 }

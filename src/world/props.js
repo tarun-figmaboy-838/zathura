@@ -182,6 +182,9 @@ export class Props {
 
   get busy() { return this.ufo.alive; }
 
+  // the gate is close: say goodbye and zip off now
+  hurry() { const u = this.ufo; if (u.alive && u.t < 4.1) u.t = 4.1; }
+
   clear() {
     for (const it of this.items) { it.alive = false; it.obj.visible = false; }
     this.ufo.alive = false;

@@ -239,7 +239,7 @@ export class PlanetGate {
       c.rotation.y += c.userData.spin.y * dt;
     }
     this.flash = Math.max(0, this.flash - dt * 1.2);
-    this.u.uHeat.value = 1 + 0.25 * near * near + this.flash * 1.5;  // the core warms a little as you arrive
+    this.u.uHeat.value = 1 + 0.25 * near * near;     // the core warms a little as you arrive (no flash)
     if (this.state === 'out' && dz > R + 400) this.hide();
     return crossed;
   }

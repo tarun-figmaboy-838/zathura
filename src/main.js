@@ -255,7 +255,8 @@ const intro = new Intro(station, ship, fx, audio, rig, blackhole);
 const wormTube = new WormholeTube(scene, blackhole.uniforms.uR.value);
 intro.tube = wormTube;
 const portalTube = new WormholeTube(scene, 22.5, { length: 560, segments: 140, radial: 72, throat: 0.84, warm: 0.35 });
-const riding = () => (state.mode === 'launch' && intro.stage === 'tunnel') || state.tunnel > 0;
+// the wormhole ride inside the black hole (the rush through a journey's gate is not a ride any more)
+const riding = () => state.mode === 'launch' && intro.stage === 'tunnel';
 const vo = new Voice(audio);
 // a voiced line speaks (the talk blips only fill in for lines without a voice); the line waits for it
 dialogue.voice = (who) => { if (!vo.speaking) audio.chatter(who); };
@@ -767,11 +768,10 @@ function onPlayerBolt(target, point, bolt) {
 // through the broken planet's core: a flash of its light, and the level begins
 function crossPortal() {
   state.portalPassed = true;
-  lens.uniforms.uFlash.value = 0.12;
-  state.warp = 0.6;
+  state.warp = 0.4;
   field.clearAll();
   trash.clearAll();
-  // on through the rest of the gate at a rush; it ends in white and the level starts (endPortalRide)
+  // on through the rest of the gate at a rush, then the level starts (endPortalRide); no white flash
   state.tunnel = PORTAL_RIDE;
   vitals.reset();                // repaired on the way through: crashes on the journey never weigh on the battle
   state.warnedHull = false;
@@ -783,14 +783,10 @@ function crossPortal() {
 
 const PORTAL_RIDE = 1.5;
 function endPortalRide() {
-  // out of the white the ride ended in, into the level
+  // the camera glides on into the level (no white flash)
   portalTube.alpha = 0;
   portalTube.exit = 0;
-  setWhiteout('white', 1);
-  void whiteout.offsetWidth;
-  setWhiteout('white', 0, 0.5, 'cubic-bezier(0.1, 0.7, 0.3, 1)');
-  state.warp = 1;
-  rig.addShake(0.3);
+  rig.addShake(0.2);
   hud.banner(campaign.L.boss ? 'THE WARDEN' : campaign.L.title, '', 2.2);
 }
 
@@ -863,18 +859,21 @@ function updateScenery(dt) {
     if (rig.mode === 'top' && rig.t > 0.55 && scenery.liveCount) { scenery.clearAll(); props.clear(); }
     return;
   }
-  // a satellite or a small outpost beside the route every few seconds, and maybe one UFO visit
-  if (ph === 'journey' && gate.state === 'in' && ship.position.z - gate.group.position.z > (gate.keepOut ?? gate.radius) + 900) {
-    if ((state.propT -= dt) <= 0) {
-      state.propT = rand(3.5, 5.5);
+  // a satellite or a small outpost beside the route every few seconds (always in front of the gate,
+  // nearer ones late in the journey), and maybe one UFO visit, which says goodbye before the gate
+  if (ph === 'journey' && gate.state === 'in') {
+    const room = ship.position.z - (gate.group.position.z + (gate.keepOut ?? gate.radius) + 60);
+    if ((state.propT -= dt) <= 0 && room > 300) {
+      state.propT = rand(3, 4.5);
       const side = Math.random() < 0.5 ? -1 : 1;
-      if (Math.random() < 0.7) props.spawn('sat', V(LANE.x + side * rand(60, 105), LANE.y + rand(-12, 30), ship.position.z - rand(650, 850)));
-      else props.spawn('outpost', V(LANE.x + side * rand(150, 230), LANE.y + rand(-30, 50), ship.position.z - rand(750, 900)));
+      if (Math.random() < 0.7) props.spawn('sat', V(LANE.x + side * rand(60, 105), LANE.y + rand(-12, 30), ship.position.z - Math.min(rand(650, 850), room)));
+      else props.spawn('outpost', V(LANE.x + side * rand(150, 230), LANE.y + rand(-30, 50), ship.position.z - Math.min(rand(750, 900), room)));
     }
     if (state.ufoAt > 0 && campaign.t > state.ufoAt) {
       state.ufoAt = -1;
-      props.visit(ship, Math.random() < 0.5 ? -1 : 1);
+      if (room > 500) props.visit(ship, Math.random() < 0.5 ? -1 : 1);
     }
+    if (props.busy && room < 260) props.hurry();
   }
   // the journey: asteroids placed in the flight path to dodge or shoot, and some space junk; more
   // and harder patterns on later levels (none in the last stretch before the portal)
@@ -1014,8 +1013,9 @@ const campaignCtx = {
     for (const g of gates) if (g !== gate) g.hide();
     planets[0].enabled = !(gate instanceof RingGate);     // one ringed giant at a time
     gate.show(tmp.set(LANE.x, LANE.y, ship.position.z - (campaign.journeyTime - 0.4) * 123), L.group);
-    state.propT = rand(1.5, 3);
-    state.ufoAt = campaign.level > 0 && Math.random() < 0.55 ? rand(3, Math.max(3.5, campaign.journeyTime - 6)) : -1;
+    state.propT = rand(0.8, 2);
+    // the UFO's visit (about 6 s) starts early enough to finish before the gate (see updateScenery)
+    state.ufoAt = campaign.level > 0 && Math.random() < 0.55 ? rand(1.2, 2.6) : -1;
     hud.banner(L.boss ? 'FINAL' : L.title, L.name, 2.6);
     portalTube.alpha = 0;
     portalTube.exit = 0;
@@ -1699,10 +1699,7 @@ function frame() {
   // ---- campaign + aiming + firing
   if (play) {
     if (state.tunnel > 0) {
-      // the planet's light swells to white as the ship rushes out of the crack, then the level begins
-      const e = clamp((PORTAL_RIDE - state.tunnel - (PORTAL_RIDE - 0.55)) / 0.55, 0, 1);
-      portalTube.exit = e;
-      setWhiteout('white', e * e * e);
+      // the ship rushes on through the gate, then the level begins
       if ((state.tunnel -= dt) <= 0) { state.tunnel = 0; endPortalRide(); }
     }
     else campaign.update(dt, campaignCtx);
@@ -1860,11 +1857,11 @@ function frame() {
 // ------------------------------------------------------------------ boot
 dockScene();
 fx.explosion(new THREE.Vector3(0, -5000, 0), 1, null, { scrap: true });
-portal.group.visible = true;   // compile the portal and wormhole shaders up front
-portalTube.mesh.visible = wormTube.mesh.visible = true;
+// compile the portal, wormhole, gate, prop and Warden shaders up front (no hitch when one first shows)
+const precompile = [portal.group, portalTube.mesh, wormTube.mesh, ...gates.map((g) => g.group), boss.root, props.ufo.obj, ...props.items.map((it) => it.obj)];
+for (const o of precompile) o.visible = true;
 try { await renderer.compileAsync(scene, camera); } catch { /* optional */ }
-portal.group.visible = false;
-portalTube.mesh.visible = wormTube.mesh.visible = false;
+for (const o of precompile) o.visible = false;
 renderer.setAnimationLoop(frame);
 await uiReady;                        // every image and font the UI uses is in (see uiReady)
 $('start').disabled = false;

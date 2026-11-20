@@ -80,7 +80,7 @@ export class CaveGate extends GateBase {
   }
 
   animate(dt, time, near) {
-    this.glow.color.copy(this.base).multiplyScalar(0.8 + 0.25 * Math.sin(time * 3) + 0.3 * near + this.flash);
+    this.glow.color.copy(this.base).multiplyScalar(0.8 + 0.25 * Math.sin(time * 3) + 0.3 * near);
     this.group.rotation.z += dt * 0.03;                           // the rock turns slowly about the tunnel
   }
 }
