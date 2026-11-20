@@ -16,6 +16,9 @@ import { TargetRings } from './world/holo.js';
 import { Portal } from './world/portal.js';
 import { PlanetGate } from './world/brokenPlanet.js';
 import { StationGate } from './world/stationGate.js';
+import { CaveGate } from './world/caveGate.js';
+import { RingGate } from './world/ringGate.js';
+import { WreckGate } from './world/wreckGate.js';
 import { Props } from './world/props.js';
 import { SpaceTrash } from './world/trash.js';
 import { AngleOverlay } from './world/angleOverlay.js';
@@ -218,11 +221,12 @@ const raiders = new Raiders(scene, raiderGltf
   : DRONE_KINDS.map((k) => ({ ...k, model: k.make() })), trails);
 const boss = new Boss(scene, bossGltf ? bossGltf.scene : makeWardenDrone());
 const portal = new Portal(scene);                 // the way home (the ending)
-// the end of a journey takes turns: fly through the crack of a broken planet, or through a space
-// station's docking tunnel (the Warden's level ends at a broken planet)
+// the end of a journey: five gates in turn, one per level (the Warden's level ends at a broken
+// planet): the crack of a broken planet, a space station's docking tunnel, a crystal cave through a
+// giant asteroid, the gap in a ringed giant's rings, and the open hull of a starship wreck
 const planetGate = new PlanetGate(scene, { rockGeometry: field.pools[0].low.geometry, sunDir: SUN_DIR });
 const stationGate = new StationGate(scene);
-const gates = [planetGate, stationGate];
+const gates = [planetGate, stationGate, new CaveGate(scene), new RingGate(scene, { rockGeometry: field.pools[1].low.geometry }), new WreckGate(scene)];
 let gate = planetGate;
 // satellites, small outposts and now and then a friendly UFO beside the route
 const props = new Props(scene, $('markers'));
@@ -1013,7 +1017,7 @@ const campaignCtx = {
     const L = campaign.L;
     // the broken planet waits at the end of the journey, in the sector's colours; the level's
     // name shows on a banner (no sign in the middle of the view)
-    gate = L.boss || campaign.level % 2 === 0 ? planetGate : stationGate;
+    gate = L.boss ? planetGate : gates[campaign.level % gates.length];
     for (const g of gates) if (g !== gate) g.hide();
     gate.show(tmp.set(LANE.x, LANE.y, ship.position.z - (campaign.journeyTime - 0.4) * 123), L.group);
     state.propT = rand(1.5, 3);

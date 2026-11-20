@@ -7,10 +7,19 @@ The game opens on the bridge of your gunship, looking out through the windshield
 camera leaves the cockpit to watch the ship released from the Haven-9 station, then it dives into a black
 hole. On the far side there are **12 levels**, taken from *Angle Hunt* (angle-game.vercel.app): before
 every level the ship makes a short playable journey through an asteroid belt and flies through the
-level's gate. The gate takes turns: the jagged, mountain-like crack of a broken planet (dark crust,
-glowing veins, a molten core; its colours change each sector, `src/world/brokenPlanet.js`) or the
-lit docking tunnel of a turning ring space station (`src/world/stationGate.js`). Both stay out of the
-middle of the view while you fly, and the level's name shows on a banner. On the journey, asteroids are moving obstacles in the flight path, each timed to be on
+level's gate. There are five gates, one per level in turn (the Warden's level ends at the red broken
+planet), each coloured for its sector and each open in the middle so it never hides the rocks:
+1. **Broken planet**: fly into the jagged, mountain-like crack of a planet split in two (dark crust,
+   glowing veins, a molten core; `src/world/brokenPlanet.js`).
+2. **Space station**: through the docking tunnel of a turning ring station, past soft guide lights
+   (`src/world/stationGate.js`).
+3. **Crystal cave**: through a cave bored right through a giant asteroid, lined with glowing
+   crystals (`src/world/caveGate.js`).
+4. **Ringed giant**: through the dark gap between two bands of a gas giant's rings, which stand
+   across your path, past the ice chunks along its edges (`src/world/ringGate.js`).
+5. **Starship wreck**: in at the shattered bow of a giant derelict ship and out of its stern, between
+   bare ribs and torn plates, past flickering warning lamps (`src/world/wreckGate.js`).
+The level's name shows on a banner at the start. On the journey, asteroids are moving obstacles in the flight path, each timed to be on
 your line just as you get there, tumbling as they come: a rock sweeping in from the side and across
 your path, two rocks crossing from opposite sides one after the other, a boulder drifting onto your
 line, or (from level 2) a rock wall with one gap that slides sideways so the gap moves; plus some
