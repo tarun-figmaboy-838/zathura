@@ -9,14 +9,16 @@ const _v = new THREE.Vector3();
 const _c = new THREE.Color();
 
 // Adds fine procedural rock detail (albedo breakup + derivative bump) on top of the
-// Blender-baked vertex colours, in each rock's own object space so it sticks to it.
-function addRockDetail(material) {
+// Blender-baked vertex colours, in each rock's own object space so it sticks to it, and a rim
+// light (rim colour; black = none) that outlines a rock against dark space.
+function addRockDetail(material, rim) {
   material.onBeforeCompile = (shader) => {
+    shader.uniforms.uRim = { value: rim };
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vRockPos;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvRockPos = position;');
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>\nvarying vec3 vRockPos;\n${VALUE3}`)
+      .replace('#include <common>', `#include <common>\nvarying vec3 vRockPos;\nuniform vec3 uRim;\n${VALUE3}`)
       .replace('#include <color_fragment>', `#include <color_fragment>
         float rockH = fbm3(vRockPos * 5.0);
         float rockFine = vnoise(vRockPos * 31.0);
@@ -24,7 +26,10 @@ function addRockDetail(material) {
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
         float bumpH = rockH + rockFine * 0.2;
         float bumpFade = 1.0 - smoothstep(120.0, 700.0, length(vViewPosition));
-        normal = perturbNormalH(-vViewPosition, normal, vec2(dFdx(bumpH), dFdy(bumpH)) * 1.6 * bumpFade, faceDirection);`);
+        normal = perturbNormalH(-vViewPosition, normal, vec2(dFdx(bumpH), dFdy(bumpH)) * 1.6 * bumpFade, faceDirection);`)
+      .replace('#include <opaque_fragment>', `float rimK = 1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0);
+        outgoingLight += uRim * rimK * rimK * rimK;
+        #include <opaque_fragment>`);
   };
 }
 
@@ -34,13 +39,16 @@ function gauss(r) {
 
 export class AsteroidField {
   // tints: optional list of colours, one picked per rock (lets a field look icy, rusty, brighter)
-  constructor(scene, gltf, { count = 520, radius = 1300, clear = 110, seed = 42, managed = false, capacity = 0, tints = null } = {}) {
+  // rim: rim-light colour (the rocks in the flight path glow at their edges so they read at once)
+  constructor(scene, gltf, { count = 520, radius = 1300, clear = 110, seed = 42, managed = false, capacity = 0, tints = null, rim = null } = {}) {
     // Asteroid_N = 5k-tri hero mesh, Asteroid_N_lod = 1.3k-tri distant mesh
     const byName = {};
     gltf.scene.traverse((o) => { if (o.isMesh) byName[o.name] = o.geometry; });
     const variants = Object.keys(byName).filter((n) => !n.endsWith('_lod')).sort();
     this.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0, envMapIntensity: 0.9 });
-    addRockDetail(this.material);
+    this.rimColor = rim ? rim.clone() : new THREE.Color(0, 0, 0);
+    this.rim = this.rimColor.clone();             // live value: rimStrength scales it
+    addRockDetail(this.material, this.rim);
     this.radius = radius;
     this.clear = clear;
     this.tints = tints;
@@ -250,6 +258,8 @@ export class AsteroidField {
       }
     }
   }
+
+  set rimStrength(k) { this.rim.copy(this.rimColor).multiplyScalar(k); }
 
   get liveCount() { let n = 0; for (const r of this.rocks) if (r.alive && !r.fragment) n++; return n; }
 

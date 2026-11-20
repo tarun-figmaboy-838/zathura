@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 // Drifting space dust around the camera, drawn as line segments stretched along the
 // ship's velocity: the main cue for speed in empty space.
-export function createDust(count = 1800, size = 240) {
+export function createDust(count = 650, size = 240) {
   const pos = new Float32Array(count * 2 * 3);
   const end = new Float32Array(count * 2);
   const seed = new Float32Array(count * 2);
@@ -39,7 +39,7 @@ export function createDust(count = 1800, size = 240) {
       }`,
     fragmentShader: /* glsl */ `
       varying float vAlpha;
-      void main() { gl_FragColor = vec4(vec3(0.65, 0.8, 1.0) * 1.3, vAlpha); }`,
+      void main() { gl_FragColor = vec4(vec3(0.65, 0.8, 1.0), vAlpha * 0.8); }`,
   });
   const lines = new THREE.LineSegments(geo, mat);
   lines.frustumCulled = false;

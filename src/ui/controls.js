@@ -1,7 +1,7 @@
-// On-screen, game-style controls: a joystick on the left and action buttons on the right (FIRE
-// with a heat ring, LOCK-ON and SHIELD with cooldown sweeps). In the angle battles only the
-// joystick (it turns the cannon) and FIRE show. Works with mouse and multi-touch; keys move the
-// knob and light the buttons too.
+// On-screen, game-style controls for the journeys: a joystick on the left flies the ship and FIRE
+// (with a heat ring) on the right shoots at the target X. Nothing else. In the angle battles they
+// hide and the answer options take over. Works with mouse and multi-touch; keys move the knob and
+// light FIRE too.
 export class Controls {
   constructor(input) {
     this.input = input;
@@ -20,17 +20,6 @@ export class Controls {
       el.addEventListener('pointerup', set(false));
       el.addEventListener('pointercancel', set(false));
       el.addEventListener('lostpointercapture', () => { input.virtual[act] = false; });
-    });
-    this.root.querySelectorAll('[data-tap]').forEach((el) => {
-      const act = el.dataset.tap;
-      this.btn[act] = el;
-      el.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        input.tap(act);
-        el.classList.add('pressed');
-        setTimeout(() => el.classList.remove('pressed'), 140);
-      });
     });
     this.root.addEventListener('contextmenu', (e) => e.preventDefault());
 
@@ -69,22 +58,14 @@ export class Controls {
 
   show(v) { this.root.classList.toggle('hidden', !v); }
 
-  // make a button pulse to suggest using it right now
-  urge(name, seconds) {
-    const el = this.btn[name];
-    el.classList.add('urge');
-    clearTimeout(el._urge);
-    el._urge = setTimeout(() => el.classList.remove('urge'), seconds * 1000);
-  }
-
-  // 'chase': steer, fire, lock, shield. 'top' (angle battles): the joystick turns the cannon and
-  // FIRE shoots (see game/quiz.js); lock and shield hide
+  // 'chase': the joystick and FIRE. 'top' (angle battles): hidden, the answer options take over
+  // (see game/quiz.js)
   setMode(mode) {
     if (this.root.dataset.mode === mode) return;
     this.root.dataset.mode = mode;
   }
 
-  update({ heat, overheated, lock, shield }) {
+  update({ heat, overheated }) {
     const i = this.input;
     this.btn.fire.classList.toggle('pressed', i.fire);
     // the knob shows the arrow keys too
@@ -95,11 +76,5 @@ export class Controls {
     const f = this.btn.fire;
     f.style.setProperty('--heat', heat.toFixed(3));
     f.classList.toggle('overheat', overheated);
-    for (const [k, s] of [['lock', lock], ['shield', shield]]) {
-      const el = this.btn[k];
-      el.style.setProperty('--cd', s.cooldown.toFixed(3));
-      el.classList.toggle('ready', s.ready);
-      el.classList.toggle('active', s.active);
-    }
   }
 }

@@ -190,16 +190,23 @@ turret.minPitchFore = -12 * Math.PI / 180;
 const engines = new EngineFX(ship, scene);
 const shield = new ShieldFX(ship);
 const vitals = new Vitals();
-const field = new AsteroidField(scene, rockGltf, { managed: true, capacity: 64 });
-const trash = new SpaceTrash(scene);
-// decorative asteroid belt along the route: never collides, never counts as a meteor
 const C3 = (r, g, b) => new THREE.Color(r, g, b);
-const scenery = new AsteroidField(scene, rockGltf, {
-  managed: true, capacity: 90, seed: 7,
-  // bright grey stone, icy blue and rusty red, so the belt reads against the dark nebula
-  tints: [C3(1.75, 1.65, 1.55), C3(1.75, 1.65, 1.55), C3(1.3, 1.6, 2.1), C3(2.0, 1.3, 0.95)],
+// the rocks in the flight path (obstacles and meteoroids): light warm stone with a hot orange rim,
+// so they stand out from the dark sky and the far belt at a glance
+const field = new AsteroidField(scene, rockGltf, {
+  managed: true, capacity: 72,
+  tints: [C3(1.55, 1.42, 1.28), C3(1.45, 1.38, 1.32), C3(1.6, 1.3, 1.08)],
+  rim: C3(1.25, 0.5, 0.14),
 });
-scenery.material.envMapIntensity = 1.5;
+field.material.envMapIntensity = 1.3;
+const trash = new SpaceTrash(scene);
+// the far belt along the route, well outside the lane: only scenery (it never collides), so it
+// stays dim and muted and never looks like an obstacle
+const scenery = new AsteroidField(scene, rockGltf, {
+  managed: true, capacity: 60, seed: 7,
+  tints: [C3(0.75, 0.72, 0.7), C3(0.62, 0.7, 0.82), C3(0.85, 0.66, 0.55)],
+});
+scenery.material.envMapIntensity = 0.8;
 const trails = new Trails(scene);
 // the enemies: three kinds of virus drone and the Warden drone (built in code), or the saved ship draft
 const raiders = new Raiders(scene, raiderGltf
@@ -263,14 +270,10 @@ const BEST_KEY = 'driftbound.best';
 const loadBest = () => { try { return Number(localStorage.getItem(BEST_KEY)) || 0; } catch { return 0; } };
 const state = {
   mode: 'title', modeT: 0, time: 0, score: 0, levelStartScore: 0, best: loadBest(),
-  damage: 0, smokeT: 0, warnedHull: false, shieldHintT: 0, cannonFlash: 0, manualT: 0, manualYaw: 0, locked: null,
-  finaleSpeed: 0, shipScale: 1, aiming: false, jumped: false, crossT: 0,
-  volley: null, timeScale: 1, bossHoldT: 0, bossSolved: 0, turnHold: 0, fireHeld: false,
+  damage: 0, smokeT: 0, warnedHull: false, shieldHintT: 0, cannonFlash: 0, locked: null,
+  finaleSpeed: 0, shipScale: 1, jumped: false, crossT: 0,
+  volley: null, timeScale: 1, bossHoldT: 0, bossSolved: 0,
   sector: { asked: 0, first: 0 }, stars: [], reportOpen: false, reportT: 0,
-};
-const abilities = {
-  lock: { dur: 5, cd: 12, t: 0, cool: 0 },
-  shield: { dur: 4, cd: 16, t: 0, cool: 0 },
 };
 const aim = new THREE.Vector3();
 const shot = { position: new THREE.Vector3(), direction: new THREE.Vector3() };
@@ -407,7 +410,6 @@ function clearCombat() {
   state.deathCause = null;
   state.tunnel = 0;
   portalTube.alpha = 0;
-  for (const a of Object.values(abilities)) { a.t = 0; a.cool = 0; }
 }
 
 function retryLevel() {
@@ -777,18 +779,51 @@ function endPortalRide() {
 }
 
 // ------------------------------------------------------------------ scenery belt
-// big slow rocks far out, medium ones nearer, small fast debris just outside the lane
+// big slow rocks far out and medium ones nearer, all well clear of the lane (only the bright
+// obstacles fly in it)
 const SCENERY = [
-  { p: 0.22, size: [16, 42], x: [95, 230], y: [-70, 90] },
-  { p: 0.4, size: [6, 14], x: [50, 100], y: [-32, 46] },
-  { p: 0.38, size: [1.6, 3.6], x: [41, 58], y: [-14, 26] },
+  { p: 0.45, size: [16, 42], x: [130, 280], y: [-90, 110] },
+  { p: 0.55, size: [6, 14], x: [80, 140], y: [-45, 60] },
 ];
 function spawnScenery(zAhead, bigOnly = false) {
   let roll = bigOnly ? 0 : Math.random();
-  const k = SCENERY.find((s) => (roll -= s.p) < 0) || SCENERY[2];
+  const k = SCENERY.find((s) => (roll -= s.p) < 0) || SCENERY[1];
   const side = Math.random() < 0.5 ? -1 : 1;
   scenery.spawn(V(side * rand(...k.x), LANE.y + rand(...k.y), ship.position.z - zAhead), rand(...k.size),
     V(rand(-1.5, 1.5), rand(-0.8, 0.8), rand(-1, 1)));
+}
+
+// Obstacles in the flight path (the lane is LANE ± BOUNDS). They drift slowly, so the ship flies
+// into them: steer round them, or shoot them (a big one takes a few hits). Three patterns:
+//   boulder: one big rock right on the ship's line
+//   pair:    two medium rocks, one on the ship's line, one beside it
+//   wall:    a row across the lane with one wide gap to fly through (from level 2)
+// plus some space junk now and then
+const lerpLane = (ax, k) => LANE[ax] + (k * 2 - 1) * (BOUNDS[ax] - 3);
+function rockAt(x, y, z, size, drift = 1) {
+  return field.spawn(V(clamp(x, LANE.x - BOUNDS.x, LANE.x + BOUNDS.x), clamp(y, LANE.y - BOUNDS.y, LANE.y + BOUNDS.y), z), size,
+    V(rand(-1.5, 1.5) * drift, rand(-0.6, 0.6) * drift, rand(0, 5)));
+}
+function spawnObstacle(z) {
+  const p = ship.position;
+  const roll = Math.random();
+  if (campaign.level > 0 && roll < 0.3) {
+    // a wall: six rocks across, two side by side left out for the gap
+    const gap = 1 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < 6; i++) {
+      if (i === gap || i === gap + 1) continue;
+      rockAt(lerpLane('x', i / 5) + rand(-1.5, 1.5), LANE.y + rand(-2.5, 2.5), z + rand(-8, 8), rand(5.5, 7), 0.3);
+    }
+    introduce('wall', [{ text: 'Rock wall! Fly through the gap.', focus: ['#stick'], time: 3 }]);
+  } else if (roll < 0.62) {
+    rockAt(p.x + rand(-5, 5), p.y + rand(-3, 3), z, rand(8, 12));
+  } else if (roll < 0.85) {
+    const side = Math.random() < 0.5 ? -1 : 1;
+    rockAt(p.x + rand(-4, 4), p.y + rand(-3, 3), z, rand(4.5, 6.5));
+    rockAt(p.x + side * rand(16, 22), p.y + rand(-4, 4), z - rand(30, 70), rand(4.5, 6.5));
+  } else {
+    trash.spawn(V(p.x + rand(-10, 10), p.y + rand(-5, 5), z), rand(1.4, 2.2), V(rand(-3, 3), rand(-1.5, 1.5), rand(14, 28)));
+  }
 }
 
 // keep the belt streaming past while cruising; clear it once the battle camera is overhead
@@ -798,19 +833,17 @@ function updateScenery(dt) {
     if (rig.mode === 'top' && rig.t > 0.55 && scenery.liveCount) scenery.clearAll();
     return;
   }
-  // the journey: rocks and space junk drift into the lane to shoot or dodge, more on later levels
-  // (none in the last stretch before the portal)
+  // the journey: asteroids placed in the flight path to dodge or shoot, and some space junk; more
+  // and harder patterns on later levels (none in the last stretch before the portal)
   if (ph === 'journey' && portal.state === 'in' && ship.position.z - portal.group.position.z > 420) {
-    state.hazardT = (state.hazardT ?? 1.2) - dt;
+    state.hazardT = (state.hazardT ?? 1.0) - dt;
     if (state.hazardT <= 0) {
-      state.hazardT = Math.max(0.55, rand(1.0, 1.6) - campaign.level * 0.06);
-      const at = V(rand(-26, 26), LANE.y + rand(-9, 10), ship.position.z - rand(430, 560));
-      if (Math.random() < 0.55) field.spawn(at, rand(2.4, 4.6), V(rand(-2, 2), rand(-1, 1), rand(12, 26)));
-      else trash.spawn(at, rand(1.2, 2.2), V(rand(-3, 3), rand(-1.5, 1.5), rand(14, 28)));
+      state.hazardT = campaign.level === 0 ? rand(1.5, 2.0) : Math.max(0.95, rand(1.25, 1.75) - campaign.level * 0.04);
+      spawnObstacle(ship.position.z - rand(470, 540));
     }
   }
   if (ph === 'contact' && (field.liveCount || trash.liveCount)) { field.clearAll(); trash.clearAll(); }
-  const rate = ph === 'journey' ? (campaign.level === 0 ? 7 : 4) : ph === 'meteors' ? 0.8 : ph === 'idle' ? 0 : 3;
+  const rate = ph === 'journey' ? (campaign.level === 0 ? 2.6 : 1.8) : ph === 'meteors' ? 0.6 : ph === 'idle' ? 0 : 1.6;
   state.sceneryT = (state.sceneryT ?? 0) + dt * rate;
   while (state.sceneryT >= 1) {
     state.sceneryT -= 1;
@@ -839,7 +872,6 @@ function onEnemyBolt(target, point, bolt) {
 
 function playerDamage(amount, point) {
   if (state.mode !== 'play') return;
-  if (abilities.shield.t > 0) { shield.hit(point); audio.shieldHit(); return; }
   const res = vitals.damage(amount);
   if (res === 'shield' || res === 'break') {
     shield.hit(point);
@@ -875,17 +907,29 @@ function collideShip() {
   fx.explosion(p, THREE.MathUtils.clamp(rock.size / 4, 0.8, 3), ship.velocity);
   audio.explosion(p, 1);
   if (!rock.fragment) campaign.missed++;
-  playerDamage(10 + rock.size * 2.5, p);
+  playerDamage(Math.min(30, 10 + rock.size * 2.5), p);
 }
 field.onPassed = () => { campaign.missed++; };
 
-function activate(name) {
-  const a = abilities[name];
-  if (state.mode !== 'play' || a.cool > 0 || battlePhase()) return;
-  a.t = a.dur;
-  a.cool = a.cd;
-  if (name === 'lock') { hud.alert('Lock-on', 'warn', 1.2); audio.hit(true); }
-  else { hud.alert('Shield', 'info', 1.2); audio.shieldUp(); shield.pulse(); }
+// rocks about to hit the ship (on its current course, within 3 s) get a red warning ring on screen:
+// steer away and the ring goes
+const hazards = [];
+const _hzP = new THREE.Vector3();
+const _hzV = new THREE.Vector3();
+function findHazards() {
+  hazards.length = 0;
+  if (state.mode !== 'play' || rig.mode === 'top') return hazards;
+  const R = ship.radius * 0.8 + 1.5;
+  for (const r of field.rocks) {
+    if (!r.alive || r.pos.z > ship.position.z) continue;
+    _hzP.subVectors(r.pos, ship.position);
+    _hzV.subVectors(r.vel, ship.velocity);
+    const vv = _hzV.lengthSq();
+    if (vv < 1) continue;
+    const tc = -_hzP.dot(_hzV) / vv;                       // time of closest approach
+    if (tc > 0 && tc < 3 && _hzP.addScaledVector(_hzV, tc).length() < r.radius + R) hazards.push(r);
+  }
+  return hazards;
 }
 
 const raiderCtx = {
@@ -903,8 +947,7 @@ const bossCtx = {
     audio.boostWhoosh();
   },
   onBarrageWarning() {
-    hud.alert('Barrage · Shield!', 'danger', 1.8);
-    controls.urge('shield', 2.2);
+    hud.alert('Barrage incoming!', 'danger', 1.8);
     audio.alarm();
   },
   onDefeated() { campaign.destroyed++; },
@@ -923,11 +966,12 @@ const campaignCtx = {
     portalTube.alpha = 0;
     portalTube.exit = 0;
     state.portalPassed = false;
-    for (let i = 0; i < 46; i++) spawnScenery(rand(90, 900));
+    for (let i = 0; i < 16; i++) spawnScenery(rand(90, 900));
     audio.waveHorn();
     introduce('portal', [
       { time: 1.5 },
-      { text: 'Steer with ◀ ▲ ▼ ▶ and shoot the rocks and space junk!', focus: ['#controls .pad', '#controls .act.fire'], time: 4.5 },
+      { text: 'Fly with the joystick. Dodge the rocks!', focus: ['#stick'], time: 3.6 },
+      { text: 'The X aims for you. Press FIRE to shoot!', focus: ['#crosshair', '#controls .act.fire'], time: 3.8 },
       { text: 'Then fly through the portal to start Level 1.', time: 3.6 },
     ]);
     if (campaign.firstOfGroup) state.sector = { asked: 0, first: 0 };
@@ -979,46 +1023,6 @@ const campaignCtx = {
   reportOpen: () => state.reportOpen,
 };
 
-// nearest live target for lock-on: raiders in battle, meteoroids ahead otherwise
-function nearestTarget() {
-  let best = null;
-  let bestD = Infinity;
-  for (const r of raiders.list) {
-    if (!r.alive) continue;
-    const d = r.position.distanceToSquared(ship.position);
-    if (d < bestD) { bestD = d; best = { obj: r, pos: r.position, vel: r.vel }; }
-  }
-  for (const w of boss.weakPoints()) {
-    const d = w.pos.distanceToSquared(ship.position) * 0.3; // prefer the boss's weak points
-    if (d < bestD) { bestD = d; best = w; }
-  }
-  if (best) return best;
-  for (const r of field.rocks) {
-    if (!r.alive || r.pos.z > ship.position.z - 10) continue;
-    const d = r.pos.distanceToSquared(ship.position);
-    if (d < bestD && d < 700 * 700) { bestD = d; best = { obj: r, pos: r.pos, vel: r.vel }; }
-  }
-  return best;
-}
-
-// bearing from the turret, in the turret's yaw convention (0 = nose, + = left)
-const bearing = (pos) => Math.atan2(-(pos.x - turretPos.x), -(pos.z - turretPos.z));
-
-// the target closest to a chosen cannon direction, within maxAng radians of it
-function sectorTarget(yaw, maxAng) {
-  let best = null;
-  let bestScore = Infinity;
-  const test = (obj, pos, vel) => {
-    const d = Math.abs(wrapAngle(bearing(pos) - yaw));
-    if (d > maxAng) return;
-    const score = d + pos.distanceTo(turretPos) * 0.002;
-    if (score < bestScore) { bestScore = score; best = { obj, pos, vel }; }
-  };
-  for (const r of raiders.list) if (r.alive) test(r, r.position, r.vel);
-  for (const w of boss.weakPoints()) test(w.obj, w.pos, w.vel);
-  return best;
-}
-
 function toScreen(v, out) {
   tmp.copy(v).project(camera);
   out.x = (tmp.x * 0.5 + 0.5) * window.innerWidth;
@@ -1026,75 +1030,43 @@ function toScreen(v, out) {
   return tmp.z < 1;
 }
 
+// The target X (journeys and meteor fields): it sits ahead of the ship and moves with it, leading
+// the way the joystick steers; when a rock, junk or a drone comes near it, it sets itself on that
+// (aimed where it is going), so FIRE hits what the X is on. No mouse or tap aiming.
+const AIM_DIST = 300;      // how far ahead the X sits
+const AIM_LEAD = 0.9;      // seconds of sideways motion it leads by
+const xBase = { x: 0, y: 0 };
+const xPt = { x: 0, y: 0 };
+const lockPt = new THREE.Vector3();
+
 // where the cannon should point this frame
 function computeAim() {
   ship.nodes.TurretPitch.getWorldPosition(turretPos);
   state.locked = null;
-  state.aiming = false;
-  const top = rig.mode === 'top';
-  if (top && battlePhase()) {
+  if (rig.mode === 'top') {
     // angle battle: the cannon rests on the reference line and turns by the picked angle
     const yaw = quiz.active ? quiz.aimYaw : 0;
     const d = quiz.active ? Math.max(20, quiz.target.pos.distanceTo(quizCenter)) : 60;
     aim.set(-Math.sin(yaw), 0, -Math.cos(yaw)).multiplyScalar(d).add(quizCenter);
     aim.y = quiz.active ? quiz.target.pos.y : ship.position.y;
-    return 'quiz';
+    return;
   }
-  if (abilities.lock.t > 0) {
-    const tgt = nearestTarget();
-    if (tgt) {
-      intercept(turretPos, ship.velocity, tgt.pos, tgt.vel, BOLT_SPEED, aim);
-      state.locked = tgt.obj;
-      return 'lock';
-    }
-  }
-  // top view: the four arrows (and their diagonals) point the cannon in a fixed screen
-  // direction: up = ahead, right = right... It keeps tracking whatever is in that sector.
-  if (top && (input.dirX !== 0 || input.dirY !== 0)) {
-    state.manualYaw = Math.atan2(-input.dirX, input.dirY);
-    state.manualT = performance.now();
-    state.aiming = true;
-  }
-  if (top && state.manualT > input.pointerT) {
-    const tgt = sectorTarget(state.manualYaw, 0.6);
-    if (tgt) {
-      intercept(turretPos, ship.velocity, tgt.pos, tgt.vel, BOLT_SPEED, aim);
-      state.locked = tgt.obj;
-    } else {
-      aim.set(-Math.sin(state.manualYaw), 0, -Math.cos(state.manualYaw)).multiplyScalar(80).add(turretPos);
-    }
-    return 'manual';
-  }
-  if (!input.pointerSeen) {
-    if (top) aim.set(-Math.sin(turret.yaw), 0, -Math.cos(turret.yaw)).multiplyScalar(80).add(turretPos);
-    else aim.copy(turretPos).add(tmp.set(0, -1, -300));
-    return 'default';
-  }
-  const ray = rig.ray(input.pointer);
-  if (top) {
-    const t = (turretPos.y - ray.origin.y) / Math.min(-1e-3, ray.direction.y);
-    ray.at(t, aim);
-  } else {
-    const d = Math.min(field.raycast(ray.origin, ray.direction, 25), raiders.raycast(ray.origin, ray.direction, 25), 380);
-    ray.at(d, aim);
-  }
-  // aim assist: snap to the lead point of a target close to the pointer
-  const px = { x: (input.pointer.x * 0.5 + 0.5) * window.innerWidth, y: (-input.pointer.y * 0.5 + 0.5) * window.innerHeight };
-  let bestPx = 70;
-  const s = {};
+  const p = ship.position, v = ship.velocity;
+  aim.set(p.x + v.x * AIM_LEAD, p.y + v.y * AIM_LEAD, p.z - AIM_DIST);
+  if (!toScreen(aim, xBase)) return;
+  let bestPx = Math.min(window.innerWidth, window.innerHeight) * 0.13;
   const consider = (obj, pos, vel) => {
-    intercept(turretPos, ship.velocity, pos, vel, BOLT_SPEED, pip);
-    if (!toScreen(pip, s)) return;
-    const d = Math.hypot(s.x - px.x, s.y - px.y);
-    const d2 = toScreen(pos, s) ? Math.hypot(s.x - px.x, s.y - px.y) : Infinity;
-    const best = Math.min(d, d2);
-    if (best < bestPx) { bestPx = best; aim.copy(pip); state.locked = obj; }
+    if (pos.z > p.z - 15 || pos.distanceToSquared(p) > 650 * 650) return;
+    intercept(turretPos, v, pos, vel, BOLT_SPEED, pip);
+    if (!toScreen(pip, xPt)) return;
+    const d = Math.hypot(xPt.x - xBase.x, xPt.y - xBase.y);
+    if (d < bestPx) { bestPx = d; lockPt.copy(pip); state.locked = obj; }
   };
   for (const r of raiders.list) if (r.alive) consider(r, r.position, r.vel);
-  if (!top) for (const j of trash.list) if (j.alive && j.pos.z < ship.position.z) consider(j, j.pos, j.vel);
+  for (const j of trash.list) if (j.alive) consider(j, j.pos, j.vel);
+  for (const r of field.rocks) if (r.alive) consider(r, r.pos, r.vel);
   for (const w of boss.weakPoints()) consider(w.obj, w.pos, w.vel);
-  if (!top) for (const r of field.rocks) if (r.alive && r.pos.z < ship.position.z) consider(r, r.pos, r.vel);
-  return 'pointer';
+  if (state.locked) aim.copy(lockPt);
 }
 
 // ------------------------------------------------------------------ defeat
@@ -1199,7 +1171,7 @@ function introduceQuestion(q) {
     steps.push({ text: 'Turn it by the angle x to hit the target.', focus: ['.ang-label.unknown'], time: 4 });
   }
   if (!seen.has(q.type)) steps.push({ text: RULES[q.type], cam: camDiagram, time: 5, onStart: markSeen(q.type) });
-  if (first) steps.push({ text: 'Turn with the joystick, then press FIRE!', focus: ['#stick', '#controls .act.fire'], time: 3.6 });
+  if (first) steps.push({ text: 'Tap the correct value of x!', focus: ['.quiz-options'], time: 3 });
   if (steps.length) director.play(steps);
 }
 
@@ -1329,32 +1301,9 @@ function updateQuiz(dt, t) {
       introduceQuestion(q);
     }
   }
-  steerQuiz(dt);
   if (director.active && quiz.busy) director.clear();      // answering ends the walkthrough
   quiz.update(dt, turret.yaw, director.active || dialogue.active);   // reading time: the clock waits
   angleOverlay.update(dt, t, quizCenter, camera);
-}
-
-// the joystick (or ◀ ▶) turns the cannon and x counts as it turns: a gentle push turns it slowly
-// for the last few degrees, a full push fast; held keys start slow and speed up. FIRE shoots.
-const TURN_DEG = Math.PI / 180;
-function steerQuiz(dt) {
-  const fire = input.fireButton;
-  const pressed = fire && !state.fireHeld;              // one shot per press
-  state.fireHeld = fire;
-  if (!quiz.canSteer || state.doom > 0) { state.turnHold = 0; return; }
-  let speed = 0;                                         // degrees per second
-  if (input.keyX) {
-    state.turnHold += dt;
-    speed = 14 + 76 * Math.min(1, state.turnHold / 1.2);
-  } else {
-    state.turnHold = 0;
-    const a = Math.abs(input.stick.x);
-    speed = a < 0.12 ? 0 : 10 + 110 * ((a - 0.12) / 0.88) ** 2;
-  }
-  // right turns the cannon clockwise on the screen (the top view looks down)
-  quiz.steer(-Math.sign(input.dirX) * speed * TURN_DEG * dt);
-  if (pressed) quiz.shoot();
 }
 
 function quizFire(correct) {
@@ -1525,11 +1474,8 @@ function placeComms(dt) {
       if (r && r.width && getComputedStyle(el).opacity > 0.05) comms.out.push({ l: r.left - 8, t: r.top - 8, r: r.right + 8, b: r.bottom + 8 });
     }
     if (quiz.active) {
-      // the joystick and FIRE stay clear too
-      for (const el of [$('stick'), document.querySelector('#controls .act.fire')]) {
-        const r = el.getBoundingClientRect();
-        if (r.width) comms.out.push({ l: r.left - 8, t: r.top - 8, r: r.right + 8, b: r.bottom + 8 });
-      }
+      const r = document.querySelector('#quiz .quiz-options').getBoundingClientRect();
+      if (r.width) comms.out.push({ l: r.left - 8, t: r.top - 8, r: r.right + 8, b: r.bottom + 8 });
     }
     let best = null, bestCost = Infinity;
     for (const above of [true, false]) for (const f of [0.5, 0.3, 0.7, 0.15, 0.85]) {
@@ -1602,9 +1548,6 @@ function frame() {
 
   if (input.consume('pause')) { if (play) pause(); else if (mode === 'paused') resume(); }
   if (input.consume('mute')) { hud.alert(audio.toggleMute() ? 'Sound off' : 'Sound on', 'info', 1.2); updateSoundButton(); }
-  if (input.consume('lock')) activate('lock');
-  if (input.consume('shield')) activate('shield');
-  for (const a of Object.values(abilities)) { a.t = Math.max(0, a.t - dt); a.cool = Math.max(0, a.cool - dt); }
 
   if (intro.active && (mode === 'title' || mode === 'launch')) {
     const ev = intro.update(dt, t);
@@ -1699,7 +1642,7 @@ function frame() {
     else campaign.update(dt, campaignCtx);
     if (campaign.phase === 'cleared' && !seen.has('meteors')) {
       introduce('meteors', [
-        { text: 'Meteor field! LOCK aims for you. SHIELD blocks hits.', focus: ['#controls .act.lock', '#controls .act.shield'], time: 4.5 },
+        { text: 'Meteor field! Dodge them or shoot them!', focus: ['#stick', '#controls .act.fire'], time: 3.8 },
       ]);
     }
     if (campaign.phase === 'finale') startFinale();
@@ -1771,7 +1714,6 @@ function frame() {
   if (portal.update(dt, t, ship.position) && state.mode === 'play') crossPortal();   // live mode: it may have died this frame
 
   if (vitals.update(dt) && play) { shield.pulse(); audio.shieldUp(); }
-  if (abilities.shield.t > 0) shield.pulse();
   if (mode === 'launch' && !riding()) shield.mesh.visible = ship.redshift < 0.02;
   shield.update(dt, vitals.shieldFrac);
   if (play && vitals.hullFrac < 0.45 && (state.smokeT -= dt) <= 0) {
@@ -1805,6 +1747,7 @@ function frame() {
   const titleView = mode === 'title';
   bloom.strength = BLOOM_STRENGTH * (blackhole.object.visible ? 0.3 + 0.45 * near : 1) * (1 - 0.6 * (state.battleDim || 0)) * (titleView ? 0.75 : 1) * (riding() ? 0.4 : 1);   // keep the tunnel's colours crisp
   field.material.color.setScalar(titleView || mode === 'launch' ? 0.55 : 1);   // rocks by the station sit in shadow
+  field.rimStrength = titleView || mode === 'launch' ? 0 : 1;                  // ...with no warning glow
   sun.update(dt, camera, ship.position, SUN_OCCLUDERS);
 
   state.damage = damp(state.damage, 0, 2.5, dt);
@@ -1828,22 +1771,14 @@ function frame() {
     : mode !== 'play' ? 'calm' : campaign.phase === 'boss' ? 'boss' : battlePhase() ? 'battle'
     : campaign.phase === 'journey' ? 'calm' : 'cruise');
   audio.update(camera, ship, turret, flying);
-  // the system cursor is hidden only while the aiming crosshair replaces it (cruise and meteor
-  // fields); everywhere else (title, intro, angle battles, menus) the normal pointer shows
-  const wantCursor = play && !battlePhase() ? 'none' : 'default';
-  if (canvas.style.cursor !== wantCursor) canvas.style.cursor = wantCursor;
   if (play || mode === 'dying') {
     turret.aimPoint(markerPoint, Math.max(20, Math.min(turretPos.distanceTo(aim), 600)));
-    if (input.pointerSeen && !state.locked && state.manualT <= input.pointerT) {
-      crosshair.x = (input.pointer.x * 0.5 + 0.5) * window.innerWidth;
-      crosshair.y = (-input.pointer.y * 0.5 + 0.5) * window.innerHeight;
-    } else toScreen(aim, crosshair);
+    toScreen(aim, crosshair);                             // the target X
     hud.update(dt, {
-      camera, campaign, vitals, score: state.score, crosshair, markerPoint, showMarker: rig.mode !== 'top', hideAim: battlePhase(),
-      turret, raiders, locked: state.locked, boss,
+      camera, campaign, vitals, score: state.score, crosshair, markerPoint, showMarker: false, hideAim: battlePhase(),
+      turret, raiders, locked: state.locked, boss, hazards: findHazards(),
     });
-    const ab = (a) => ({ cooldown: a.cool / a.cd, ready: a.cool <= 0, active: a.t > 0 });
-    controls.update({ heat: turret.heat, overheated: turret.overheated, lock: ab(abilities.lock), shield: ab(abilities.shield) });
+    controls.update({ heat: turret.heat, overheated: turret.overheated });
   }
 
   if (mode !== 'paused') composer.render();
@@ -1865,7 +1800,7 @@ $('load-msg').textContent = '';
 
 // handy for tuning from the devtools console
 window.game = {
-  THREE, scene, camera, renderer, ship, turret, rig, field, fx, raiders, boss, vitals, intro, campaign, state, input, audio, hud, abilities,
+  THREE, scene, camera, renderer, ship, turret, rig, field, fx, raiders, boss, vitals, intro, campaign, state, input, audio, hud,
   portal, rings, director, blackhole, planets, quiz, angleOverlay, launch, setMode,
   debug: {
     fire(on) { input.virtual.fire = on; },

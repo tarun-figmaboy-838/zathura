@@ -59,14 +59,24 @@ body.warping #hud, body.warping #controls { opacity: 0; }
 #top-right .score.pop .coin { animation: coin-pop 0.35s var(--spring); }
 @keyframes coin-pop { 40% { transform: scale(1.3) rotate(-12deg); } }
 
+/* the target X: chunky, with a dark outline so it reads on stars and rocks; it turns red and pulls in
+   when it has set itself on a rock, junk or a drone */
 #crosshair { position: absolute; left: 0; top: 0; width: 30px; height: 30px; margin: -15px 0 0 -15px; }
-#crosshair .ring { position: absolute; inset: 0; border: 2px solid rgba(255, 255, 255, 0.75); border-radius: 50%;
-  box-shadow: 0 0 8px rgba(0, 0, 0, 0.5); transition: transform 0.12s, border-color 0.12s; }
-#crosshair .dot { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: #fff; }
-#crosshair.locked .ring { border-color: var(--danger); transform: scale(0.8); }
+#crosshair .x { position: absolute; left: -9px; top: -9px; width: 48px; height: 48px; overflow: visible; transition: transform 0.14s var(--spring); }
+#crosshair .x path { fill: none; stroke: #fff; stroke-width: 4.5; stroke-linecap: round; transition: stroke 0.12s; }
+#crosshair .x path.ink { stroke: rgba(6, 10, 28, 0.75); stroke-width: 8.5; }
+#crosshair.locked .x { transform: scale(0.82) rotate(90deg); }
+#crosshair.locked .x path:not(.ink) { stroke: #ff5a4a; }
 #hitmarker { position: absolute; left: -7px; top: -7px; width: 44px; height: 44px; opacity: 0; }
 #hitmarker line { stroke: #fff; stroke-width: 3; stroke-linecap: round; }
 #hitmarker.kill line { stroke: var(--warn); }
+/* a rock about to hit the ship: a pulsing red ring with a "!" badge */
+.hazard { position: absolute; left: 0; top: 0; border-radius: 50%; border: 3px solid #ff4a3a; pointer-events: none;
+  box-shadow: 0 0 0 2px rgba(6, 10, 28, 0.55), 0 0 16px rgba(255, 74, 58, 0.75), inset 0 0 12px rgba(255, 74, 58, 0.4);
+  animation: hazard 0.42s ease-in-out infinite alternate; }
+.hazard::after { content: '!'; position: absolute; right: -4px; top: -4px; width: 20px; height: 20px; border-radius: 50%;
+  display: grid; place-items: center; font: 800 14px/1 'Inter', sans-serif; color: #fff; background: #ff3b2e; box-shadow: 0 0 0 2px #060a1c; }
+@keyframes hazard { to { opacity: 0.5; } }
 #turret-marker { position: absolute; left: 0; top: 0; width: 10px; height: 10px; margin: -5px 0 0 -5px;
   border: 2px solid var(--warn); border-radius: 3px; opacity: 0.7; }
 #turret-marker.on { border-color: var(--ok); }
@@ -108,9 +118,9 @@ body.warping #hud, body.warping #controls { opacity: 0; }
   transition: transform 0.08s ease, filter 0.12s ease; }
 #controls button:active, #controls button.pressed { transform: translateY(3px) scale(0.92); filter: brightness(1.25); }
 
-/* steering pad: up, down, left, right while flying; in battles the answer options take over */
-/* the joystick: a dark glass well with a chrome-blue rim and a glossy blue knob (the blues of the
-   arrow-button art it replaces). The knob follows a drag or the arrow keys and springs back. */
+/* the joystick (journeys): a dark glass well with a chrome-blue rim and a glossy blue knob. The knob
+   follows a drag or the arrow keys and springs back. In the angle battles the controls hide and the
+   answer options take over. */
 .stick { position: absolute; left: calc(26px + env(safe-area-inset-left)); bottom: calc(22px + env(safe-area-inset-bottom)); width: 168px; height: 168px;
   border-radius: 50%; pointer-events: auto; touch-action: none; cursor: grab;
   background: radial-gradient(circle, rgba(16, 40, 90, 0.5) 0 58%, rgba(8, 20, 50, 0.72) 72%);
@@ -122,33 +132,23 @@ body.warping #hud, body.warping #controls { opacity: 0; }
 .stick.held { cursor: grabbing; }
 .stick.held .stick-knob { transition: none; }
 .stick.on .stick-knob { box-shadow: 0 0 0 3px #cfeaff, 0 0 0 5.5px #2a6fc0, 0 0 20px rgba(111, 227, 255, 0.85), 0 6px 10px rgba(0, 0, 0, 0.5); }
-/* angle battles: the joystick turns the cannon and FIRE shoots; nothing else */
-#controls[data-mode='top'] .act.lock, #controls[data-mode='top'] .act.shield { display: none; }
+#controls[data-mode='top'] { display: none; }
 
 .actions { position: absolute; right: calc(22px + env(safe-area-inset-right)); bottom: calc(18px + env(safe-area-inset-bottom)); width: 212px; height: 196px; }
 .act { position: absolute; border-radius: 50%; display: grid; place-items: center; }
 .act kbd { position: absolute; left: 50%; bottom: -7px; transform: translateX(-50%); }
 .act.fire { right: 0; bottom: 0; width: 116px; height: 116px; }
-.act.lock { right: 122px; bottom: 2px; width: 76px; height: 76px; }
-.act.shield { right: 92px; bottom: 100px; width: 76px; height: 76px; }
 /* heat ring hugging the fire button's chrome bezel */
 .act.fire .heat { position: absolute; inset: -5px; border-radius: 50%; pointer-events: none;
   background: conic-gradient(rgba(255, 220, 110, 0.95) calc(var(--heat, 0) * 360deg), rgba(255, 255, 255, 0.08) 0);
   -webkit-mask: radial-gradient(circle, transparent 59%, #000 60.5%); mask: radial-gradient(circle, transparent 59%, #000 60.5%); }
 .act.fire.overheat img { filter: grayscale(0.75) brightness(0.7); }
-/* cooldown sweep over the coloured face */
-.act .cd { position: absolute; inset: 17%; border-radius: 50%; pointer-events: none;
-  background: conic-gradient(rgba(4, 8, 18, 0.74) calc(var(--cd, 0) * 360deg), transparent 0); }
-.act.ready { animation: ready 1.6s ease-in-out infinite; }
-@keyframes ready { 50% { filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.45)); } }
-@keyframes urge { 50% { filter: drop-shadow(0 0 16px rgba(255, 70, 50, 1)); transform: scale(1.1); } }
-.act.urge { animation: urge 0.45s ease-in-out infinite !important; }
-.act.active img { filter: drop-shadow(0 0 14px rgba(255, 255, 255, 0.95)) brightness(1.15); }
 
 /* ---------------------------------------------------------------- angle battle */
 #quiz { position: fixed; inset: 0; z-index: 4; pointer-events: none; transition: opacity 0.3s ease; }
 /* a focus shot on a talking craft: the question steps aside until the battle view is back */
 body.focusing #quiz { opacity: 0; }
+body.focusing #quiz .opt { pointer-events: none; }
 /* the question: built like the game's other panels (ink outline, gold rim, gradient, gloss, lip).
    No timer is shown (running out of time is felt: ticks, a red pulse, then the raider's blast). The
    given angle is orange like its arc on the radar, and x is the radar's x, so the words point at
@@ -174,6 +174,41 @@ body.focusing #quiz { opacity: 0; }
   animation: box-shake 0.4s ease; }
 @keyframes box-shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
 @keyframes box-pop { 40% { scale: 1.05; } }
+.quiz-options { position: absolute; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom)); translate: -50% 0; display: flex; gap: 16px; }
+/* answer capsules, drawn in CSS after the POLYGON kit art (white rim, glossy face shading to a
+   deeper band at the bottom, a highlight and a dot), so there is no image to load or drop: gold to
+   pick, green for right, red for wrong. No filters (they can drop a layer's paint over WebGL). */
+.opt { --c1: #fde97f; --c2: #fdd21e; --c3: #fcb905; --c4: #ff8a00; --edge: #e2560a; --deep: rgba(214, 52, 0, 0.75);
+  pointer-events: auto; position: relative; width: clamp(140px, 13vw, 186px); aspect-ratio: 420 / 153; padding: 0; border: 0; border-radius: 999px;
+  background: linear-gradient(180deg, var(--c1) 0%, var(--c2) 30%, var(--c3) 62%, var(--c4) 100%);
+  box-shadow: 0 0 0 3.5px #fffaf3, 0 0 0 5px rgba(6, 10, 28, 0.45), inset 0 0 0 1.5px var(--edge), inset 0 -7px 7px -2px var(--deep),
+    inset 0 3px 2px rgba(255, 255, 255, 0.55);
+  display: grid; place-items: center; cursor: pointer; opacity: 0; transition: transform 0.16s var(--spring); }
+/* the soft light band across the middle and the gloss: a highlight and a dot, top left */
+.opt::before { content: ''; position: absolute; inset: 44% 6% 18%; border-radius: 999px; background: linear-gradient(rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0)); pointer-events: none; }
+.opt::after { content: ''; position: absolute; left: 7%; top: 12%; width: 14%; height: 28%; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.55) 60%, rgba(255, 255, 255, 0));
+}
+.opt.correct { --c1: #b6f79a; --c2: #74de4f; --c3: #45bd2c; --c4: #2c961c; --edge: #217a14; --deep: rgba(20, 90, 10, 0.75); }
+.opt.wrong { --c1: #ff9c9c; --c2: #ff6b6b; --c3: #f43f45; --c4: #d0222c; --edge: #a8131c; --deep: rgba(140, 10, 20, 0.75); }
+.opt .dot { position: absolute; left: 22.5%; top: 15%; width: 4.5%; aspect-ratio: 1; border-radius: 50%; background: rgba(255, 255, 255, 0.8); pointer-events: none; }
+.opt span { z-index: 1; }
+#quiz.show .opt { animation: opt-in 0.45s var(--spring) both; }
+@keyframes opt-in { from { opacity: 0; transform: translateY(26px) scale(0.85); } to { opacity: 1; transform: none; } }
+/* capsule kit from the POLYGON Figma file: gold acts, green and red are verdicts. Labels in the kit's
+   Fredoka Bold: dark brown on gold, white with a toned outline on green and red */
+.opt span { position: relative; display: block; font: 700 clamp(26px, 2.4vw, 34px)/1 'Fredoka', 'Inter', sans-serif; letter-spacing: 0.01em;
+  color: #4a2400; text-shadow: 0 1px 0 rgba(255, 244, 200, 0.6); pointer-events: none; transform: translateY(-2%); }
+.opt.correct span { color: #fff; text-shadow: 0 2px 0 #1d6b12, 1.5px 0 0 #1d6b12, -1.5px 0 0 #1d6b12, 0 -1.5px 0 #1d6b12; }
+.opt.wrong span { color: #fff; text-shadow: 0 2px 0 #8e1414, 1.5px 0 0 #8e1414, -1.5px 0 0 #8e1414, 0 -1.5px 0 #8e1414; }
+@media (hover: hover) { .opt:hover:not(:disabled) { transform: translateY(-3px); } }
+.opt:active:not(:disabled) { transform: translateY(3px) scale(0.95); }
+.opt.picked { transform: scale(1.04); }
+.opt.correct { transform: scale(1.08); }
+.opt.wrong { animation: opt-shake 0.4s ease both !important; opacity: 1; }
+.opt:disabled { cursor: default; }
+.opt.wrong:disabled { opacity: 0.92; }
+@keyframes opt-shake { 20%, 60% { transform: translateX(-7px); } 40%, 80% { transform: translateX(7px); } }
 /* during a question: short alerts sit just above the answers; a banner briefly takes the
    question bar's place, so nothing ever lands on the diagram */
 body.quiz-on #alert { top: auto; bottom: 104px; }
@@ -195,6 +230,7 @@ body.narrating .quiz-prompt, body.narrating #banner { opacity: 0 !important; }
    the radar in the middle; the enemy flies in from the side, and its comms appear as a speech bubble
    beside it in that side space (placed by the game, see placeComms in main.js) */
 @media (min-aspect-ratio: 6/5) {
+  .quiz-options { gap: clamp(12px, 1.6vw, 22px); }
   body.quiz-on #alert { bottom: 100px; }
 }
 
@@ -274,7 +310,6 @@ body.narrating .quiz-prompt, body.narrating #banner { opacity: 0 !important; }
 /* the unknown angle is written like in a maths book: an italic serif x */
 .ang-label.unknown { color: #fff; font-family: 'Cambria Math', Cambria, 'Times New Roman', serif; font-style: italic; font-weight: 700;
   font-size: clamp(26px, calc(var(--u, 7px) * 5.4), 44px); text-shadow: var(--ink-outline), 0 0 14px rgba(160, 230, 255, 0.9); animation: q-pulse 1.1s ease-in-out infinite; }
-.ang-label.unknown .num { font: 400 0.7em var(--font-game); font-style: normal; letter-spacing: 0.02em; }
 @keyframes q-pulse { 50% { scale: 1.18; } }
 
 /* full-screen layers (title, pause, game over, victory) sit above the 3D view and the cockpit art */
@@ -376,6 +411,8 @@ body.narrating .quiz-prompt, body.narrating #banner { opacity: 0 !important; }
   .quiz-prompt .text { font-size: 16px; }
   body.quiz-on #alert { bottom: 168px; }
   body.quiz-on #banner { top: 104px; }
+  .quiz-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+  .opt { width: min(44vw, 230px); }
   body.battle .dialog:not(.bubble) { left: calc(8px + env(safe-area-inset-left)); top: calc(10px + env(safe-area-inset-top)); bottom: auto;
     width: max-content; max-width: calc(100vw - 156px); translate: 0 -12px; padding: 8px 24px 9px 8px; gap: 0 10px; border-radius: 15px; }
   body.battle .dialog:not(.bubble).show { translate: 0 0; }

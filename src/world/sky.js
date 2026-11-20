@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { SIMPLEX3 } from '../shaders/noise.js';
 
-// Deep space, baked once into an HDR cube map: mostly black, a dense field of point stars, a
+// Deep space, baked once into an HDR cube map: mostly black, a sparse field of point stars, a
 // faint galactic band with dark dust lanes, a few small emission nebulae, and real-looking
 // galaxies (an inclined Andromeda-like spiral with a companion, a face-on spiral, an edge-on
 // disk, and two more below the battle plane), placed where the game's cameras look.
@@ -137,7 +137,7 @@ const fragmentShader = /* glsl */ `
     float band = exp(-bb * bb * 16.0);
     float cl = fbm(d * 2.6) * 0.5 + 0.5;
     float rift = smoothstep(0.48, 0.78, fbm(d * 5.5 + 4.0) * 0.5 + 0.5);
-    col += mix(vec3(0.15, 0.12, 0.11), vec3(0.08, 0.1, 0.17), cl) * band * (0.35 + 0.8 * cl) * (1.0 - rift * 0.8) * 0.3;
+    col += mix(vec3(0.15, 0.12, 0.11), vec3(0.08, 0.1, 0.17), cl) * band * (0.35 + 0.8 * cl) * (1.0 - rift * 0.8) * 0.2;
 
     // a couple of small nebulae
     col += nebula(d, normalize(vec3(0.62, 0.32, -0.72)), 0.16, vec3(0.95, 0.14, 0.32), vec3(0.25, 0.4, 1.0), 3.0) * 0.16;
@@ -155,10 +155,11 @@ const fragmentShader = /* glsl */ `
     col += spiral(d, normalize(vec3(-0.52, -0.8, 0.3)), 0.13, 0.5, -0.7, 2.2,
       vec3(1.0, 0.7, 0.85), vec3(0.85, 0.55, 1.0), vec3(1.0, 0.35, 0.7), 21.0) * 0.48;
 
-    // stars: dense faint field (thicker in the band), mid layer, and sparse bright ones
-    col += starLayer(d, 260.0, 0.05 + 0.2 * band, 0.00085, 0.45);
-    col += starLayer(d, 95.0, 0.06, 0.0012, 0.9);
-    col += starLayer(d, 38.0, 0.035, 0.0017, 2.0);
+    // stars: kept sparse so the sky stays calm and the rocks and drones read first. A light faint
+    // field (a little thicker in the band), a mid layer, and a few bright ones
+    col += starLayer(d, 260.0, 0.004 + 0.016 * band, 0.00085, 0.3);
+    col += starLayer(d, 95.0, 0.012, 0.0012, 0.7);
+    col += starLayer(d, 38.0, 0.018, 0.0017, 1.6);
 
     // the sun's glow
     float sd = max(dot(d, uSunDir), 0.0);

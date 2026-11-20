@@ -27,6 +27,7 @@ export class Hud {
       return d;
     };
     this.arrows = Array.from({ length: POOL }, () => make('offscreen'));
+    this.hazards = Array.from({ length: 6 }, () => make('hazard'));
     this.boss = { root: $('bossbar'), fill: $('boss-fill'), state: $('boss-state') };
     this.popups = Array.from({ length: 8 }, () => ({ el: make('popup'), pos: new THREE.Vector3(), t: 0 }));
     this.popCursor = 0;
@@ -112,6 +113,20 @@ export class Hud {
     this.el.marker.style.display = mv ? 'block' : 'none';
     if (mv) this.el.marker.style.transform = `translate(${s.x}px, ${s.y}px) rotate(45deg)`;
     this.el.marker.classList.toggle('on', ctx.turret.onTarget);
+
+    // red warning rings on rocks about to hit the ship, sized to the rock
+    const focal = H / 2 / Math.tan((camera.fov * Math.PI) / 360);
+    let k = 0;
+    for (const r of ctx.hazards || []) {
+      if (k >= this.hazards.length) break;
+      if (!toScreen(r.pos, s)) continue;
+      const px = Math.max(18, (r.radius / Math.max(1, r.pos.distanceTo(camera.position))) * focal * 1.3);
+      const el = this.hazards[k++];
+      el.style.display = 'block';
+      el.style.width = el.style.height = `${Math.round(px * 2)}px`;
+      el.style.transform = `translate(${(s.x - px).toFixed(1)}px, ${(s.y - px).toFixed(1)}px)`;
+    }
+    for (; k < this.hazards.length; k++) this.hazards[k].style.display = 'none';
 
     // edge arrows for raiders that are off screen
     const camInv = _inv.copy(camera.quaternion).invert();

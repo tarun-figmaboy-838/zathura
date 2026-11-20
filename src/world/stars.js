@@ -4,7 +4,7 @@ import { PIXEL_RATIO } from '../core/renderer.js';
 
 // Point stars on a huge sphere that follows the camera (parallax-free, like the skybox),
 // with black-body tints, a power-law brightness spread and subtle twinkle.
-export function createStars(count = 2600, radius = 18000) {
+export function createStars(count = 450, radius = 18000) {
   const r = rng(1337);
   const pos = new Float32Array(count * 3);
   const col = new Float32Array(count * 3);

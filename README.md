@@ -7,7 +7,11 @@ The game opens on the bridge of your gunship, looking out through the windshield
 camera leaves the cockpit to watch the ship released from the Haven-9 station, then it dives into a black
 hole. On the far side there are **12 levels**, taken from *Angle Hunt* (angle-game.vercel.app): before
 every level the ship makes a short playable journey through an asteroid belt and flies through the
-level's portal. The levels come in three sectors of four; each sector ends with a meteor field and a
+level's portal. On the journey, asteroids are placed in the flight path as obstacles: a big boulder on
+your line, a pair of rocks, or (from level 2) a rock wall with one gap to fly through, plus some
+space junk. They glow at the edges in warm orange so they stand out from the calm, sparse sky, and a
+rock about to hit the ship gets a pulsing red ring with a "!" (steer away and it goes). Fly round
+them or shoot them; the far belt beside the lane is dim scenery only. The levels come in three sectors of four; each sector ends with a meteor field and a
 quick look at the stars earned. After the third sector comes the boss, the
 Warden: a giant virus drone with one huge eye on top (its core) and four turrets
 (`src/enemies/wardenDrone.js`), and then you jump home.
@@ -39,15 +43,13 @@ question has a time limit (25 s on L1, easing down to 15 s; 18 s for the Warden)
 destroys your ship and you retry the level. A radar ring is drawn around your ship in thin, crisp
 lines (the stars and glow dim during battles so it reads clearly). No timer is shown; in the last
 seconds the clock ticks and the screen edge pulses red, then the drone fires: a bright beam shows where your
-cannon points, a red line runs to the enemy, and there is one marked angle and an **x** angle. Work out **x**,
-then turn the cannon with the joystick (or ◀ ▶): the **x** arc follows the cannon and its label counts
-the degrees as it turns (a gentle push turns it slowly for the last few degrees). Press FIRE: when x is
-right (within 2°) the shot lands on the enemy and destroys it, and the question card shows the working
-(for example "76° + 104° = 180°"). Otherwise it misses, the enemy fires back, and the card shows the rule
-(after a second miss, the working); turn again and fire again.
+cannon points, a red line runs to the enemy, and there is one marked angle and an **x** angle. Pick the
+value of **x** and the cannon turns by that angle: the right answer lands on the enemy and destroys it,
+and the question card shows the working (for example "76° + 104° = 180°"). A wrong answer misses, the
+enemy fires back, and the card shows the rule (after a second miss, the working).
 
-Layout: the question bar on top, the radar in the middle, the joystick bottom left and FIRE bottom
-right (the same joystick steers the ship on the journeys). Comms are a speech bubble on the craft that is talking (the drone,
+Layout: the question bar on top, the radar in the middle and the answers along the bottom (one row on
+landscape screens, 2×2 on phones). Comms are a speech bubble on the craft that is talking (the drone,
 the Warden, or your own ship for the co-pilot), placed so it never covers the question, the answers or
 the score; phones get a compact bubble.
 
@@ -106,16 +108,15 @@ leaves out the Blender scripts and local launchers.
 | Action | Mouse / touch | Keyboard | On-screen |
 |---|---|---|---|
 | Answer a battle question | tap an answer | 1 – 4 | Answer buttons |
-| Steer (cruise and meteor fields) | – | ← → or A D (W S to climb/dive) | Left / Right buttons |
-| Aim the cannon (meteor fields) | point anywhere | – | – |
-| Fire (meteor fields) | hold click / touch | Space | Fire button |
-| Lock-on: auto-aim for 5 s | – | E | Lock button |
-| Shield: block all damage for 4 s | – | Q | Shield button |
+| Fly the ship (journeys and meteor fields) | – | arrow keys or W A S D | Joystick |
+| Fire at the target X | – | Space | Fire button |
 | Skip the intro | click | Space / Enter / Esc | Skip button |
 | Pause / mute | – | Esc / M | Pause button (the pause menu also has sound on/off and back to the station) |
 
-In the meteor fields the radar ring around the ship shows where the cannon points and lights up while
-you fire; the ring around the Fire button shows the cannon's heat.
+On the journeys and in the meteor fields only the joystick and FIRE show. The target **X** sits ahead
+of the ship and moves with it, leading the way you steer; when a rock, junk or a drone is near it, it
+sets itself on it (turns red) so FIRE hits. There is no mouse or tap aiming. The ring around the Fire
+button shows the cannon's heat. In the angle battles the controls hide and the answer buttons take over.
 
 ## Project layout
 
