@@ -59,27 +59,58 @@ body.warping #hud, body.warping #controls { opacity: 0; }
 #top-right .score.pop .coin { animation: coin-pop 0.35s var(--spring); }
 @keyframes coin-pop { 40% { transform: scale(1.3) rotate(-12deg); } }
 
-/* the target sight: a ring with four ticks and an X at the centre, white with a dark outline so it
-   reads on stars and rocks. Locked on something: it turns red and tightens, and red corner brackets
-   (#lockbox) snap around the target, pulsing if it is about to hit the ship */
-#crosshair { position: absolute; left: 0; top: 0; width: 30px; height: 30px; margin: -15px 0 0 -15px; }
-#crosshair .x { position: absolute; left: -15px; top: -15px; width: 60px; height: 60px; overflow: visible; transition: transform 0.16s var(--spring); }
+/* the target sight: a segmented ring that keeps turning, four ticks and a bold X, white with a dark
+   outline so it reads on stars, rocks and planets. Locked on: it snaps tight, spins faster and turns
+   gold; on a target about to hit the ship (DANGER) it turns red */
+#crosshair { position: absolute; left: 0; top: 0; width: 30px; height: 30px; margin: -15px 0 0 -15px; --c: #fff; }
+#crosshair.locked { --c: #ffc83a; }
+#crosshair.danger { --c: #ff4a3a; }
+#crosshair .x { position: absolute; left: -19px; top: -19px; width: 68px; height: 68px; overflow: visible; transition: transform 0.18s var(--spring); }
 #crosshair .x * { fill: none; stroke-linecap: round; }
-#crosshair .x .ink * { stroke: rgba(6, 10, 28, 0.7); stroke-width: 5.5; }
-#crosshair .x .line circle { stroke: rgba(255, 255, 255, 0.85); stroke-width: 2.2; }
-#crosshair .x .line path { stroke: #fff; stroke-width: 3; transition: stroke 0.12s; }
-#crosshair.locked .x { transform: scale(0.78); }
-#crosshair.locked .x .line circle, #crosshair.locked .x .line path { stroke: #ff5a4a; }
-#lockbox { position: absolute; left: 0; top: 0; display: none; pointer-events: none; }
-#lockbox i { position: absolute; width: 30%; height: 30%; max-width: 22px; max-height: 22px; border: 0 solid #ff5a4a;
-  filter: drop-shadow(0 0 1.5px #060a1c) drop-shadow(0 0 6px rgba(255, 90, 74, 0.6)); animation: lock-in 0.22s ease-out both; }
-#lockbox i:nth-child(1) { left: 0; top: 0; border-width: 3px 0 0 3px; border-top-left-radius: 4px; --o: -10px, -10px; }
-#lockbox i:nth-child(2) { right: 0; top: 0; border-width: 3px 3px 0 0; border-top-right-radius: 4px; --o: 10px, -10px; }
-#lockbox i:nth-child(3) { left: 0; bottom: 0; border-width: 0 0 3px 3px; border-bottom-left-radius: 4px; --o: -10px, 10px; }
-#lockbox i:nth-child(4) { right: 0; bottom: 0; border-width: 0 3px 3px 0; border-bottom-right-radius: 4px; --o: 10px, 10px; }
-@keyframes lock-in { from { translate: var(--o); opacity: 0; } }
-#lockbox.danger i { animation: lock-in 0.22s ease-out both, lock-pulse 0.4s ease-in-out 0.22s infinite alternate; }
-@keyframes lock-pulse { to { opacity: 0.45; } }
+#crosshair .x .ink { stroke: rgba(6, 10, 28, 0.72); }
+#crosshair .x .line { stroke: var(--c); transition: stroke 0.12s; }
+#crosshair .ring circle { stroke-dasharray: 24 8.99; }
+#crosshair .ring .ink { stroke-width: 6.5; }
+#crosshair .ring .line { stroke-width: 3; }
+#crosshair .ring { animation: sight-spin 7s linear infinite; }
+#crosshair .ticks .ink { stroke-width: 6.5; }
+#crosshair .ticks .line { stroke-width: 3; }
+#crosshair .ticks { transition: transform 0.18s var(--spring); }
+#crosshair .mark .ink { stroke-width: 7.5; }
+#crosshair .mark .line { stroke-width: 3.6; }
+@keyframes sight-spin { to { rotate: 360deg; } }
+#crosshair.locked .x { transform: scale(0.82); }
+#crosshair.locked .ring { animation-duration: 1.4s; }
+#crosshair.locked .ticks { transform: scale(0.84); }
+/* the lock: gold corner brackets around the target, a LOCK tag on top and a health bar below */
+#lockbox, #lockburst { position: absolute; left: 0; top: 0; display: none; pointer-events: none; --c: #ffc83a; }
+#lockbox.danger { --c: #ff4a3a; }
+#lockbox i, #lockburst i { position: absolute; width: 32%; height: 32%; max-width: 26px; max-height: 26px; min-width: 9px; min-height: 9px;
+  border: 0 solid var(--c); filter: drop-shadow(0 0 1.5px #060a1c) drop-shadow(0 0 1.5px #060a1c) drop-shadow(0 0 7px var(--c));
+  transition: border-color 0.08s; }
+#lockbox i { animation: lock-in 0.24s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+#lockbox i:nth-child(1), #lockburst i:nth-child(1) { left: 0; top: 0; border-width: 4px 0 0 4px; border-top-left-radius: 5px; --o: -14px, -14px; }
+#lockbox i:nth-child(2), #lockburst i:nth-child(2) { right: 0; top: 0; border-width: 4px 4px 0 0; border-top-right-radius: 5px; --o: 14px, -14px; }
+#lockbox i:nth-child(3), #lockburst i:nth-child(3) { left: 0; bottom: 0; border-width: 0 0 4px 4px; border-bottom-left-radius: 5px; --o: -14px, 14px; }
+#lockbox i:nth-child(4), #lockburst i:nth-child(4) { right: 0; bottom: 0; border-width: 0 4px 4px 0; border-bottom-right-radius: 5px; --o: 14px, 14px; }
+@keyframes lock-in { from { translate: var(--o); opacity: 0; scale: 1.3; } }
+#lockbox.danger i { animation: lock-in 0.24s cubic-bezier(0.2, 1.4, 0.4, 1) both, lock-pulse 0.38s ease-in-out 0.24s infinite alternate; }
+@keyframes lock-pulse { to { opacity: 0.5; } }
+#lockbox.hit i { border-color: #fff; }
+#lockbox .tag { position: absolute; left: 50%; top: -25px; translate: -50% 0; padding: 2px 7px 3px; border-radius: 6px; white-space: nowrap;
+  font: 800 11px/1 'Inter', sans-serif; letter-spacing: 0.08em; color: #241300; background: var(--c);
+  box-shadow: 0 0 0 2px #060a1c, 0 0 10px var(--c); animation: tag-in 0.25s var(--spring) both; }
+#lockbox.danger .tag { color: #fff; }
+@keyframes tag-in { from { opacity: 0; translate: -50% 6px; } }
+#lockbox .hp { position: absolute; left: 50%; bottom: -15px; translate: -50% 0; display: flex; gap: 2px; padding: 2px; border-radius: 4px;
+  background: rgba(6, 10, 28, 0.75); }
+#lockbox .hp:empty { display: none; }
+#lockbox .hp u { display: block; width: 9px; height: 5px; border-radius: 2px; background: var(--c); }
+#lockbox .hp u.gone { background: rgba(255, 255, 255, 0.16); }
+/* the target breaks: the brackets fly apart and fade */
+#lockburst.go { display: block; }
+#lockburst.go i { animation: lock-burst 0.42s ease-out forwards; }
+@keyframes lock-burst { to { translate: var(--o); scale: 1.6; opacity: 0; } }
 #hitmarker { position: absolute; left: -7px; top: -7px; width: 44px; height: 44px; opacity: 0; }
 #hitmarker line { stroke: #fff; stroke-width: 3; stroke-linecap: round; }
 #hitmarker.kill line { stroke: var(--warn); }

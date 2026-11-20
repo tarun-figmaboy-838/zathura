@@ -46,12 +46,16 @@
   <div id="hud" class="hidden">
     <div id="markers"></div>
     <div id="turret-marker"></div>
-    <!-- the target: a sight (ring, four ticks, an X at the centre) ahead of the ship that moves with it;
-         when it sets itself on a rock, junk or a drone, red brackets snap around that (#lockbox) -->
-    <div id="lockbox" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-    <div id="crosshair"><svg class="x" viewBox="-30 -30 60 60" aria-hidden="true">
-        <g class="ink"><circle r="17" /><path d="M0,-27 V-20 M0,20 V27 M-27,0 H-20 M20,0 H27 M-6,-6 L6,6 M6,-6 L-6,6" /></g>
-        <g class="line"><circle r="17" /><path d="M0,-27 V-20 M0,20 V27 M-27,0 H-20 M20,0 H27 M-6,-6 L6,6 M6,-6 L-6,6" /></g>
+    <!-- the target: a sight ahead of the ship that moves with it (a turning segmented ring, ticks and
+         an X). When it sets itself on a rock, junk or a drone it snaps tight and turns gold, and gold
+         brackets with a LOCK tag (and a health bar for tough rocks) frame the target; red = DANGER,
+         that one is about to hit you. #lockburst: the brackets flying apart when the target breaks -->
+    <div id="lockbox" aria-hidden="true"><i></i><i></i><i></i><i></i><b class="tag">LOCK</b><span class="hp"></span></div>
+    <div id="lockburst" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <div id="crosshair"><svg class="x" viewBox="-32 -32 64 64" aria-hidden="true">
+        <g class="ring"><circle class="ink" r="21" /><circle class="line" r="21" /></g>
+        <g class="ticks"><path class="ink" d="M0,-30 V-25 M0,25 V30 M-30,0 H-25 M25,0 H30" /><path class="line" d="M0,-30 V-25 M0,25 V30 M-30,0 H-25 M25,0 H30" /></g>
+        <g class="mark"><path class="ink" d="M-7,-7 L7,7 M7,-7 L-7,7" /><path class="line" d="M-7,-7 L7,7 M7,-7 L-7,7" /></g>
       </svg>
       <svg id="hitmarker" viewBox="-20 -20 40 40" aria-hidden="true">
         <line x1="-13" y1="-13" x2="-6" y2="-6" /><line x1="13" y1="-13" x2="6" y2="-6" />

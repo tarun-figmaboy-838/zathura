@@ -46,7 +46,7 @@ export class SpaceTrash {
     p.spin.set(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1).multiplyScalar(1.6);
     p.size = size;
     p.radius = this.kinds[p.kind].radius * size;
-    p.hp = size > 1.6 ? 2 : 1;
+    p.hp = p.maxHp = size > 1.6 ? 2 : 1;
     return p;
   }
 

@@ -322,6 +322,15 @@ export class AudioEngine {
     [660, 830, 990, 1320].forEach((f, i) => this.osc('triangle', f, f, 0.22, 0.45, o, t + i * 0.06));
   }
 
+  // the target locks on: two quick soft beeps, the second higher
+  lockOn() {
+    if (!this.ready() || !this.limit('lock', 300)) return;
+    const t = this.ctx.currentTime;
+    const o = this.out(0.09);
+    this.osc('square', 1320, 1320, 0.05, 0.4, o, t);
+    this.osc('square', 1760, 1760, 0.06, 0.4, o, t + 0.07);
+  }
+
   // the friendly alien says hi: a little warbly "bee-doo" chirp
   alienHi() {
     if (!this.ready() || !this.limit('alien', 400)) return;

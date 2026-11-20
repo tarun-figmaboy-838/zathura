@@ -124,10 +124,13 @@ leaves out the Blender scripts and local launchers.
 | Skip the intro | click | Space / Enter / Esc | Skip button |
 | Pause / mute | – | Esc / M | Pause button (the pause menu also has sound on/off and back to the station) |
 
-On the journeys and in the meteor fields only the joystick and FIRE show. The target **X** sits ahead
-of the ship inside a target sight (a ring with four ticks) and moves with it, leading the way you
-steer; when a rock, junk or a drone is near it, it sets itself on it: the sight turns red and red
-corner brackets snap around the target (pulsing if it is about to hit you), so FIRE hits. There is no mouse or tap aiming. The ring around the Fire
+On the journeys and in the meteor fields only the joystick and FIRE show. The target sight (a
+turning segmented ring, four ticks and a bold **X**) sits ahead of the ship and moves with it,
+leading the way you steer. When a rock, junk or a drone is near it, it locks on with two quick beeps:
+the sight snaps tight, spins faster and turns gold, and gold brackets with a **LOCK** tag frame the
+target, with a health bar for rocks that take several hits. Each hit flashes the brackets white and
+knocks a bar off; when the target breaks the brackets fly apart. If the locked target is about to hit
+you, everything turns red and the tag reads **DANGER**: dodge it or shoot it. There is no mouse or tap aiming. The ring around the Fire
 button shows the cannon's heat. In the angle battles the controls hide and the answer buttons take over.
 
 ## Project layout

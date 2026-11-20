@@ -17,7 +17,7 @@ export class Hud {
     this.el = {
       score: $('score'),
       banner: $('banner'), alert: $('alert'), crosshair: $('crosshair'), hit: $('hitmarker'), marker: $('turret-marker'),
-      lockbox: $('lockbox'),
+      lockbox: $('lockbox'), lockburst: $('lockburst'),
     };
     const markers = $('markers');
     const make = (cls) => {
@@ -53,6 +53,24 @@ export class Hud {
     this.el.alert.textContent = text;
     this.el.alert.className = `show ${kind}`;
     this.alertT = dur;
+  }
+
+  // the locked target was hit (the brackets flash) or broken (they fly apart)
+  lockHit(obj) { if (obj === this.lockObj) this.lockHitT = 0.1; }
+  lockKill(obj) {
+    const b = this.el.lockburst, l = this.el.lockbox;
+    if (obj !== this.lockObj || l.style.display !== 'block') return;
+    b.style.width = l.style.width;
+    b.style.height = l.style.height;
+    b.style.transform = l.style.transform;
+    b.style.setProperty('--c', getComputedStyle(l).getPropertyValue('--c'));
+    b.classList.remove('go');
+    void b.offsetWidth;
+    b.classList.add('go');
+    clearTimeout(this.burstT);
+    this.burstT = setTimeout(() => b.classList.remove('go'), 450);
+    l.style.display = 'none';
+    this.lockObj = null;
   }
 
   hitMarker(kill) {
@@ -119,21 +137,36 @@ export class Hud {
     const focal = H / 2 / Math.tan((camera.fov * Math.PI) / 360);
     const lb = ctx.lockBox, lock = this.el.lockbox;
     const hazards = ctx.hazards || [];
+    const danger = !!ctx.locked && hazards.includes(ctx.locked);
+    this.el.crosshair.classList.toggle('danger', danger);
     if (lb && lb.pos && !ctx.hideAim && toScreen(lb.pos, s)) {
-      const px = Math.max(16, (lb.radius / Math.max(1, lb.pos.distanceTo(camera.position))) * focal * 1.25);
+      // never smaller than the sight, so the brackets always frame it
+      const px = Math.max(36, (lb.radius / Math.max(1, lb.pos.distanceTo(camera.position))) * focal * 1.25);
       if (this.lockObj !== ctx.locked) {             // a new target: replay the snap-in
         this.lockObj = ctx.locked;
+        this.lockHp = '';
         lock.style.display = 'none';
         void lock.offsetWidth;
       }
       lock.style.display = 'block';
       lock.style.width = lock.style.height = `${Math.round(px * 2)}px`;
       lock.style.transform = `translate(${(s.x - px).toFixed(1)}px, ${(s.y - px).toFixed(1)}px)`;
-      lock.classList.toggle('danger', hazards.includes(ctx.locked));
+      lock.classList.toggle('danger', danger);
+      this.text('lockTag', lock.querySelector('.tag'), danger ? 'DANGER' : 'LOCK');
+      // tough targets show how many hits are left
+      const o = ctx.locked, max = o && o.maxHp > 1 ? Math.min(8, o.maxHp) : 0;
+      const hp = max ? `${Math.max(0, Math.min(max, Math.ceil((o.hp / o.maxHp) * max)))}/${max}` : '';
+      if (hp !== this.lockHp) {
+        this.lockHp = hp;
+        const [n] = hp.split('/').map(Number);
+        lock.querySelector('.hp').innerHTML = max ? Array.from({ length: max }, (_, i) => `<u${i < n ? '' : ' class="gone"'}></u>`).join('') : '';
+      }
     } else {
       lock.style.display = 'none';
       this.lockObj = null;
     }
+    this.lockHitT = Math.max(0, (this.lockHitT || 0) - dt);
+    lock.classList.toggle('hit', this.lockHitT > 0);
 
     // red warning rings on the other rocks about to hit the ship, sized to the rock
     let k = 0;

@@ -133,7 +133,7 @@ export class AsteroidField {
       rock.spin = (r() - 0.5) * (fragment ? 2.5 : 0.6) / Math.max(1, Math.sqrt(size) * 0.5);
       rock.size = size;
       rock.radius = size * 0.8;
-      rock.hp = Math.ceil(size * 0.6);
+      rock.hp = rock.maxHp = Math.ceil(size * 0.6);
       rock.flash = 0;
       rock.age = fragment ? 1 : 0;
       if (this.tints) rock.tint.copy(this.tints[Math.floor(r() * this.tints.length)]);

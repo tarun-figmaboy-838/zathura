@@ -740,7 +740,8 @@ function onPlayerBolt(target, point, bolt) {
   if (target.isTrash) {
     fx.impact(point, tmp.copy(point).sub(target.pos).normalize());
     hud.hitMarker(false);
-    if (--target.hp > 0) return;
+    if (--target.hp > 0) { hud.lockHit(target); return; }
+    hud.lockKill(target);
     trash.kill(target);
     fx.explosion(target.pos, 0.9, target.vel, { scrap: true });
     audio.explosion(target.pos, 0.7);
@@ -751,7 +752,8 @@ function onPlayerBolt(target, point, bolt) {
   const rock = target;
   fx.impact(point, tmp.copy(point).sub(rock.pos).normalize());
   hud.hitMarker(false);
-  if (!rock.owner.damage(rock, 1)) return;
+  if (!rock.owner.damage(rock, 1)) { hud.lockHit(rock); return; }
+  hud.lockKill(rock);
   const scale = THREE.MathUtils.clamp(rock.size / 4, 0.8, 3);
   fx.explosion(rock.pos, scale, rock.vel);
   audio.explosion(rock.pos, scale * 0.6);
@@ -1704,6 +1706,9 @@ function frame() {
   }
   if (play) {
     computeAim();
+    // a new target under the X: lock-on beeps
+    if (state.locked && state.locked !== state.lastLock && !battlePhase()) audio.lockOn();
+    state.lastLock = state.locked;
   } else if (mode === 'title' || mode === 'launch') {
     ship.nodes.TurretPitch.getWorldPosition(turretPos);
     aim.set(Math.sin(t * 0.35) * 110, 75, -90).add(ship.position);
