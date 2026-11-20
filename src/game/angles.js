@@ -45,12 +45,12 @@ export function makeQuestion(tYaw, type, r = Math.random, level = null) {
     q.given = answer;
     q.known = { from: rYaw + Math.PI, sweep: s * A };
     q.prompt = `Find x  It is opposite the ${q.given}° angle`;
-    q.hint2 = `So x = ${q.given}°`;
+    q.hint2 = `x is opposite the ${q.given}° angle, and opposite angles are equal`;
     q.explain = `Opposite angles are equal: ${answer}°`;
   } else if (type === 'linear') {
     q.given = 180 - answer;
     q.known = { from: tYaw, sweep: s * (Math.PI - A) };
-    q.prompt = `Find x  It makes a straight line with ${q.given}°`;
+    q.prompt = `Find x  x and ${q.given}° make a straight line`;
     q.hint2 = `x = 180° − ${q.given}°`;
     q.explain = `${q.given}° + ${answer}° = 180°`;
   } else if (type === 'complement') {

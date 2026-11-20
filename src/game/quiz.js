@@ -22,6 +22,9 @@ function rich(text) {
   return frag;
 }
 
+// after a miss the clock has at least this many seconds left, so the hint can be used
+const MISS_TIME = 10;
+
 export class AngleQuiz {
   constructor(overlay, ctx) {
     this.overlay = overlay;
@@ -131,6 +134,7 @@ export class AngleQuiz {
           b.classList.add('wrong');
           b.disabled = true;
           this.say(this.tries >= 2 && q.hint2 ? q.hint2 : q.hint, 'bad');
+          if (this.limit) this.timeLeft = Math.max(this.timeLeft, MISS_TIME);   // time to read the hint and try again
           this.ctx.audio.wrong();
           this.ctx.punish(this.target);
         }

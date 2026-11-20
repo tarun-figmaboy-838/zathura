@@ -3,20 +3,22 @@ import { rand } from '../core/math.js';
 // The levels come from Angle Hunt (angle-game.vercel.app): eight hand-made levels, then four
 // "mastery" levels built the same way. Every level is one target: a known angle, a rule and four
 // answers (the right one plus Angle Hunt's traps: the known angle itself, 180°, 360° − answer,
-// ±10°, double the known angle).
+// ±20°, double the known angle). Every wrong answer is at least MISS° from the right one: the raider
+// is about 8–10° wide as seen from the cannon, so a wrong shot always visibly misses it.
 //   linear    a linear pair: the two angles on a straight line add up to 180°   (? = 180 − known)
 //   opposite  vertically opposite angles are equal                             (? = known)
 const HUNT = [
-  { known: 76, rule: 'linear', options: [76, 104, 114, 80] },
+  { known: 76, rule: 'linear', options: [76, 104, 124, 80] },
   { known: 68, rule: 'opposite', options: [68, 112, 136, 180] },
   { known: 118, rule: 'linear', options: [62, 118, 180, 242] },
   { known: 43, rule: 'linear', options: [43, 137, 180, 223] },
   { known: 113, rule: 'opposite', options: [67, 113, 180, 226] },
   { known: 152, rule: 'linear', options: [28, 152, 180, 332] },
   { known: 47, rule: 'opposite', options: [47, 94, 133, 180] },
-  { known: 91, rule: 'linear', options: [89, 91, 180, 271] },
+  { known: 101, rule: 'linear', options: [79, 101, 180, 281] },
 ];
 export const RULE_NAMES = { linear: 'Linear pair', opposite: 'Opposite angles' };
+const MISS = 16;   // degrees: the smallest gap between a wrong answer and the right one
 
 function shuffle(list, r) {
   const a = [...list];
@@ -34,14 +36,14 @@ export function masteryLevel(r = Math.random) {
   let known = 25 + Math.floor(r() * 131);
   if (Math.abs(known - 90) < 3) known += 7;
   const ans = rule === 'linear' ? 180 - known : known;
-  const traps = [known, 180 - known, 180, 360 - ans, ans + 10, ans - 10, known * 2]
-    .filter((p) => p > 0 && p < 360 && Math.abs(p - ans) >= 4);
+  const traps = [known, 180 - known, 180, 360 - ans, ans + 20, ans - 20, known * 2]
+    .filter((p) => p > 0 && p < 360 && Math.abs(p - ans) >= MISS);
   const set = [ans];
   for (const p of shuffle(traps, r)) {
     if (set.length >= 4) break;
     if (set.every((f) => Math.abs(f - p) >= 4)) set.push(p);
   }
-  for (let h = ans + 20; set.length < 4; h += 17) if (h < 360 && set.every((p) => Math.abs(p - h) >= 4)) set.push(h);
+  for (let h = ans + 20; set.length < 4; h += 17) if (h < 360 && set.every((p) => Math.abs(p - h) >= 4) && Math.abs(h - ans) >= MISS) set.push(h);
   return { known, rule, options: shuffle(set, r) };
 }
 

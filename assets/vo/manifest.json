@@ -47,6 +47,7 @@
   "a3e52fb0",
   "a428f62e",
   "a49d06e4",
+  "a605f55c",
   "a6fa4229",
   "aa97b645",
   "b5647a98",
@@ -66,7 +67,6 @@
   "e13d09e5",
   "e33dad76",
   "eb4e6c56",
-  "eeccc599",
   "f5ac015d",
   "f601d707",
   "fabd7afd"
@@ -362,11 +362,6 @@
    "text": "Turn it by the angle x to hit the target.",
    "seconds": 3.38
   },
-  "eeccc599": {
-   "who": "crew",
-   "text": "Tap the right angle!",
-   "seconds": 2.19
-  },
   "a49d06e4": {
    "who": "crew",
    "text": "Meteor field! LOCK aims for you. SHIELD blocks hits.",
@@ -421,6 +416,11 @@
    "who": "crew",
    "text": "Remember: The angles in a triangle add up to 180°. Try again!",
    "seconds": 6.43
+  },
+  "a605f55c": {
+   "who": "crew",
+   "text": "Tap the correct value of x!",
+   "seconds": 2.69
   }
  }
 }

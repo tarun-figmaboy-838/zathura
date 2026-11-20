@@ -448,7 +448,8 @@ function resume() { if (state.mode === 'paused') setMode('play'); }
 function die() {
   // who beat us: the question's target, else the boss or any raider still flying
   const t = quiz.target;
-  state.lastQ = quiz.active ? quiz.q : null;
+  state.lastQ = quiz.active ? quiz.q : state.timedOutQ || null;   // a time-out stops the quiz first
+  state.timedOutQ = null;
   state.killer = t ? (t.kind === 'raider' ? { kind: 'raider', obj: t.obj } : { kind: 'boss' })
     : boss.active && !boss.dying ? { kind: 'boss' }
     : (() => { const r = raiders.list.find((x) => x.alive); return r ? { kind: 'raider', obj: r } : null; })();
@@ -922,6 +923,8 @@ const campaignCtx = {
       { text: 'Then fly through the portal to start Level 1.', time: 3.6 },
     ]);
     if (campaign.firstOfGroup) state.sector = { asked: 0, first: 0 };
+    vitals.reset();                                        // repaired between levels: earlier hits never end a later one
+    state.warnedHull = false;
     state.levelStartScore = state.score;                   // Retry restarts this level with these points
     state.sectorAtLevel = { ...state.sector };             // ...and these star stats
   },
@@ -1181,18 +1184,13 @@ const RULES = {
 function introduceQuestion(q) {
   const steps = [];
   const first = !seen.has('battle');
+  const markSeen = (key) => () => { seen.add(key); saveSeen(); };
   if (first) {
-    seen.add('battle');
-    saveSeen();
-    steps.push({ text: 'This bright line is your cannon.', cam: camCannon, time: 3.6 });
+    steps.push({ text: 'This bright line is your cannon.', cam: camCannon, time: 3.6, onStart: markSeen('battle') });
     steps.push({ text: 'Turn it by the angle x to hit the target.', focus: ['.ang-label.unknown'], time: 4 });
   }
-  if (!seen.has(q.type)) {
-    seen.add(q.type);
-    saveSeen();
-    steps.push({ text: RULES[q.type], cam: camDiagram, time: 5 });
-  }
-  if (first) steps.push({ text: 'Tap the right angle!', focus: ['.quiz-options'], time: 3 });
+  if (!seen.has(q.type)) steps.push({ text: RULES[q.type], cam: camDiagram, time: 5, onStart: markSeen(q.type) });
+  if (first) steps.push({ text: 'Tap the correct value of x!', focus: ['.quiz-options'], time: 3 });
   if (steps.length) director.play(steps);
 }
 
@@ -1347,6 +1345,7 @@ function quizPunish(target) {
 // Retry restarts this level.
 function quizTimeout(target) {
   if (state.mode !== 'play' || state.doom > 0) return;
+  state.timedOutQ = quiz.q;                                // the defeat screen reminds the student of its rule
   quiz.stop();
   director.clear();
   buzz([90, 50, 90, 50, 200]);
@@ -1709,10 +1708,11 @@ function frame() {
   ship.setCannonGlow(Math.max(turret.heat, battlePhase() ? 0.55 : 0), state.cannonFlash);
 
   // ---- simulation
-  raiderCtx.shipAlive = play && !director.active;
+  const holdFire = director.active || dialogue.active || quiz.busy;   // talk and answering: the clock waits, so do they
+  raiderCtx.shipAlive = play && !holdFire;
   raiderCtx.arena = campaign.phase === 'battle' || campaign.phase === 'contact' || campaign.phase === 'boss';
   if (play || mode === 'dying') raiders.update(dt, t, raiderCtx);
-  bossCtx.shipAlive = play && !director.active;
+  bossCtx.shipAlive = play && !holdFire;
   if (play || mode === 'dying') boss.update(dt, t, bossCtx);
   campaign.bossIntegrity = boss.active ? boss.integrity : 0;
   rig.topZoom = campaign.phase === 'boss' ? bossZoom(camera.aspect) : 1;
