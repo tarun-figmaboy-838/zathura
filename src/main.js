@@ -1596,21 +1596,7 @@ function updateHolo(t, show) {
   }
   rings.end();
   boss.highlight = show && quiz.active && quiz.target?.part?.isBossPart ? quiz.target.part : null;
-  // and a TARGET tag on screen, on the outside of that part (away from the Warden's body), pointing at it
-  const tag = $('boss-target');
-  const on = boss.highlight && boss.marker.visible && !focusing() && toScreen(boss.marker.getWorldPosition(tmp2), _tagPx)
-    && toScreen(boss.position, _bossPx);
-  tag.classList.toggle('show', !!on);
-  if (on) {
-    const dx = _tagPx.x - _bossPx.x, dy = _tagPx.y - _bossPx.y;
-    const below = dy > 0 && boss.highlight.kind !== 'core';     // the part is on the lower side: tag underneath
-    tag.classList.toggle('below', below);
-    const x = _tagPx.x + Math.sign(dx) * Math.min(30, Math.abs(dx) * 0.5);
-    tag.style.transform = `translate(${x.toFixed(1)}px, ${(_tagPx.y + (below ? 46 : -46)).toFixed(1)}px) translate(-50%, ${below ? '0%' : '-100%'})`;
-  }
 }
-const _tagPx = { x: 0, y: 0 };
-const _bossPx = { x: 0, y: 0 };
 
 // ------------------------------------------------------------------ loop
 const clock = new THREE.Clock();

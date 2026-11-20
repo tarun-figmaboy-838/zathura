@@ -38,7 +38,7 @@ with glowing red seams, two swept-back horns, one huge red eye with a slit pupil
 (its core) and four small spider eyes, a toothed maw that chomps, four claw arms, and four big
 turrets, each with a glowing weak-spot core (`src/enemies/wardenDrone.js`). In its battle only the
 part the question is about is marked: its core flashes gold, a hot outline wraps it, a ring sits
-under it and a red TARGET tag points at it. Then you jump home.
+under it and red brackets frame it (no text tags). Then you jump home.
 
 Music is synthesized live and changes with the action (cruise, battle, boss).
 
@@ -140,10 +140,10 @@ leaves out the Blender scripts and local launchers.
 On the journeys and in the meteor fields only the joystick and FIRE show. The target sight (a
 turning segmented ring, four ticks and a bold **X**) sits ahead of the ship and moves with it,
 leading the way you steer. When a rock, junk or a drone is near it, it locks on with two quick beeps:
-the sight snaps tight, spins faster and turns gold, and gold brackets with a **LOCK** tag frame the
-target, with a health bar for rocks that take several hits. Each hit flashes the brackets white and
+the sight snaps tight, spins faster and turns gold, and gold brackets frame the target, with a
+health bar for rocks that take several hits. Each hit flashes the brackets white and
 knocks a bar off; when the target breaks the brackets fly apart. If the locked target is about to hit
-you, everything turns red and the tag reads **DANGER**: dodge it or shoot it. There is no mouse or tap aiming. The ring around the Fire
+you, the sight and brackets turn red and pulse: dodge it or shoot it. There is no mouse or tap aiming. The ring around the Fire
 button shows the cannon's heat. In the angle battles the controls hide and the answer buttons take over.
 
 ## Project layout

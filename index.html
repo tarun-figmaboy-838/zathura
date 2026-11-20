@@ -48,9 +48,8 @@
     <div id="turret-marker"></div>
     <!-- the target: a sight ahead of the ship that moves with it (a turning segmented ring, ticks and
          an X). When it sets itself on a rock, junk or a drone it snaps tight and turns gold, and gold
-         brackets with a LOCK tag (and a health bar for tough rocks) frame the target; red = DANGER,
-         that one is about to hit you. #lockburst: the brackets flying apart when the target breaks -->
-    <div id="lockbox" aria-hidden="true"><i></i><i></i><i></i><i></i><b class="tag">LOCK</b><span class="hp"></span></div>
+         brackets (and a health bar for tough rocks) frame the target; red = that one is about to hit you. #lockburst: the brackets flying apart when the target breaks -->
+    <div id="lockbox" aria-hidden="true"><i></i><i></i><i></i><i></i><span class="hp"></span></div>
     <div id="lockburst" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
     <div id="crosshair"><svg class="x" viewBox="-32 -32 64 64" aria-hidden="true">
         <g class="ring"><circle class="ink" r="21" /><circle class="line" r="21" /></g>
@@ -63,7 +62,6 @@
       </svg>
     </div>
 
-    <div id="boss-target" class="target-tag" aria-hidden="true">TARGET</div>
     <div id="bossbar" class="hidden">
       <div class="row"><b>Warden</b><span id="boss-state"></span></div>
       <div class="bar"><i id="boss-fill"></i></div>

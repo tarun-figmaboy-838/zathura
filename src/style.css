@@ -82,7 +82,7 @@ body.warping #hud, body.warping #controls { opacity: 0; }
 #crosshair.locked .x { transform: scale(0.82); }
 #crosshair.locked .ring { animation-duration: 1.4s; }
 #crosshair.locked .ticks { transform: scale(0.84); }
-/* the lock: gold corner brackets around the target, a LOCK tag on top and a health bar below */
+/* the lock: gold corner brackets around the target and a health bar below */
 #lockbox, #lockburst { position: absolute; left: 0; top: 0; display: none; pointer-events: none; --c: #ffc83a; }
 #lockbox.danger { --c: #ff4a3a; }
 #lockbox i, #lockburst i { position: absolute; width: 32%; height: 32%; max-width: 26px; max-height: 26px; min-width: 9px; min-height: 9px;
@@ -97,11 +97,6 @@ body.warping #hud, body.warping #controls { opacity: 0; }
 #lockbox.danger i { animation: lock-in 0.24s cubic-bezier(0.2, 1.4, 0.4, 1) both, lock-pulse 0.38s ease-in-out 0.24s infinite alternate; }
 @keyframes lock-pulse { to { opacity: 0.5; } }
 #lockbox.hit i { border-color: #fff; }
-#lockbox .tag { position: absolute; left: 50%; top: -25px; translate: -50% 0; padding: 2px 7px 3px; border-radius: 6px; white-space: nowrap;
-  font: 800 11px/1 'Inter', sans-serif; letter-spacing: 0.08em; color: #241300; background: var(--c);
-  box-shadow: 0 0 0 2px #060a1c, 0 0 10px var(--c); animation: tag-in 0.25s var(--spring) both; }
-#lockbox.danger .tag { color: #fff; }
-@keyframes tag-in { from { opacity: 0; translate: -50% 6px; } }
 #lockbox .hp { position: absolute; left: 50%; bottom: -15px; translate: -50% 0; display: flex; gap: 2px; padding: 2px; border-radius: 4px;
   background: rgba(6, 10, 28, 0.75); }
 #lockbox .hp:empty { display: none; }
@@ -114,16 +109,6 @@ body.warping #hud, body.warping #controls { opacity: 0; }
 #hitmarker { position: absolute; left: -7px; top: -7px; width: 44px; height: 44px; opacity: 0; }
 #hitmarker line { stroke: #fff; stroke-width: 3; stroke-linecap: round; }
 #hitmarker.kill line { stroke: var(--warn); }
-/* the Warden's part to destroy now: a red TARGET tag with a pointer, bobbing above it */
-.target-tag { position: absolute; left: 0; top: 0; padding: 4px 10px 5px; border-radius: 8px; pointer-events: none; opacity: 0;
-  font: 800 13px/1 'Inter', sans-serif; letter-spacing: 0.1em; color: #fff; background: #ff3b2e;
-  box-shadow: 0 0 0 2.5px #060a1c, 0 0 14px rgba(255, 59, 46, 0.8); transition: opacity 0.2s ease; }
-.target-tag::after { content: ''; position: absolute; left: 50%; bottom: -9px; margin-left: -7px; border: 7px solid transparent;
-  border-top-color: #ff3b2e; border-bottom: 0; filter: drop-shadow(0 2px 0 #060a1c); }
-.target-tag.below::after { bottom: auto; top: -9px; border-top: 0; border-bottom: 7px solid #ff3b2e; filter: drop-shadow(0 -2px 0 #060a1c); }
-.target-tag.show { opacity: 1; animation: tag-bob 0.7s ease-in-out infinite alternate; }
-@keyframes tag-bob { to { translate: 0 -5px; } }
-
 /* the friendly alien's greeting: a small white comic bubble over its saucer */
 .alien-say { position: absolute; left: 0; top: 0; padding: 5px 12px 6px; border-radius: 14px; background: #fff; color: #1d2340;
   font: 700 15px/1.1 'Fredoka', 'Inter', sans-serif; white-space: nowrap; pointer-events: none; opacity: 0; scale: 0.6;

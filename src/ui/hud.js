@@ -152,7 +152,6 @@ export class Hud {
       lock.style.width = lock.style.height = `${Math.round(px * 2)}px`;
       lock.style.transform = `translate(${(s.x - px).toFixed(1)}px, ${(s.y - px).toFixed(1)}px)`;
       lock.classList.toggle('danger', danger);
-      this.text('lockTag', lock.querySelector('.tag'), danger ? 'DANGER' : 'LOCK');
       // tough targets show how many hits are left
       const o = ctx.locked, max = o && o.maxHp > 1 ? Math.min(8, o.maxHp) : 0;
       const hp = max ? `${Math.max(0, Math.min(max, Math.ceil((o.hp / o.maxHp) * max)))}/${max}` : '';
