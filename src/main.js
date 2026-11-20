@@ -793,34 +793,47 @@ function spawnScenery(zAhead, bigOnly = false) {
     V(rand(-1.5, 1.5), rand(-0.8, 0.8), rand(-1, 1)));
 }
 
-// Obstacles in the flight path (the lane is LANE ± BOUNDS). They drift slowly, so the ship flies
-// into them: steer round them, or shoot them (a big one takes a few hits). Three patterns:
-//   boulder: one big rock right on the ship's line
-//   pair:    two medium rocks, one on the ship's line, one beside it
-//   wall:    a row across the lane with one wide gap to fly through (from level 2)
-// plus some space junk now and then
+// Obstacles in the flight path (the lane is LANE ± BOUNDS). None of them sit still: each one moves
+// so that it is on the ship's line just as the ship gets there, tumbling as it comes. Steer round
+// them, or shoot them (a big one takes a few hits). Patterns:
+//   crosser:  a rock sweeps in from one side and across the ship's path
+//   scissors: two rocks from opposite sides cross the ship's line one after the other
+//   boulder:  a big rock drifts onto the ship's line and tumbles toward it
+//   wall:     a row across the lane with one gap, sliding sideways so the gap moves (from level 2)
+// plus some space junk now and then. Later levels move faster.
 const lerpLane = (ax, k) => LANE[ax] + (k * 2 - 1) * (BOUNDS[ax] - 3);
-function rockAt(x, y, z, size, drift = 1) {
-  return field.spawn(V(clamp(x, LANE.x - BOUNDS.x, LANE.x + BOUNDS.x), clamp(y, LANE.y - BOUNDS.y, LANE.y + BOUNDS.y), z), size,
-    V(rand(-1.5, 1.5) * drift, rand(-0.6, 0.6) * drift, rand(0, 5)));
+const pickSide = () => (Math.random() < 0.5 ? -1 : 1);
+// a rock that reaches (x, y) when the ship arrives, moving at (vx, vy, vz): it starts where that
+// motion brings it from (outside the lane is fine: it sweeps in)
+function movingRock(x, y, z, size, vx, vy, vz) {
+  const t = (ship.position.z - z) / (Math.max(60, -ship.velocity.z) + vz);
+  const r = field.spawn(V(x - vx * t, y - vy * t, z), size, V(vx, vy, vz));
+  if (r) r.spin = pickSide() * rand(0.5, 1.2) / Math.max(1, Math.sqrt(size) * 0.45);   // a visible tumble
+  return r;
 }
 function spawnObstacle(z) {
   const p = ship.position;
+  const fast = Math.min(1, campaign.level / 8);           // 0 on level 1 .. 1 by level 9
+  const lineX = () => clamp(p.x + rand(-4, 4), LANE.x - BOUNDS.x + 3, LANE.x + BOUNDS.x - 3);
+  const lineY = () => clamp(p.y + rand(-2.5, 2.5), LANE.y - BOUNDS.y + 2, LANE.y + BOUNDS.y - 2);
   const roll = Math.random();
-  if (campaign.level > 0 && roll < 0.3) {
-    // a wall: six rocks across, two side by side left out for the gap
+  if (campaign.level > 0 && roll < 0.25) {
+    // the wall: six rocks across with two side by side left out for the gap, all sliding together
     const gap = 1 + Math.floor(Math.random() * 3);
+    const vx = pickSide() * rand(4, 6 + 3 * fast);
     for (let i = 0; i < 6; i++) {
       if (i === gap || i === gap + 1) continue;
-      rockAt(lerpLane('x', i / 5) + rand(-1.5, 1.5), LANE.y + rand(-2.5, 2.5), z + rand(-8, 8), rand(4.8, 5.8), 0.3);
+      movingRock(lerpLane('x', i / 5) + rand(-1.5, 1.5), LANE.y + rand(-2.5, 2.5), z + rand(-8, 8), rand(4.8, 5.8), vx, 0, rand(0, 3));
     }
     introduce('wall', [{ text: 'Rock wall! Fly through the gap.', focus: ['#stick'], time: 3 }]);
-  } else if (roll < 0.62) {
-    rockAt(p.x + rand(-5, 5), p.y + rand(-3, 3), z, rand(6.5, 9));
-  } else if (roll < 0.85) {
-    const side = Math.random() < 0.5 ? -1 : 1;
-    rockAt(p.x + rand(-4, 4), p.y + rand(-3, 3), z, rand(4, 5.5));
-    rockAt(p.x + side * rand(16, 22), p.y + rand(-4, 4), z - rand(30, 70), rand(4, 5.5));
+  } else if (roll < 0.55) {
+    movingRock(lineX(), lineY(), z, rand(5.5, 8.5), pickSide() * rand(9, 13 + 6 * fast), rand(-1.5, 1.5), rand(2, 8));
+  } else if (roll < 0.75) {
+    const x = lineX(), y = lineY(), sp = pickSide() * rand(8, 12 + 5 * fast);
+    movingRock(x, y + rand(-2, 2), z, rand(4, 5.5), sp, rand(-1, 1), rand(2, 6));
+    movingRock(x, y + rand(-2, 2), z - rand(40, 60), rand(4, 5.5), -sp, rand(-1, 1), rand(2, 6));
+  } else if (roll < 0.9) {
+    movingRock(lineX(), lineY(), z, rand(6.5, 9), rand(-5, 5), rand(-2, 2), rand(4, 10 + 14 * fast));
   } else {
     trash.spawn(V(p.x + rand(-10, 10), p.y + rand(-5, 5), z), rand(1.4, 2.2), V(rand(-3, 3), rand(-1.5, 1.5), rand(14, 28)));
   }
