@@ -30,8 +30,6 @@ export class Hud {
     this.arrows = Array.from({ length: POOL }, () => make('offscreen'));
     this.hazards = Array.from({ length: 6 }, () => make('hazard'));
     this.boss = { root: $('bossbar'), fill: $('boss-fill'), state: $('boss-state') };
-    this.popups = Array.from({ length: 8 }, () => ({ el: make('popup'), pos: new THREE.Vector3(), t: 0 }));
-    this.popCursor = 0;
     this.hitT = 0;
     this.bannerT = 0;
     this.alertT = 0;
@@ -76,14 +74,6 @@ export class Hud {
   hitMarker(kill) {
     this.hitT = kill ? 0.45 : 0.16;
     this.el.hit.classList.toggle('kill', !!kill);
-  }
-
-  popup(pos, text) {
-    const p = this.popups[this.popCursor];
-    this.popCursor = (this.popCursor + 1) % this.popups.length;
-    p.pos.copy(pos);
-    p.t = 1.1;
-    p.el.textContent = text;
   }
 
   // only touch the DOM when a text value actually changes
@@ -198,15 +188,6 @@ export class Hud {
     this.hitT = Math.max(0, this.hitT - dt);
     this.el.hit.style.opacity = Math.min(1, this.hitT * 6);
     this.el.hit.style.transform = `scale(${1 + this.hitT})`;
-    for (const p of this.popups) {
-      if (p.t <= 0) { p.el.style.display = 'none'; continue; }
-      p.t -= dt;
-      if (!toScreen(p.pos, s)) { p.el.style.display = 'none'; continue; }
-      p.el.style.display = 'block';
-      p.el.style.opacity = Math.min(1, p.t * 2);
-      // start above the hit point so the number never sits on the explosion or a result badge
-      p.el.style.transform = `translate(${s.x}px, ${s.y - 48 - (1.1 - p.t) * 40}px)`;
-    }
     if (this.bannerT > 0 && (this.bannerT -= dt) <= 0) this.el.banner.classList.remove('show');
     if (this.alertT > 0 && (this.alertT -= dt) <= 0) this.el.alert.classList.remove('show');
   }

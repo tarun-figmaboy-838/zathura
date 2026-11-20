@@ -667,9 +667,9 @@ addEventListener('keydown', (e) => {
 });
 
 // ------------------------------------------------------------------ combat resolution
-function addScore(points, pos) {
+// points go straight onto the score chip (it pops); no floating numbers while you shoot
+function addScore(points) {
   state.score += points;
-  hud.popup(pos, `+${points}`);
 }
 
 function raiderDestroyed(r, byPlayer) {
@@ -707,7 +707,6 @@ function onBossHit(part, point, amount = 1) {
   if (res === 'hull') return;
   if (res === 'shield') {
     audio.shieldHit();
-    if (state.time > state.shieldHintT) { state.shieldHintT = state.time + 3; hud.alert('Hit the turrets', 'warn', 1.4); }
     return;
   }
   const down = res === 'turretDown' || res === 'coreExposed';
@@ -720,13 +719,9 @@ function onBossHit(part, point, amount = 1) {
     rig.addShake(0.4);
     addScore(400, tr.pos);
   }
-  if (res === 'coreExposed') {
-    hud.banner('CORE EXPOSED', '', 2.2);
-    audio.shieldDown();
-  }
+  if (res === 'coreExposed') audio.shieldDown();      // the shield bursts (no banner while you shoot)
   if (res === 'defeated') {
     addScore(5000, boss.corePos);
-    hud.banner('WARDEN DOWN', '+5,000', 2.4);
     dialogue.say(focus(at(enemyLine(WARDEN, 'wardenDown', 2.2), boss.model, boss.corePos.clone()), 'boss'));   // the climax gets a close-up
   }
 }
@@ -932,14 +927,14 @@ function playerDamage(amount, point, crash = false) {
     audio.shieldHit();
     state.damage = Math.min(1, state.damage + 0.18);
     rig.addShake(0.15);
-    if (res === 'break') { audio.shieldDown(); hud.alert('Shields down', 'danger'); }
+    if (res === 'break') audio.shieldDown();
   } else if (res === 'hull') {
     fx.hullHit(point, tmp.copy(point).sub(ship.position).normalize());
     buzz(40);
     audio.hullHit();
     state.damage = Math.min(1, state.damage + 0.55);
     rig.addShake(0.35);
-    if (vitals.hullFrac < 0.3 && !state.warnedHull) { state.warnedHull = true; hud.alert('Hull critical', 'danger', 2.5); audio.alarm(); }
+    if (vitals.hullFrac < 0.3 && !state.warnedHull) { state.warnedHull = true; audio.alarm(); }   // and the screen edge pulses red
   } else if (res === 'dead') {
     die();
   }
@@ -1003,7 +998,6 @@ const bossCtx = {
     audio.boostWhoosh();
   },
   onBarrageWarning() {
-    hud.alert('Barrage incoming!', 'danger', 1.8);
     audio.alarm();
   },
   onDefeated() { campaign.destroyed++; },
@@ -1749,7 +1743,7 @@ function frame() {
       rig.addShake(0.08);
       state.cannonFlash = 1;
     }
-    if (turret.overheated && !wasHot) { hud.alert('Overheated', 'warn'); audio.overheat(); }
+    if (turret.overheated && !wasHot) audio.overheat();      // and the Fire button greys out
   }
   state.cannonFlash = Math.max(0, state.cannonFlash - dt * 8);
   ship.setCannonGlow(Math.max(turret.heat, battlePhase() ? 0.55 : 0), state.cannonFlash);

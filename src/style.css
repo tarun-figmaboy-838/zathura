@@ -143,8 +143,6 @@ body.warping #hud, body.warping #controls { opacity: 0; }
 
 .offscreen { position: absolute; left: 0; top: 0; width: 0; height: 0; margin: -7px 0 0 -7px; border-left: 7px solid transparent;
   border-right: 7px solid transparent; border-bottom: 13px solid var(--danger); filter: drop-shadow(0 0 5px rgba(255, 90, 79, 0.8)); }
-.popup { position: absolute; left: 0; top: 0; font: 800 15px 'Inter', sans-serif; color: var(--warn); white-space: nowrap;
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7); }
 
 #skip { position: fixed; right: calc(20px + env(safe-area-inset-right)); bottom: calc(18px + env(safe-area-inset-bottom)); width: 54px; height: 54px; z-index: 6; opacity: 0.85; }
 #whiteout { position: fixed; inset: 0; z-index: 5; background: #fff; opacity: 0; pointer-events: none; }
