@@ -1,4 +1,4 @@
-import { ENEMY_FACE } from '../enemies/look.js';
+import { ENEMY_FACE, WARDEN_ART } from '../enemies/look.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -22,7 +22,7 @@ export class Dialogue {
     // portraits made with Figma AI; preloaded so a new speaker never pops in blank
     this.faces = Object.fromEntries([ENEMY_FACE, 'warden', 'crew'].map((f) => {
       const img = new Image();
-      img.src = `assets/ui/face-${f}.webp`;
+      img.src = `assets/ui/face-${f === 'warden' ? WARDEN_ART : f}.webp`;
       return [f, img.src];
     }));
     this.queue = [];

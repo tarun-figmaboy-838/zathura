@@ -11,6 +11,15 @@ const BOLT_SPEED = 130;
 const BARRAGE_SPEED = 62;
 // armoured hull as spheres in the boss's local space (Three.js axes: nose is -Z)
 const HULL = [[0, 0, 12, 9.5], [0, 0, 0, 11], [0, 0, -12, 8], [12.5, 0, -2, 4], [-12.5, 0, -2, 4], [12.5, 0, 9, 4], [-12.5, 0, 9, 4]];
+// the Warden carrier's materials and where it bursts when it dies (assets/models/boss.glb, the saved
+// draft). Models built in code bring their own (wardenDrone.js).
+const CARRIER_LOOK = {
+  hull: ['BossHull', 'BossPlate', 'BossMark'],
+  core: 'BossCore',
+  glow: 'BossGlow',
+  panel: { scale: 0.6, seam: 0.45, grime: 0.3, chips: 0.25, soot: [16, 22, 0.8] },
+  pops: HULL,
+};
 const UP = new THREE.Vector3(0, 1, 0);
 const _a = new THREE.Vector3();
 const _b = new THREE.Vector3();
@@ -47,21 +56,24 @@ function shieldMaterial() {
   });
 }
 
-// The Warden carrier. Phase 1: four turrets fire aimed bursts while a shield protects the core.
+// The Warden (a giant virus drone, or the carrier draft). Phase 1: four turrets fire aimed bursts while a shield protects the core.
 // Phase 2: the core is exposed; the carrier speeds up and fires telegraphed radial barrages.
 // It launches raiders from its hangar throughout.
 export class Boss {
-  constructor(scene, gltf) {
+  // model: the Warden drone, or the carrier draft's glTF scene
+  constructor(scene, model) {
     this.root = new THREE.Group();
-    this.model = gltf.scene;
+    this.model = model;
+    const look = model.userData.look || CARRIER_LOOK;
+    this.pops = look.pops;
     this.root.add(this.model);
     const n = (name) => this.model.getObjectByName(name);
     const mats = new Set();
     this.model.traverse((o) => { if (o.isMesh) { o.castShadow = true; mats.add(o.material); } });
-    this.hullMats = [...mats].filter((m) => ['BossHull', 'BossPlate', 'BossMark'].includes(m.name));
-    this.hullMats.forEach((m) => { m.envMapIntensity = 1.3; addPanelDetail(m, { scale: 0.6, seam: 0.45, grime: 0.3, chips: 0.25, soot: [16, 22, 0.8] }); });
-    this.coreMat = [...mats].find((m) => m.name === 'BossCore');
-    this.glowMat = [...mats].find((m) => m.name === 'BossGlow');
+    this.hullMats = [...mats].filter((m) => look.hull.includes(m.name));
+    this.hullMats.forEach((m) => { m.envMapIntensity = 1.3; addPanelDetail(m, look.panel); });
+    this.coreMat = [...mats].find((m) => m.name === look.core);
+    this.glowMat = [...mats].find((m) => m.name === look.glow);
     this.coreBase = this.coreMat.emissiveIntensity;
     this.core = n('Core');
     this.hangar = n('Hangar');
@@ -282,7 +294,7 @@ export class Boss {
     this.coreMat.emissiveIntensity = this.coreBase * (Math.sin(t * 50) > 0 ? 3 : 0.4);
     if ((this.popT -= dt) <= 0 && this.dieT < 2.8) {
       this.popT = rand(0.1, 0.2);
-      const h = HULL[Math.floor(Math.random() * HULL.length)];
+      const h = this.pops[Math.floor(Math.random() * this.pops.length)];
       _a.set(h[0] + rand(-h[3], h[3]) * 0.6, rand(0, 3), h[2] + rand(-h[3], h[3]) * 0.6);
       this.root.localToWorld(_a);
       ctx.fx.explosion(_a, rand(1.3, 2.4), this.vel, { scrap: true });

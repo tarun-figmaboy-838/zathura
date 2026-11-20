@@ -30,6 +30,7 @@ import { Trails } from './combat/trails.js';
 import { Raiders } from './enemies/raiders.js';
 import { ENEMY_LOOK } from './enemies/look.js';
 import { makeVirusDrone } from './enemies/virusDrone.js';
+import { makeWardenDrone } from './enemies/wardenDrone.js';
 import { Boss, TURRET_HP, CORE_HP } from './enemies/boss.js';
 import { Intro } from './game/intro.js';
 import { Campaign, masteryLevel, answerOf } from './game/campaign.js';
@@ -124,9 +125,9 @@ scene.add(stars.object, dust.object, blackhole.object, ...planets.map((p) => p.o
 let shipGltf, rockGltf, raiderGltf, stationGltf, bossGltf;
 try {
   const loader = new GLTFLoader();
-  // the raider ship model is only needed for the saved ship draft (src/enemies/look.js)
-  [shipGltf, rockGltf, stationGltf, bossGltf, raiderGltf] = await Promise.all(
-    ['ship', 'asteroids', 'station', 'boss', ...(ENEMY_LOOK === 'ship' ? ['raider'] : [])]
+  // the raider ship and carrier models are only needed for the saved ship draft (src/enemies/look.js)
+  [shipGltf, rockGltf, stationGltf, raiderGltf, bossGltf] = await Promise.all(
+    ['ship', 'asteroids', 'station', ...(ENEMY_LOOK === 'ship' ? ['raider', 'boss'] : [])]
       .map((n) => loader.loadAsync(`assets/models/${n}.glb`)),
   );
 } catch (err) {
@@ -200,9 +201,9 @@ const scenery = new AsteroidField(scene, rockGltf, {
 });
 scenery.material.envMapIntensity = 1.5;
 const trails = new Trails(scene);
-// the enemies: virus drones (built in code), or the saved raider-ship draft
+// the enemies: virus drones and the Warden drone (built in code), or the saved ship draft
 const raiders = new Raiders(scene, raiderGltf ? raiderGltf.scene : makeVirusDrone(), trails, 10);
-const boss = new Boss(scene, bossGltf);
+const boss = new Boss(scene, bossGltf ? bossGltf.scene : makeWardenDrone());
 const portal = new Portal(scene);
 const rings = new TargetRings(scene);
 const angleOverlay = new AngleOverlay(scene, $('markers'));

@@ -9,7 +9,8 @@ hole. On the far side there are **12 levels**, taken from *Angle Hunt* (angle-ga
 every level the ship makes a short playable journey through an asteroid belt and flies through the
 level's portal. The levels come in three sectors of four; each sector ends with a meteor field and a
 quick look at the stars earned. After the third sector comes the boss, the
-Warden carrier, and then you jump home.
+Warden: a giant virus drone with one huge eye on top (its core) and four turrets
+(`src/enemies/wardenDrone.js`), and then you jump home.
 
 Music is synthesized live and changes with the action (cruise, battle, boss).
 
@@ -29,8 +30,8 @@ jump, the portal implodes behind it, and the victory screen rates the run out of
 
 Each level is one virus drone: a robot shaped like a virus (a spiked metal ball with one glowing eye,
 `src/enemies/virusDrone.js`), so students only ever destroy machines, never anything alive. It flies in,
-holds position and keeps firing short bursts at you. The old raider ships with alien pilots are kept as
-a draft: set `ENEMY_LOOK` in `src/enemies/look.js` to `'ship'` to bring them back. Every
+holds position and keeps firing short bursts at you. The old raider ships with alien pilots and the Warden's
+carrier are kept as a draft: set `ENEMY_LOOK` in `src/enemies/look.js` to `'ship'` to bring them back. Every
 question has a time limit (25 s on L1, easing down to 15 s; 18 s for the Warden): if it runs out, the drone
 destroys your ship and you retry the level. A radar ring is drawn around your ship in thin, crisp
 lines (the stars and glow dim during battles so it reads clearly). No timer is shown; in the last
