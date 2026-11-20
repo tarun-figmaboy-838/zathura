@@ -4,6 +4,7 @@ import { intercept, rand, segmentPointDistSq, segOut } from '../core/math.js';
 
 export const TURRET_HP = 10;
 export const CORE_HP = 60;
+const SCALE = 1.4;           // drawn big: it is the final boss (hit sizes below are in its own units)
 const TURRET_R = 4.2;
 const CORE_R = 4.4;
 const SHIELD_R = 6.0;
@@ -50,8 +51,10 @@ function shieldMaterial() {
         vec3 p = normalize(vP);
         float hex = abs(sin(p.x * 18.0 + uTime) * sin(p.y * 18.0) * sin(p.z * 18.0 - uTime));
         float lines = smoothstep(0.85, 1.0, hex);
-        float a = (fres * 0.9 + lines * 0.25 + uFlash * (0.4 + fres)) * uFade;
-        gl_FragColor = vec4(vec3(1.0, 0.32, 0.12) * a * 1.8, 1.0);
+        // a thin crackling red edge (the monster's eye stays in plain sight through it)
+        float edge = pow(fres, 1.5);
+        float a = (edge * 0.8 + lines * edge * 0.5 + uFlash * (0.3 + fres)) * uFade;
+        gl_FragColor = vec4(vec3(1.0, 0.08, 0.16) * a * 1.4, 1.0);
       }`,
   });
 }
@@ -79,6 +82,7 @@ export class Boss {
     this.hangar = n('Hangar');
     this.turrets = [0, 1, 2, 3].map((i) => ({
       index: i, head: n(`TurretHead_${i}`), muzzle: n(`TurretMuzzle_${i}`), hp: TURRET_HP, alive: true, nextShot: 0, burst: 0,
+      core: n(`TurretCore_${i}`), outline: n(`TurretOutline_${i}`),     // the Warden drone's weak spot (the carrier has none)
       pos: new THREE.Vector3(), part: { isBossPart: true, kind: 'turret', index: i },
     }));
     this.parts = {
@@ -90,6 +94,17 @@ export class Boss {
     this.shield = new THREE.Mesh(new THREE.SphereGeometry(SHIELD_R, 40, 24), this.shieldMat);
     this.shield.renderOrder = 6;
     this.root.add(this.shield);
+    this.root.scale.setScalar(SCALE);
+    // the part to destroy now (set by the game each frame, see highlight): the part itself lights up
+    // (its weak-spot core flashes gold, a hot outline wraps it) and a pulsing ring sits under it;
+    // nothing covers the part
+    const hot = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, 0.6, 0.12), toneMapped: false });
+    this.marker = new THREE.Group();
+    this.markerRing = new THREE.Mesh(new THREE.TorusGeometry(3.8, 0.32, 8, 48).rotateX(Math.PI / 2), hot);
+    this.marker.add(this.markerRing);
+    this.marker.visible = false;
+    this.root.add(this.marker);
+    this.highlight = null;
     this.corePos = new THREE.Vector3();
     this.vel = new THREE.Vector3();
     this.root.visible = false;
@@ -167,6 +182,8 @@ export class Boss {
     this.flash = Math.max(0, this.flash - dt * 6);
     this.coreFlash = Math.max(0, this.coreFlash - dt * 6);
     for (const m of this.hullMats) m.emissive.setRGB(this.flash * 1.2, this.flash * 0.5, this.flash * 0.2);
+    this.model.userData.rig?.(dt, t);          // the Warden drone's jaws, claws and eye
+    this.updateMarker(t);
 
     if (this.dying) { this.dieUpdate(dt, t, ctx); return; }
 
@@ -312,6 +329,29 @@ export class Boss {
     }
   }
 
+  // the marker sits on this.highlight (a turret part or the core part), or hides
+  updateMarker(t) {
+    const h = this.highlight;
+    const at = !h || this.dying ? null : h.kind === 'core' ? this.core.position
+      : this.turrets[h.index]?.alive ? this.turrets[h.index].head.position : null;
+    const pulse = 0.5 + 0.5 * Math.sin(t * 6);
+    // the weak-spot cores: the target's flashes gold-white, the others smoulder dimly
+    for (const tr of this.turrets) {
+      if (!tr.core) continue;
+      const on = !!at && h.kind === 'turret' && h.index === tr.index;
+      tr.core.material.emissive.setRGB(1, on ? 0.55 : 0.1, on ? 0.12 : 0.03);
+      tr.core.material.emissiveIntensity = on ? 1.6 + 1.4 * pulse : 0.7;
+      tr.outline.visible = on;
+      if (on) tr.outline.scale.setScalar(1 + 0.08 * pulse);
+    }
+    this.marker.visible = !!at;
+    if (!at) return;
+    const big = h.kind === 'core' ? 1.25 : 1;
+    this.marker.position.copy(at);
+    this.markerRing.scale.setScalar(big * (1 + 0.15 * pulse));
+    this.markerRing.position.y = h.kind === 'core' ? 0.6 : -0.9;
+  }
+
   // nearest boss part hit by segment a→b
   segmentHit(a, b, out) {
     if (!this.active || this.dying) return null;
@@ -323,10 +363,10 @@ export class Boss {
       if (d < bestD) { bestD = d; best = part; out.copy(a).lerp(b, segOut.t); }
     };
     // weak points first: the core shield must never swallow a shot aimed at a turret
-    for (const tr of this.turrets) if (tr.alive) test(tr.pos, TURRET_R, tr.part);
+    for (const tr of this.turrets) if (tr.alive) test(tr.pos, TURRET_R * SCALE, tr.part);
     if (!best) {
-      if (this.phase === 'turrets') { if (!this.quiz) test(this.corePos, SHIELD_R, this.parts.shield); }
-      else test(this.corePos, CORE_R, this.parts.core);
+      if (this.phase === 'turrets') { if (!this.quiz) test(this.corePos, SHIELD_R * SCALE, this.parts.shield); }
+      else test(this.corePos, CORE_R * SCALE, this.parts.core);
     }
     // no hull blocking: from the top view bolts visibly travel over the deck to the far turrets
     return best;

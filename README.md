@@ -33,8 +33,12 @@ sides, and now and then a friendly UFO flies alongside for a few seconds: the li
 its dome waves and says hello ("Hey!", "Nice ship!"), then zips off with a goodbye. They cannot be
 shot or locked onto (`src/world/props.js`). The levels come in three sectors of four; each sector ends with a meteor field and a
 quick look at the stars earned. After the third sector comes the boss, the
-Warden: a giant virus drone with one huge eye on top (its core) and four turrets
-(`src/enemies/wardenDrone.js`), and then you jump home.
+Warden: a monster of a virus drone (still a machine), drawn big: a dark armoured ball of blade spikes
+with glowing red seams, two swept-back horns, one huge red eye with a slit pupil under angry brows
+(its core) and four small spider eyes, a toothed maw that chomps, four claw arms, and four big
+turrets, each with a glowing weak-spot core (`src/enemies/wardenDrone.js`). In its battle only the
+part the question is about is marked: its core flashes gold, a hot outline wraps it, a ring sits
+under it and a red TARGET tag points at it. Then you jump home.
 
 Music is synthesized live and changes with the action (cruise, battle, boss).
 
