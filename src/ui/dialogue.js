@@ -1,4 +1,4 @@
-import { ENEMY_FACE, WARDEN_ART } from '../enemies/look.js';
+import { ENEMY_FACE, ENEMY_KINDS, WARDEN_ART } from '../enemies/look.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // Lines play one after another; a tap finishes the line being typed, or skips to the next.
 //
 // line: { who: 'enemy' | 'crew', name, text, hold (seconds after typing),
-//         face: 'drone' | 'raider' | 'warden' | 'crew' (the portrait), mood: 'taunt' | 'laugh' | 'panic' | 'cheer' }
+//         face: 'drone' | 'phage' | 'swarm' | 'raider' | 'warden' | 'crew' (the portrait), mood: 'taunt' | 'laugh' | 'panic' | 'cheer' }
 // voice(who): called every few letters while typing (the comic "blah-blah" talk blips)
 export class Dialogue {
   constructor() {
@@ -20,7 +20,7 @@ export class Dialogue {
     this.textEl.replaceChildren(this.typedEl, this.restEl);
     this.faceEl = this.root.querySelector('.portrait img');
     // portraits made with Figma AI; preloaded so a new speaker never pops in blank
-    this.faces = Object.fromEntries([ENEMY_FACE, 'warden', 'crew'].map((f) => {
+    this.faces = Object.fromEntries([...ENEMY_KINDS, 'warden', 'crew'].map((f) => {
       const img = new Image();
       img.src = `assets/ui/face-${f === 'warden' ? WARDEN_ART : f}.webp`;
       return [f, img.src];

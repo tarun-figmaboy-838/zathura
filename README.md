@@ -28,8 +28,11 @@ jump, the portal implodes behind it, and the victory screen rates the run out of
 
 ## Angle battles
 
-Each level is one virus drone: a robot shaped like a virus (a spiked metal ball with one glowing eye,
-`src/enemies/virusDrone.js`), so students only ever destroy machines, never anything alive. It flies in,
+Each level is one virus drone, a robot shaped like a virus, so students only ever destroy machines,
+never anything alive. Each sector brings a new kind, introduced by the co-pilot the first time, with
+its own look, colour, names, lines and voice (`src/enemies/droneKinds.js`): the spiked **virus drone**
+with one glowing eye (levels 1-4), the six-legged **Phage** with a gem head (levels 5-8), and the
+**Swarm**, three little drones circling a hub that talk as "we" (mastery 1-4). It flies in,
 holds position and keeps firing short bursts at you. The old raider ships with alien pilots and the Warden's
 carrier are kept as a draft: set `ENEMY_LOOK` in `src/enemies/look.js` to `'ship'` to bring them back. Every
 question has a time limit (25 s on L1, easing down to 15 s; 18 s for the Warden): if it runs out, the drone

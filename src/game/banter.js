@@ -63,6 +63,44 @@ const DRONE_LINES = {
   ],
 };
 
+// each new kind of drone has its own name, arrival, mocking and crash lines (the rest are shared)
+const PHAGE_NAMES = ['HOPPER', 'STILTS', 'T4-BOT', 'CLAMP', 'SIX-LEGS', 'PROBE'];
+const PHAGE_LINES = {
+  raiderArrive: [
+    'Phage drone landing! Six legs, zero worries!',
+    'Click clack! Here come my legs!',
+    'Legs locked. Lasers loaded!',
+    'I hop! I zap! I win!',
+  ],
+  raiderMock: [
+    'Ha! I just stepped aside!',
+    'Missed! Too many legs to hit!',
+  ],
+  raiderHit: [
+    'My legs! All six of them!',
+    'Landing gear... failing!',
+    'Wobble... wobble... CRASH!',
+  ],
+};
+const SWARM_NAMES = ['TRIO', 'X3', 'TRIPLEX', 'HIVE-3', 'TRIBYTE', 'CLUSTER'];
+const SWARM_LINES = {
+  raiderArrive: [
+    'We are three! You are one!',
+    'Three drones, one brain!',
+    'We copy! We paste! We attack!',
+    'Swarm online. Beep beep beep!',
+  ],
+  raiderMock: [
+    'Missed all three of us!',
+    'Wrong angle! We all saw it!',
+  ],
+  raiderHit: [
+    'Swarm scattered! Regroup! REGROUP!',
+    'Error! Error! Error!',
+    'We split up... into tiny pieces!',
+  ],
+};
+
 // DRAFT, saved for later (ENEMY_LOOK 'ship'): goofy alien raider pilots
 const SHIP_NAMES = ['GRUNK', 'ZIZZ', 'BLORP', 'SKRAG', 'VEXX', 'MUNCH', 'KRONK', 'GLIB'];
 const SHIP_LINES = {
@@ -112,17 +150,22 @@ const SHIP_LINES = {
   ],
 };
 
-const ENEMY = ENEMY_LOOK === 'ship'
-  ? { names: SHIP_NAMES, lines: SHIP_LINES, callsign: 'RAIDER', intro: 'Raider incoming! It shoots at your ship.' }
-  : { names: DRONE_NAMES, lines: DRONE_LINES, callsign: 'DRONE', intro: 'Virus drone incoming! It shoots at your ship.' };
-export const raiderName = () => pick('name', ENEMY.names);
-export const ENEMY_CALLSIGN = ENEMY.callsign;          // when a callsign is missing
-export const ENEMY_INTRO = ENEMY.intro;                // the co-pilot's first look at one
+// per kind (see src/enemies/droneKinds.js): callsigns, its own lines, and the co-pilot's first look
+const KINDS = {
+  drone: { names: DRONE_NAMES, lines: {}, intro: 'Virus drone incoming! It shoots at your ship.' },
+  phage: { names: PHAGE_NAMES, lines: PHAGE_LINES, intro: 'New drone: the Phage! It walks on six legs.' },
+  swarm: { names: SWARM_NAMES, lines: SWARM_LINES, intro: 'New drone: the Swarm! Three drones in one.' },
+  raider: { names: SHIP_NAMES, lines: {}, intro: 'Raider incoming! It shoots at your ship.' },
+};
+const kindOf = (kind) => KINDS[kind] || KINDS[ENEMY_FACE];
+export const raiderName = (kind = ENEMY_FACE) => pick(`name:${kind}`, kindOf(kind).names);
+export const enemyIntro = (kind = ENEMY_FACE) => kindOf(kind).intro;
+export const ENEMY_CALLSIGN = ENEMY_LOOK === 'ship' ? 'RAIDER' : 'DRONE';   // when a callsign is missing
 export const WARDEN = 'THE WARDEN';
 const CREW = 'CO-PILOT';
 
 const POOLS = {
-  ...ENEMY.lines,
+  ...(ENEMY_LOOK === 'ship' ? SHIP_LINES : DRONE_LINES),
   wardenArrive: [
     'Who dares fly into MY sector?!',
     'Answer my angles... if you can! Mwahaha!',
@@ -157,10 +200,15 @@ const MOOD = {
   raiderMock: 'laugh', wardenMock: 'laugh', raiderWin: 'laugh', raiderWinTime: 'laugh', wardenWin: 'laugh', wardenWinTime: 'laugh',
   raiderHit: 'panic', wardenTurret: 'panic', wardenCore: 'panic', wardenDown: 'panic',
 };
-const faceOf = (who, name) => (who === 'crew' ? 'crew' : name === WARDEN ? 'warden' : ENEMY_FACE);
-const line = (who, name, key, hold = 1.5, src = null) => ({
-  who, name, text: pick(key, POOLS[key]).replace('{name}', name), hold, src, face: faceOf(who, name), mood: MOOD[key] || '',
-});
-export const enemyLine = (name, key, hold, src) => line('enemy', name, key, hold, src);
+const faceOf = (who, name, kind) => (who === 'crew' ? 'crew' : name === WARDEN ? 'warden' : kind || ENEMY_FACE);
+// kind: the drone kind speaking; its own lines come first, the shared pool otherwise
+const line = (who, name, key, hold = 1.5, src = null, kind = null) => {
+  const own = kind && kindOf(kind).lines[key];
+  return {
+    who, name, text: (own ? pick(`${kind}:${key}`, own) : pick(key, POOLS[key])).replace('{name}', name), hold, src,
+    face: faceOf(who, name, kind), mood: MOOD[key] || '',
+  };
+};
+export const enemyLine = (name, key, hold, src, kind) => line('enemy', name, key, hold, src, kind);
 export const crewLine = (key, hold) => line('crew', CREW, key, hold);
 export const wardenIntro = () => POOLS.wardenArrive.map((text) => ({ who: 'enemy', name: WARDEN, text, hold: 1.3, face: 'warden', mood: 'taunt' }));

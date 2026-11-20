@@ -28,8 +28,8 @@ import { Projectiles } from './combat/projectiles.js';
 import { Effects, SHIP_CORE } from './combat/fx.js';
 import { Trails } from './combat/trails.js';
 import { Raiders } from './enemies/raiders.js';
-import { ENEMY_LOOK } from './enemies/look.js';
-import { makeVirusDrone } from './enemies/virusDrone.js';
+import { ENEMY_LOOK, kindFor } from './enemies/look.js';
+import { DRONE_KINDS } from './enemies/droneKinds.js';
 import { makeWardenDrone } from './enemies/wardenDrone.js';
 import { Boss, TURRET_HP, CORE_HP } from './enemies/boss.js';
 import { Intro } from './game/intro.js';
@@ -39,7 +39,7 @@ import { Hud } from './ui/hud.js';
 import { Controls } from './ui/controls.js';
 import { Dialogue } from './ui/dialogue.js';
 import { Voice } from './audio/vo.js';
-import { raiderName, enemyLine, crewLine, wardenIntro, WARDEN, ENEMY_CALLSIGN, ENEMY_INTRO } from './game/banter.js';
+import { raiderName, enemyLine, crewLine, wardenIntro, WARDEN, ENEMY_CALLSIGN, enemyIntro } from './game/banter.js';
 
 const SUN_DIR = new THREE.Vector3(-0.72, 0.4, -0.56).normalize();
 const BOLT_SPEED = 560;
@@ -201,8 +201,10 @@ const scenery = new AsteroidField(scene, rockGltf, {
 });
 scenery.material.envMapIntensity = 1.5;
 const trails = new Trails(scene);
-// the enemies: virus drones and the Warden drone (built in code), or the saved ship draft
-const raiders = new Raiders(scene, raiderGltf ? raiderGltf.scene : makeVirusDrone(), trails, 10);
+// the enemies: three kinds of virus drone and the Warden drone (built in code), or the saved ship draft
+const raiders = new Raiders(scene, raiderGltf
+  ? [{ key: 'raider', model: raiderGltf.scene, trail: [1.15, 0.38, 0.16], count: 10 }]
+  : DRONE_KINDS.map((k) => ({ ...k, model: k.make() })), trails);
 const boss = new Boss(scene, bossGltf ? bossGltf.scene : makeWardenDrone());
 const portal = new Portal(scene);
 const rings = new TargetRings(scene);
@@ -957,14 +959,15 @@ const campaignCtx = {
     const off = V(-Math.sin(yaw) * D, 0, -Math.cos(yaw) * D);
     // it warps in far out along its bearing and flies in to its spot (see Raiders.holdUpdate)
     const pos = off.clone().multiplyScalar(2.9).add(ship.position);
-    const r = raiders.spawn(pos, ship.position, skill, state.time, true);
+    const kind = kindFor(campaign.L.group);                 // a new kind of drone each sector
+    const r = raiders.spawn(pos, ship.position, skill, state.time, true, kind);
     if (!r) return;
     r.hold = off;
-    r.callsign = raiderName();
+    r.callsign = raiderName(kind);
     r.taunted = false;
     fx.warp(pos, tmp.copy(ship.position).sub(pos).normalize());
     audio.warp(pos);
-    introduce('raider', [{ text: ENEMY_INTRO, cam: camRaider(r), time: 3.4 }]);
+    introduce(`enemy:${kind}`, [{ text: enemyIntro(kind), cam: camRaider(r), time: 3.4 }]);
   },
   spawnMeteor(p, size, v) { field.spawn(V(p.x, p.y, p.z), size, V(v.x, v.y, v.z)); },
   levelComplete(level) {
@@ -1110,7 +1113,7 @@ function defeatLines() {
   const q = state.lastQ;
   const tip = q ? `Remember: ${RULE_REMINDERS[q.type] || q.hint} Try again!` : 'Hull breached! Dodge the rocks or shoot them first.';
   const lines = [];
-  if (k) lines.push(boss_ ? at(enemyLine(name, key, 1.6), boss.model, boss.corePos) : at(enemyLine(name, key, 1.6), k.obj.model, k.obj.position));
+  if (k) lines.push(boss_ ? at(enemyLine(name, key, 1.6), boss.model, boss.corePos) : at(enemyLine(name, key, 1.6, null, k.obj.kind), k.obj.model, k.obj.position));
   lines.push({ who: 'crew', name: 'CO-PILOT', text: tip, hold: 2.0, face: 'crew', mood: 'cheer' });
   return lines;
 }
@@ -1339,7 +1342,7 @@ function quizFire(correct) {
 
 function quizPunish(target) {
   buzz([70, 50, 70]);
-  dialogue.say(target.kind === 'raider' ? at(enemyLine(target.obj.callsign, 'raiderMock', 1.5), target.obj.model, target.obj.position)
+  dialogue.say(target.kind === 'raider' ? at(enemyLine(target.obj.callsign, 'raiderMock', 1.5, null, target.obj.kind), target.obj.model, target.obj.position)
     : at(enemyLine(WARDEN, 'wardenMock', 1.5), boss.model, boss.corePos));
   if (target.kind === 'raider') raiders.punish(target.obj, state.time);
   else boss.punish(state.time, bossCtx);
@@ -1373,7 +1376,7 @@ function quizSolved(target, firstTry) {
   if (target.kind === 'raider') {
     const r = target.obj;
     if (r.alive) { raiders.kill(r); raiderDestroyed(r, true); }
-    dialogue.say(at(enemyLine(r.callsign || ENEMY_CALLSIGN, 'raiderHit', 0.9), r.model, r.position.clone()));
+    dialogue.say(at(enemyLine(r.callsign || ENEMY_CALLSIGN, 'raiderHit', 0.9, null, r.kind), r.model, r.position.clone()));
   } else {
     if (target.kind === 'turret' && target.obj.alive) onBossHit(target.part, target.pos.clone(), 99);
     if (target.kind === 'turret') dialogue.say(at(enemyLine(WARDEN, 'wardenTurret', 1.3), boss.model, boss.corePos));
@@ -1530,7 +1533,7 @@ function updateBanter() {
   for (const r of raiders.list) {
     if (!r.alive || !r.hold || r.taunted || !raiders.arrived(r)) continue;
     r.taunted = true;
-    const lines = [at(enemyLine(r.callsign, 'raiderArrive', 1.3), r.model, r.position)];
+    const lines = [at(enemyLine(r.callsign, 'raiderArrive', 1.3, null, r.kind), r.model, r.position)];
     if (Math.random() < 0.35) lines.push(at(crewLine('crewReply', 1.2), ship.model, ship.position));   // the co-pilot answers from your ship
     for (const l of lines) l.intro = true;     // the question waits for the opening banter
     dialogue.play(lines);

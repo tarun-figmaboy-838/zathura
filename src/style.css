@@ -248,6 +248,8 @@ body.narrating .quiz-prompt, body.narrating #banner { opacity: 0 !important; }
 @keyframes dlg-pop { from { scale: 0.55; rotate: -5deg; } 60% { rotate: 1.5deg; } to { scale: 1; rotate: 0deg; } }
 .dialog[data-face='warden'] { --rim: #b26bff; --plate1: #c690ff; --plate2: #6a23c9; }
 .dialog[data-face='crew'] { --rim: #4fd8ff; --plate1: #74e8ff; --plate2: #1679c9; }
+.dialog[data-face='phage'] { --rim: #5be36f; --plate1: #86f293; --plate2: #1f9442; }
+.dialog[data-face='swarm'] { --rim: #ff5ad2; --plate1: #ff8de2; --plate2: #b1208f; }
 .dialog .portrait { position: relative; align-self: start; width: 76px; height: 76px; margin: -32px 0 -6px; border-radius: 50%; overflow: hidden;
   background: var(--face-bot); box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--rim), 0 0 0 9px #060a1c, 0 8px 16px rgba(0, 0, 0, 0.5); }
 .dialog .portrait img { display: block; width: 100%; height: 100%; object-fit: cover; transform-origin: 50% 90%; -webkit-user-drag: none; }

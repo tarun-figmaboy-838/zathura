@@ -16,7 +16,6 @@ const SHIP_LOOK = {
   glow: 'RaiderGlow',
   panel: { scale: 1.6, seam: 0.45, grime: 0.3, chips: 0.5, soot: [2.0, 3.4, 0.8] },
 };
-const TRAIL_COLOR = new THREE.Color(1.15, 0.38, 0.16);
 const _m = new THREE.Matrix4();
 const _q = new THREE.Quaternion();
 const _fwd = new THREE.Vector3();
@@ -67,13 +66,16 @@ function makePlumeMaterial() {
   });
 }
 
+// kind: { key, model, rig?(model) -> (dt, t, raider), trail: [r, g, b] } (see droneKinds.js)
 class Raider {
-  constructor(template, scene, plumeMat, trails) {
+  constructor(kind, scene, plumeMat, trails) {
     this.isRaider = true;
     this.alive = false;
+    this.kind = kind.key;
     this.root = new THREE.Group();
     this.visual = new THREE.Group();
     this.root.add(this.visual);
+    const template = kind.model;
     this.model = template.clone(true);
     this.visual.add(this.model);
 
@@ -96,7 +98,7 @@ class Raider {
     this.glowMat = mats.find((m) => m.name === look.glow);
     this.glowBase = this.glowMat.emissiveIntensity;
     this.guns = [this.model.getObjectByName('Gun_L'), this.model.getObjectByName('Gun_R')];
-    this.spinner = this.model.getObjectByName('Shell');      // the virus drone's spiked ball turns
+    this.rig = kind.rig ? kind.rig(this.model) : null;      // how this kind moves (legs, spin...)
 
     const geo = new THREE.CylinderGeometry(0.05, 0.28, 1, 6, 1, true);
     geo.translate(0, 0.5, 0);
@@ -108,7 +110,7 @@ class Raider {
       this.model.getObjectByName(name).add(plume);
     }
 
-    this.trail = trails.alloc(TRAIL_COLOR, 0.42, 0.75);
+    this.trail = trails.alloc(new THREE.Color(...kind.trail), 0.42, 0.75);
     this.root.scale.setScalar(1.35);
     this.root.visible = false;
     scene.add(this.root);
@@ -125,11 +127,11 @@ class Raider {
 
 // The hostile squadron: spawning, AI, steering, shooting and hit detection.
 export class Raiders {
-  // template: the enemy model (the virus drone, or the raider ship draft's glTF scene)
-  constructor(scene, template, trails, capacity = 14) {
+  // kinds: the enemy kinds (the virus drones, or the raider ship draft), `count` of each
+  constructor(scene, kinds, trails) {
     this.trails = trails;
     this.plumeMat = makePlumeMaterial();
-    this.list = Array.from({ length: capacity }, () => new Raider(template, scene, this.plumeMat, trails));
+    this.list = kinds.flatMap((k) => Array.from({ length: k.count }, () => new Raider(k, scene, this.plumeMat, trails)));
   }
 
   get count() {
@@ -138,8 +140,9 @@ export class Raiders {
     return n;
   }
 
-  spawn(pos, lookAt, skill = 0, time = 0, arena = false) {
-    const r = this.list.find((x) => !x.alive);
+  // kind: which kind to send (the first kind when not given)
+  spawn(pos, lookAt, skill = 0, time = 0, arena = false, kind = this.list[0].kind) {
+    const r = this.list.find((x) => !x.alive && x.kind === kind);
     if (!r) return null;
     r.alive = true;
     r.root.visible = true;
@@ -205,7 +208,7 @@ export class Raiders {
     const sp = ship.position;
     for (const r of this.list) {
       if (!r.alive) continue;
-      if (r.spinner) r.spinner.rotation.z += r.spin * dt;
+      if (r.rig) r.rig(dt, t, r);
       if (r.hold) { this.holdUpdate(r, dt, t, ctx); continue; }
       r.t += dt;
       const pos = r.root.position;

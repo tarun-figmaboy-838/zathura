@@ -105,3 +105,9 @@ export function makeVirusDrone() {
   }
   return root;
 }
+
+// the spiked ball turns slowly (the eye, cannons and engines stay put)
+export function virusRig(model) {
+  const shell = model.getObjectByName('Shell');
+  return (dt, t, r) => { shell.rotation.z += r.spin * dt; };
+}

@@ -2,6 +2,7 @@
  "files": [
   "03129e25",
   "0954cd84",
+  "0f26444d",
   "134819e4",
   "1360c92a",
   "149af039",
@@ -19,12 +20,17 @@
   "2e877c0f",
   "2fe596d8",
   "3118763a",
+  "319f1708",
   "31a449b4",
+  "34ede49d",
   "35b07a02",
+  "36dbce5e",
   "3c7b6cf7",
+  "3d601b64",
   "3d661b1e",
   "3dec912e",
   "409f8a99",
+  "4136b98f",
   "41e03600",
   "42b955d7",
   "44149d51",
@@ -42,12 +48,16 @@
   "5f87f2be",
   "671008fe",
   "671da6ea",
+  "67b7c132",
   "70ca9d01",
+  "72ca8c61",
+  "767a26b5",
   "77b472ae",
   "7b1b1063",
   "7cdea476",
   "7e380f6f",
   "82bee507",
+  "83d4003c",
   "88cffb84",
   "89af518b",
   "8c508200",
@@ -58,9 +68,12 @@
   "919df25b",
   "96d34eb3",
   "975a3a6a",
+  "985b0431",
   "9d27ecc5",
   "9e589899",
   "9f0a8f9b",
+  "a2072841",
+  "a28a537d",
   "a29c3a1b",
   "a32218ad",
   "a3c727bf",
@@ -70,15 +83,18 @@
   "a605f55c",
   "a6fa4229",
   "a80ce945",
+  "a928d1be",
   "aa97b645",
   "abcf4e61",
   "ad624b1c",
   "ae3ead8d",
+  "aee4e3b0",
   "b0dbada0",
   "b5647a98",
   "b6d48628",
   "b9a14b8f",
   "bc525efd",
+  "bd72f8ac",
   "be8fa385",
   "bfc3d0af",
   "c083f539",
@@ -86,6 +102,8 @@
   "c78d22f5",
   "c88bc06c",
   "ca4af996",
+  "cb7fd8da",
+  "cc6ade00",
   "cec52952",
   "ceee2228",
   "cf0a148d",
@@ -95,8 +113,10 @@
   "dc4f2dea",
   "deb898ad",
   "e07135cc",
+  "e11da9bc",
   "e13d09e5",
   "e33dad76",
+  "e3efbfb9",
   "e4dfbd32",
   "eb4e6c56",
   "f5ac015d",
@@ -264,6 +284,96 @@
    "who": "drone",
    "text": "Who's the tiny ship now? Still you!",
    "seconds": 3.27
+  },
+  "34ede49d": {
+   "who": "phage",
+   "text": "Phage drone landing! Six legs, zero worries!",
+   "seconds": 4.46
+  },
+  "cb7fd8da": {
+   "who": "phage",
+   "text": "Click clack! Here come my legs!",
+   "seconds": 2.87
+  },
+  "cc6ade00": {
+   "who": "phage",
+   "text": "Legs locked. Lasers loaded!",
+   "seconds": 3.3
+  },
+  "a2072841": {
+   "who": "phage",
+   "text": "I hop! I zap! I win!",
+   "seconds": 2.69
+  },
+  "3d601b64": {
+   "who": "phage",
+   "text": "Ha! I just stepped aside!",
+   "seconds": 2.94
+  },
+  "83d4003c": {
+   "who": "phage",
+   "text": "Missed! Too many legs to hit!",
+   "seconds": 3.19
+  },
+  "67b7c132": {
+   "who": "phage",
+   "text": "My legs! All six of them!",
+   "seconds": 2.8
+  },
+  "36dbce5e": {
+   "who": "phage",
+   "text": "Landing gear... failing!",
+   "seconds": 2.58
+  },
+  "4136b98f": {
+   "who": "phage",
+   "text": "Wobble... wobble... CRASH!",
+   "seconds": 2.78
+  },
+  "a928d1be": {
+   "who": "swarm",
+   "text": "We are three! You are one!",
+   "seconds": 2.22
+  },
+  "767a26b5": {
+   "who": "swarm",
+   "text": "Three drones, one brain!",
+   "seconds": 2.29
+  },
+  "319f1708": {
+   "who": "swarm",
+   "text": "We copy! We paste! We attack!",
+   "seconds": 2.58
+  },
+  "0f26444d": {
+   "who": "swarm",
+   "text": "Swarm online. Beep beep beep!",
+   "seconds": 2.62
+  },
+  "72ca8c61": {
+   "who": "swarm",
+   "text": "Missed all three of us!",
+   "seconds": 2.24
+  },
+  "bd72f8ac": {
+   "who": "swarm",
+   "text": "Wrong angle! We all saw it!",
+   "seconds": 2.6
+  },
+  "e3efbfb9": {
+   "who": "swarm",
+   "text": "Swarm scattered! Regroup! REGROUP!",
+   "seconds": 2.81
+  },
+  "e11da9bc": {
+   "who": "swarm",
+   "text": "Error! Error! Error!",
+   "seconds": 2.01
+  },
+  "aee4e3b0": {
+   "who": "swarm",
+   "text": "We split up... into tiny pieces!",
+   "seconds": 2.7
   },
   "3118763a": {
    "who": "raider",
@@ -544,6 +654,16 @@
    "who": "crew",
    "text": "Virus drone incoming! It shoots at your ship.",
    "seconds": 3.83
+  },
+  "a28a537d": {
+   "who": "crew",
+   "text": "New drone: the Phage! It walks on six legs.",
+   "seconds": 3.98
+  },
+  "985b0431": {
+   "who": "crew",
+   "text": "New drone: the Swarm! Three drones in one.",
+   "seconds": 3.79
   },
   "14d449a2": {
    "who": "crew",
