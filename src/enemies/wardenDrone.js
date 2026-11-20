@@ -35,13 +35,13 @@ function along(geo, d, at, o = C) {
 
 export function makeWardenDrone() {
   const M = {
-    shell: mat('WardenShell', { color: 0x4d4663, metalness: 0.7, roughness: 0.32 }),
+    shell: mat('WardenShell', { color: 0x3d3556, metalness: 0.65, roughness: 0.32 }),
     plate: mat('WardenPlate', { color: 0x6c4ea0, metalness: 0.8, roughness: 0.28 }),
     gold: mat('WardenGold', { color: 0xd9a640, metalness: 1, roughness: 0.25 }),
     spike: mat('WardenSpike', { color: 0x8a8597, metalness: 0.85, roughness: 0.3 }),
-    dark: mat('WardenDark', { color: 0x0b0a10, metalness: 0.4, roughness: 0.35 }),
-    glow: mat('WardenGlow', { color: 0x000000, emissive: new THREE.Color(1, 0.26, 0.06), emissiveIntensity: 3.6, roughness: 0.5 }),
-    core: mat('WardenCore', { color: 0x000000, emissive: new THREE.Color(1, 0.3, 0.08), emissiveIntensity: 4, roughness: 0.4 }),
+    dark: mat('WardenDark', { color: 0x0b0a10, metalness: 0.3, roughness: 0.7 }),
+    glow: mat('WardenGlow', { color: 0x000000, emissive: new THREE.Color(1, 0.1, 0.02), emissiveIntensity: 3.2, roughness: 0.5 }),
+    core: mat('WardenCore', { color: 0x000000, emissive: new THREE.Color(1, 0.2, 0.04), emissiveIntensity: 4.6, roughness: 0.4 }),
   };
   const root = new THREE.Group();
   root.name = 'WardenDrone';
@@ -67,7 +67,7 @@ export function makeWardenDrone() {
     if (clear.some(([c, k]) => d.dot(c) > k)) continue;
     stalks.push(along(new THREE.CylinderGeometry(0.22, 0.5, 2.6, 10).translate(0, 1.3, 0), d, R - 0.2));
     collars.push(along(new THREE.CylinderGeometry(0.8, 0.95, 0.35, 16), d, R + 0.05));
-    bulbs.push(along(new THREE.SphereGeometry(0.72, 16, 12), d, R + 2.75));
+    bulbs.push(along(new THREE.SphereGeometry(0.6, 16, 12), d, R + 2.7));
   }
   mesh('Spikes', mergeGeometries(stalks), M.spike);
   mesh('Collars', mergeGeometries(collars), M.plate);
