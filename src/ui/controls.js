@@ -1,6 +1,7 @@
-// On-screen, game-style controls while cruising: left/right steering on the left and action
-// buttons on the right (FIRE with a heat ring, LOCK-ON and SHIELD with cooldown sweeps). Works
-// with mouse and multi-touch; keys light them up too.
+// On-screen, game-style controls: a joystick on the left and action buttons on the right (FIRE
+// with a heat ring, LOCK-ON and SHIELD with cooldown sweeps). In the angle battles only the
+// joystick (it turns the cannon) and FIRE show. Works with mouse and multi-touch; keys move the
+// knob and light the buttons too.
 export class Controls {
   constructor(input) {
     this.input = input;
@@ -32,6 +33,38 @@ export class Controls {
       });
     });
     this.root.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    // the joystick: drag the knob anywhere in its ring; it springs back when let go
+    this.stick = document.getElementById('stick');
+    this.knob = this.stick.querySelector('.stick-knob');
+    this.stickId = null;
+    const move = (e) => {
+      const r = this.stick.getBoundingClientRect();
+      const reach = r.width * 0.36;                          // knob travel, px
+      let x = (e.clientX - (r.left + r.width / 2)) / reach;
+      let y = -(e.clientY - (r.top + r.height / 2)) / reach;
+      const l = Math.hypot(x, y);
+      if (l > 1) { x /= l; y /= l; }
+      input.stick.set(x, y);
+    };
+    this.stick.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.stickId = e.pointerId;
+      this.stick.setPointerCapture?.(e.pointerId);
+      this.stick.classList.add('held');
+      move(e);
+    });
+    this.stick.addEventListener('pointermove', (e) => { if (e.pointerId === this.stickId) move(e); });
+    const release = (e) => {
+      if (e.pointerId !== this.stickId) return;
+      this.stickId = null;
+      input.stick.set(0, 0);
+      this.stick.classList.remove('held');
+    };
+    this.stick.addEventListener('pointerup', release);
+    this.stick.addEventListener('pointercancel', release);
+    this.stick.addEventListener('lostpointercapture', release);
   }
 
   show(v) { this.root.classList.toggle('hidden', !v); }
@@ -44,8 +77,8 @@ export class Controls {
     el._urge = setTimeout(() => el.classList.remove('urge'), seconds * 1000);
   }
 
-  // 'chase': steer left/right, fire, lock, shield. 'top' (angle battles): hidden, the answer
-  // options take over (see game/quiz.js)
+  // 'chase': steer, fire, lock, shield. 'top' (angle battles): the joystick turns the cannon and
+  // FIRE shoots (see game/quiz.js); lock and shield hide
   setMode(mode) {
     if (this.root.dataset.mode === mode) return;
     this.root.dataset.mode = mode;
@@ -53,8 +86,12 @@ export class Controls {
 
   update({ heat, overheated, lock, shield }) {
     const i = this.input;
-    const held = { left: i.dirX < 0, right: i.dirX > 0, up: i.dirY > 0, down: i.dirY < 0, fire: i.fire };
-    for (const [k, v] of Object.entries(held)) this.btn[k]?.classList.toggle('pressed', v);
+    this.btn.fire.classList.toggle('pressed', i.fire);
+    // the knob shows the arrow keys too
+    const x = i.dirX, y = i.dirY, l = Math.max(1, Math.hypot(x, y));
+    const reach = this.stick.clientWidth * 0.36;               // same travel as a drag
+    this.knob.style.translate = `${((x / l) * reach).toFixed(1)}px ${((-y / l) * reach).toFixed(1)}px`;
+    this.stick.classList.toggle('on', x !== 0 || y !== 0);
     const f = this.btn.fire;
     f.style.setProperty('--heat', heat.toFixed(3));
     f.classList.toggle('overheat', overheated);

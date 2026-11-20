@@ -375,6 +375,12 @@ export class AudioEngine {
     this.osc('square', 1500, 1400, 0.05, 0.25, this.out(0.25), t);
   }
 
+  // the cannon's dial clicking past every 5 degrees as the joystick turns it (angle battles)
+  dial() {
+    if (!this.ready()) return;
+    this.osc('triangle', 2600, 2300, 0.025, 0.12, this.out(0.12), this.ctx.currentTime);
+  }
+
   // a star lighting up (every 4 levels, and on the victory card): each one a step higher
   star(i) {
     if (!this.ready()) return;

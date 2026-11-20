@@ -80,7 +80,6 @@
   "a3e52fb0",
   "a428f62e",
   "a49d06e4",
-  "a605f55c",
   "a6fa4229",
   "a80ce945",
   "a928d1be",
@@ -90,6 +89,7 @@
   "ae3ead8d",
   "aee4e3b0",
   "b0dbada0",
+  "b1e4c6bc",
   "b5647a98",
   "b6d48628",
   "b9a14b8f",
@@ -680,10 +680,10 @@
    "text": "Turn it by the angle x to hit the target.",
    "seconds": 3.38
   },
-  "a605f55c": {
+  "b1e4c6bc": {
    "who": "crew",
-   "text": "Tap the correct value of x!",
-   "seconds": 2.69
+   "text": "Turn with the joystick, then press FIRE!",
+   "seconds": 3.26
   },
   "a49d06e4": {
    "who": "crew",

@@ -39,13 +39,15 @@ question has a time limit (25 s on L1, easing down to 15 s; 18 s for the Warden)
 destroys your ship and you retry the level. A radar ring is drawn around your ship in thin, crisp
 lines (the stars and glow dim during battles so it reads clearly). No timer is shown; in the last
 seconds the clock ticks and the screen edge pulses red, then the drone fires: a bright beam shows where your
-cannon points, a red line runs to the enemy, and there is one marked angle and an **x** angle. Pick the
-value of **x** and the cannon turns by that angle: the right answer lands on the enemy and destroys it,
-and the question card shows the working (for example "76° + 104° = 180°"). A wrong answer misses, the
-enemy fires back, and the card shows the rule (after a second miss, the working).
+cannon points, a red line runs to the enemy, and there is one marked angle and an **x** angle. Work out **x**,
+then turn the cannon with the joystick (or ◀ ▶): the **x** arc follows the cannon and its label counts
+the degrees as it turns (a gentle push turns it slowly for the last few degrees). Press FIRE: when x is
+right (within 2°) the shot lands on the enemy and destroys it, and the question card shows the working
+(for example "76° + 104° = 180°"). Otherwise it misses, the enemy fires back, and the card shows the rule
+(after a second miss, the working); turn again and fire again.
 
-Layout: the question bar on top, the radar in the middle and the answers along the bottom (one row on
-landscape screens, 2×2 on phones). Comms are a speech bubble on the craft that is talking (the drone,
+Layout: the question bar on top, the radar in the middle, the joystick bottom left and FIRE bottom
+right (the same joystick steers the ship on the journeys). Comms are a speech bubble on the craft that is talking (the drone,
 the Warden, or your own ship for the co-pilot), placed so it never covers the question, the answers or
 the score; phones get a compact bubble.
 

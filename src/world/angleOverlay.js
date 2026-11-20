@@ -9,11 +9,12 @@ const ease = (x) => { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); };
 //  - the cannon beam: a bright cyan line from the cannon to the ring, exactly where the cannon
 //    points (this is the reference line); its extension through the ship is a faint dotted line
 //  - the line to the enemy (warm red), with a faint dotted extension when the rule needs it
-//  - the given angle (orange arc) and the asked angle x (white arc);
+//  - the given angle (orange arc) and the angle x the player has turned the cannon (white arc,
+//    following the cannon's beam live, its label counting the degrees);
 //    right-angle questions add the usual little square in the corner; "around a point" adds a third
 //    dotted ray and a second given angle; triangle questions draw the third side with the two given
 //    angles at its corners
-//  - after an answer: a beam that turns by the picked angle and lights green (hit) or red (miss)
+//  - the cannon's beam as the joystick turns it; after FIRE it lights green (hit) or red (miss)
 // Numbers are crisp HTML labels placed in world units.
 export class AngleOverlay {
   constructor(scene, labelRoot) {
@@ -202,6 +203,7 @@ export class AngleOverlay {
     this.q = q;
     this.on = true;
     this.t = 0;
+    this.lastX = null;
     u.uRing.value = len;
     u.uTLen.value = tLen;
     u.uExtR.value = q.type === 'opposite' || q.type === 'linear' ? 1 : 0;   // the straight line through the ship
@@ -243,17 +245,25 @@ export class AngleOverlay {
     this.mesh.visible = true;
   }
 
-  // ghost beam for a picked answer: turns `sweep` radians from `from`
-  aim(from, sweep) {
-    this.u.uAim.value.set(from, sweep, 0);
-    this.u.uAimOn.value = 1;
-    this.u.uResult.value = 0;
+  // the cannon's live turn: its beam is `sweep` radians (signed) from the cannon's line, and the x
+  // arc runs between them with its label counting x (whole degrees)
+  live(sweep, x) {
+    const u = this.u;
+    u.uUnknown.value.set(this.q.rYaw, sweep);
+    u.uAim.value.set(this.q.rYaw, sweep, 1);
+    u.uAimOn.value = x ? 1 : 0;
+    if (x === this.lastX) return;
+    this.lastX = x;
+    const xv = document.createElement('i');
+    xv.textContent = 'x';
+    const num = document.createElement('span');
+    num.className = 'num';
+    num.textContent = ` = ${x}°`;
+    this.lbUnknown.replaceChildren(xv, num);
   }
 
-  aimProgress(k) { this.u.uAim.value.z = k; }
-
-  clearAim() {
-    this.u.uAimOn.value = 0;
+  // back to aiming after a miss
+  clearResult() {
     this.u.uResult.value = 0;
     this.u.uFlash.value = 0;
   }
@@ -302,7 +312,7 @@ export class AngleOverlay {
     const R = u.uR.value;
     if (q) {
       // each number sits just outside its own arc, on the arc's middle
-      place(this.lbUnknown, q.unknown.from + q.unknown.sweep / 2, R + 3.4, u.uResult.value <= 0.5);
+      place(this.lbUnknown, u.uUnknown.value.x + u.uUnknown.value.y / 2, R + 3.4, u.uResult.value <= 0.5);
       if (q.tri) {
         // triangle: each given angle sits inside its corner, along the corner's bisector
         const corner = (el, A, B) => {

@@ -69,12 +69,8 @@
 
   <!-- ============================== on-screen controls -->
   <div id="controls" class="hidden" data-mode="chase">
-    <div class="pad">
-      <button class="dir up" data-hold="up" aria-label="Steer up"><img src="assets/ui/btn-arrow.webp" alt="" draggable="false" /></button>
-      <button class="dir left" data-hold="left" aria-label="Steer left"><img src="assets/ui/btn-arrow.webp" alt="" draggable="false" /></button>
-      <button class="dir right" data-hold="right" aria-label="Steer right"><img src="assets/ui/btn-arrow.webp" alt="" draggable="false" /></button>
-      <button class="dir down" data-hold="down" aria-label="Steer down"><img src="assets/ui/btn-arrow.webp" alt="" draggable="false" /></button>
-    </div>
+    <!-- one joystick: steers while flying, turns the cannon (sets x) in the angle battles -->
+    <div class="stick" id="stick" role="slider" aria-label="Joystick"><i class="stick-knob"></i></div>
     <div class="actions">
       <button class="act shield" data-tap="shield" aria-label="Shield (Q)">
         <img src="assets/ui/btn-shield.webp" alt="" draggable="false" /><span class="cd"></span><kbd>Q</kbd>
@@ -95,12 +91,6 @@
   <div id="quiz" class="hidden">
     <div class="quiz-prompt" id="quiz-prompt">
       <span class="text" id="quiz-text"></span>
-    </div>
-    <div class="quiz-options">
-      <button class="opt" type="button"><i class="dot"></i><span></span></button>
-      <button class="opt" type="button"><i class="dot"></i><span></span></button>
-      <button class="opt" type="button"><i class="dot"></i><span></span></button>
-      <button class="opt" type="button"><i class="dot"></i><span></span></button>
     </div>
   </div>
 

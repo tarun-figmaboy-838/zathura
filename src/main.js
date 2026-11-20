@@ -265,7 +265,7 @@ const state = {
   mode: 'title', modeT: 0, time: 0, score: 0, levelStartScore: 0, best: loadBest(),
   damage: 0, smokeT: 0, warnedHull: false, shieldHintT: 0, cannonFlash: 0, manualT: 0, manualYaw: 0, locked: null,
   finaleSpeed: 0, shipScale: 1, aiming: false, jumped: false, crossT: 0,
-  volley: null, timeScale: 1, bossHoldT: 0, bossSolved: 0,
+  volley: null, timeScale: 1, bossHoldT: 0, bossSolved: 0, turnHold: 0, fireHeld: false,
   sector: { asked: 0, first: 0 }, stars: [], reportOpen: false, reportT: 0,
 };
 const abilities = {
@@ -1199,7 +1199,7 @@ function introduceQuestion(q) {
     steps.push({ text: 'Turn it by the angle x to hit the target.', focus: ['.ang-label.unknown'], time: 4 });
   }
   if (!seen.has(q.type)) steps.push({ text: RULES[q.type], cam: camDiagram, time: 5, onStart: markSeen(q.type) });
-  if (first) steps.push({ text: 'Tap the correct value of x!', focus: ['.quiz-options'], time: 3 });
+  if (first) steps.push({ text: 'Turn with the joystick, then press FIRE!', focus: ['#stick', '#controls .act.fire'], time: 3.6 });
   if (steps.length) director.play(steps);
 }
 
@@ -1329,9 +1329,32 @@ function updateQuiz(dt, t) {
       introduceQuestion(q);
     }
   }
+  steerQuiz(dt);
   if (director.active && quiz.busy) director.clear();      // answering ends the walkthrough
   quiz.update(dt, turret.yaw, director.active || dialogue.active);   // reading time: the clock waits
   angleOverlay.update(dt, t, quizCenter, camera);
+}
+
+// the joystick (or ◀ ▶) turns the cannon and x counts as it turns: a gentle push turns it slowly
+// for the last few degrees, a full push fast; held keys start slow and speed up. FIRE shoots.
+const TURN_DEG = Math.PI / 180;
+function steerQuiz(dt) {
+  const fire = input.fireButton;
+  const pressed = fire && !state.fireHeld;              // one shot per press
+  state.fireHeld = fire;
+  if (!quiz.canSteer || state.doom > 0) { state.turnHold = 0; return; }
+  let speed = 0;                                         // degrees per second
+  if (input.keyX) {
+    state.turnHold += dt;
+    speed = 14 + 76 * Math.min(1, state.turnHold / 1.2);
+  } else {
+    state.turnHold = 0;
+    const a = Math.abs(input.stick.x);
+    speed = a < 0.12 ? 0 : 10 + 110 * ((a - 0.12) / 0.88) ** 2;
+  }
+  // right turns the cannon clockwise on the screen (the top view looks down)
+  quiz.steer(-Math.sign(input.dirX) * speed * TURN_DEG * dt);
+  if (pressed) quiz.shoot();
 }
 
 function quizFire(correct) {
@@ -1502,8 +1525,11 @@ function placeComms(dt) {
       if (r && r.width && getComputedStyle(el).opacity > 0.05) comms.out.push({ l: r.left - 8, t: r.top - 8, r: r.right + 8, b: r.bottom + 8 });
     }
     if (quiz.active) {
-      const r = document.querySelector('#quiz .quiz-options').getBoundingClientRect();
-      if (r.width) comms.out.push({ l: r.left - 8, t: r.top - 8, r: r.right + 8, b: r.bottom + 8 });
+      // the joystick and FIRE stay clear too
+      for (const el of [$('stick'), document.querySelector('#controls .act.fire')]) {
+        const r = el.getBoundingClientRect();
+        if (r.width) comms.out.push({ l: r.left - 8, t: r.top - 8, r: r.right + 8, b: r.bottom + 8 });
+      }
     }
     let best = null, bestCost = Infinity;
     for (const above of [true, false]) for (const f of [0.5, 0.3, 0.7, 0.15, 0.85]) {

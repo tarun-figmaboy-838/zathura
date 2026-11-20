@@ -4,12 +4,13 @@ const DEG = Math.PI / 180;
 const ease = (x) => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
 const $ = (id) => document.getElementById(id);
 
-// One angle question per target. The cannon rests on the reference line; the player taps the
-// angle that turns it onto the target. Right: the ghost beam lands on the target, the cannon
-// fires and it explodes. Wrong: the shot goes wide, the target fires back, the button turns red
-// and the narration box shows the rule (then the working, after a second miss); try again.
+// One angle question per target. The cannon rests on the reference line; the player turns it
+// with the joystick, and the angle x it has turned is drawn and counted live on the radar. FIRE
+// shoots: when x is the answer (within TOLERANCE) the beam is on the target and it explodes.
+// Otherwise the shot goes wide, the target fires back and the question box shows the rule (then
+// the working, after a second miss); turn again and fire again.
 //
-// ctx: { audio, fire(correct), punish(target), solved(target) }
+// ctx: { audio, fire(correct), punish(target), solved(target), timeout(target) }
 // text with the angles in orange and x in italic serif, built from DOM nodes
 function rich(text) {
   const frag = document.createDocumentFragment();
@@ -24,6 +25,9 @@ function rich(text) {
 
 // after a miss the clock has at least this many seconds left, so the hint can be used
 const MISS_TIME = 10;
+// how far off x may be and still count (degrees); the target is 8-10 degrees wide on the radar,
+// so a counted shot is always visibly on it
+const TOLERANCE = 2;
 
 export class AngleQuiz {
   constructor(overlay, ctx) {
@@ -34,17 +38,21 @@ export class AngleQuiz {
     this.textEl = $('quiz-text');
     this.limit = 0;
     this.timeLeft = 0;
-    this.buttons = [...this.root.querySelectorAll('.opt')];
-    this.buttons.forEach((b, i) => {
-      b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); this.choose(i); });
-      b.addEventListener('click', (e) => e.preventDefault());
-    });
     this.state = 'off';
     this.aimYaw = 0;
+    this.turn = 0;            // how far the cannon has turned from its line (radians, + = counter-clockwise)
   }
 
   get active() { return this.state !== 'off'; }
   get busy() { return this.state === 'aim' || this.state === 'fire'; }
+  get canSteer() { return this.state === 'ask' && this.t >= 0.5; }
+
+  // x: the angle the cannon has turned from its line, measured towards the question's side, in
+  // whole degrees (0-359): turning the other way counts the long way round
+  get x() {
+    const a = ((this.q.s * this.turn) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+    return Math.round(a / DEG) % 360;
+  }
 
   // target: { kind, obj, part, pos (live Vector3), radius }
   // limit: seconds to answer (0 = no limit); when it runs out the target attacks and it restarts
@@ -56,32 +64,34 @@ export class AngleQuiz {
     this.state = 'ask';
     this.t = 0;
     this.tries = 0;
+    this.turn = 0;
     this.aimYaw = q.rYaw;
     this.say(q.prompt, '');
-    this.buttons.forEach((b, i) => {
-      b.querySelector('span').textContent = `${q.options[i]}°`;
-      b.disabled = false;
-      b.className = 'opt';
-      b.style.animationDelay = `${0.25 + i * 0.06}s`;
-    });
     this.root.classList.remove('hidden');
     void this.root.offsetWidth;
     this.root.classList.add('show');
     document.body.classList.add('quiz-on');
     this.overlay.show(q, geom);
+    this.overlay.live(0, 0);
   }
 
-  choose(i) {
-    if (this.state !== 'ask' || this.t < 0.5) return;
-    const b = this.buttons[i];
-    if (!b || b.disabled) return;
-    this.choice = i;
-    this.value = this.q.options[i];
-    this.correct = this.value === this.q.answer;
+  // the joystick turns the cannon (radians this frame, + = counter-clockwise)
+  steer(delta) {
+    if (!this.canSteer || !delta) return;
+    const before = this.x;
+    this.turn += delta;
+    if (this.x !== before && this.x % 5 === 0) this.ctx.audio.dial();
+  }
+
+  // FIRE: the cannon shoots where it points; it counts when x is the answer
+  shoot() {
+    if (!this.canSteer) return;
+    const off = Math.abs(((this.x - this.q.answer) % 360 + 540) % 360 - 180);
+    this.correct = off <= TOLERANCE;
+    if (this.correct) this.turn = this.q.s * this.q.answer * DEG;      // right on the target
+    this.value = this.correct ? this.q.answer : this.x;
     this.state = 'aim';
     this.t = 0;
-    b.classList.add('picked');
-    this.overlay.aim(this.q.rYaw, this.q.s * this.value * DEG);
     this.ctx.audio.hit(false);
   }
 
@@ -90,10 +100,10 @@ export class AngleQuiz {
     if (this.state === 'off') return;
     this.t += dt;
     const q = this.q;
-    const b = this.buttons[this.choice];
+    this.aimYaw = q.rYaw + this.turn;
+    if (this.state !== 'result' || !this.correct) this.overlay.live(this.q.s * this.x * DEG, this.x);
     switch (this.state) {
       case 'ask':
-        this.aimYaw = q.rYaw;
         if (this.limit && !hold) {
           const before = Math.ceil(this.timeLeft);
           this.timeLeft -= dt;
@@ -106,24 +116,20 @@ export class AngleQuiz {
           }
         }
         break;
-      case 'aim': {
-        const k = Math.min(1, this.t / 0.75);
-        this.overlay.aimProgress(ease(k));
-        this.aimYaw = q.rYaw + q.s * this.value * DEG * ease(k);
-        if (k >= 1 && (Math.abs(wrapAngle(turretYaw - this.aimYaw)) < 0.035 || this.t > 1.5)) {
+      case 'aim':
+        // the cannon catches up with the beam, then fires
+        if (Math.abs(wrapAngle(turretYaw - this.aimYaw)) < 0.035 || this.t > 1.2) {
           this.state = 'fire';
           this.t = 0;
           this.ctx.fire(this.correct);
         }
         break;
-      }
       case 'fire':
         if (this.t < 0.4) break;
         this.state = 'result';
         this.t = 0;
         if (this.correct) {
           this.overlay.result(true);
-          b.classList.add('correct');
           // confirm in the narration box: "? = 55°" takes the place of "Find ?"
           this.say(q.explain ? `Correct!  ${q.explain}` : `x = ${q.answer}°`, 'ok');
           this.ctx.audio.correct();
@@ -131,8 +137,6 @@ export class AngleQuiz {
         } else {
           this.tries++;
           this.overlay.result(false);
-          b.classList.add('wrong');
-          b.disabled = true;
           this.say(this.tries >= 2 && q.hint2 ? q.hint2 : q.hint, 'bad');
           if (this.limit) this.timeLeft = Math.max(this.timeLeft, MISS_TIME);   // time to read the hint and try again
           this.ctx.audio.wrong();
@@ -143,7 +147,7 @@ export class AngleQuiz {
         if (this.correct) {
           if (this.t > 2.9) this.stop();     // time to read the working (grade 7 pacing)
         } else if (this.t > 1.2) {
-          this.overlay.clearAim();
+          this.overlay.clearResult();        // the cannon stays where it was: adjust and fire again
           this.state = 'ask';
           this.t = 0.5;
         }
