@@ -9,6 +9,13 @@ const AUTO_DAMAGE = 3;      // the light bursts held raiders fire on their own
 const ARRIVE = 1.6;         // seconds to fly in and brake onto the spot
 
 const UP = new THREE.Vector3(0, 1, 0);
+// the raider ship model's materials (assets/models/raider.glb): weathered hull that flashes when hit,
+// and the glow that pulses. Models built in code bring their own (virusDrone.js).
+const SHIP_LOOK = {
+  hull: ['RaiderHull', 'RaiderPlate', 'RaiderMark'],
+  glow: 'RaiderGlow',
+  panel: { scale: 1.6, seam: 0.45, grime: 0.3, chips: 0.5, soot: [2.0, 3.4, 0.8] },
+};
 const TRAIL_COLOR = new THREE.Color(1.15, 0.38, 0.16);
 const _m = new THREE.Matrix4();
 const _q = new THREE.Quaternion();
@@ -79,15 +86,17 @@ class Raider {
       o.material = cache.get(o.material);
     });
     const mats = [...cache.values()];
-    this.hullMats = mats.filter((m) => ['RaiderHull', 'RaiderPlate', 'RaiderMark'].includes(m.name));
+    const look = template.userData.look || SHIP_LOOK;
+    this.hullMats = mats.filter((m) => look.hull.includes(m.name));
     this.hullMats.forEach((m) => {
       m.envMapIntensity = 1.3;
       // clones don't carry onBeforeCompile, so weather each one (shared program cache key)
-      addPanelDetail(m, { scale: 1.6, seam: 0.45, grime: 0.3, chips: 0.5, soot: [2.0, 3.4, 0.8] });
+      addPanelDetail(m, look.panel);
     });
-    this.glowMat = mats.find((m) => m.name === 'RaiderGlow');
+    this.glowMat = mats.find((m) => m.name === look.glow);
     this.glowBase = this.glowMat.emissiveIntensity;
     this.guns = [this.model.getObjectByName('Gun_L'), this.model.getObjectByName('Gun_R')];
+    this.spinner = this.model.getObjectByName('Shell');      // the virus drone's spiked ball turns
 
     const geo = new THREE.CylinderGeometry(0.05, 0.28, 1, 6, 1, true);
     geo.translate(0, 0.5, 0);
@@ -116,10 +125,11 @@ class Raider {
 
 // The hostile squadron: spawning, AI, steering, shooting and hit detection.
 export class Raiders {
-  constructor(scene, gltf, trails, capacity = 14) {
+  // template: the enemy model (the virus drone, or the raider ship draft's glTF scene)
+  constructor(scene, template, trails, capacity = 14) {
     this.trails = trails;
     this.plumeMat = makePlumeMaterial();
-    this.list = Array.from({ length: capacity }, () => new Raider(gltf.scene, scene, this.plumeMat, trails));
+    this.list = Array.from({ length: capacity }, () => new Raider(template, scene, this.plumeMat, trails));
   }
 
   get count() {
@@ -155,6 +165,7 @@ export class Raiders {
     r.jink = 0;
     r.whoosh = false;
     r.seed = Math.random() * 100;
+    r.spin = (Math.random() < 0.5 ? -1 : 1) * rand(0.5, 0.9);
     r.boltSpeed = ENEMY_BOLT_SPEED;
     r.hold = null;      // set to an offset from the ship to make it hover there (angle battles)
     r.holdT = 0;
@@ -194,6 +205,7 @@ export class Raiders {
     const sp = ship.position;
     for (const r of this.list) {
       if (!r.alive) continue;
+      if (r.spinner) r.spinner.rotation.z += r.spin * dt;
       if (r.hold) { this.holdUpdate(r, dt, t, ctx); continue; }
       r.t += dt;
       const pos = r.root.position;

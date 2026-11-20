@@ -4,74 +4,267 @@
   "0954cd84",
   "134819e4",
   "1360c92a",
+  "149af039",
   "14d449a2",
+  "1a626e32",
   "1d0502ea",
+  "1d4804b1",
   "1edf61bd",
   "1fe63ed9",
   "2b2bea1f",
   "2b3b8949",
+  "2d6b6ad4",
   "2dc9e32b",
+  "2df8c4e4",
   "2e877c0f",
   "2fe596d8",
   "3118763a",
+  "31a449b4",
   "35b07a02",
   "3c7b6cf7",
+  "3d661b1e",
   "3dec912e",
   "409f8a99",
   "41e03600",
   "42b955d7",
+  "44149d51",
   "44b35eb5",
   "45f03086",
   "49c7c7a1",
   "4ed4a305",
   "51404b76",
   "53afba0e",
+  "54f2f2ca",
   "55ef0ee2",
   "5a91cd07",
   "5c7eec45",
+  "5d2282b9",
   "5f87f2be",
+  "671008fe",
   "671da6ea",
   "70ca9d01",
+  "77b472ae",
   "7b1b1063",
   "7cdea476",
   "7e380f6f",
   "82bee507",
+  "88cffb84",
+  "89af518b",
+  "8c508200",
+  "8c91f15e",
   "8d685ffe",
   "8f7417e0",
+  "908ed677",
   "919df25b",
   "96d34eb3",
   "975a3a6a",
   "9d27ecc5",
+  "9e589899",
+  "9f0a8f9b",
   "a29c3a1b",
   "a32218ad",
+  "a3c727bf",
   "a3e52fb0",
   "a428f62e",
   "a49d06e4",
   "a605f55c",
   "a6fa4229",
+  "a80ce945",
   "aa97b645",
+  "abcf4e61",
+  "ad624b1c",
+  "ae3ead8d",
+  "b0dbada0",
   "b5647a98",
   "b6d48628",
   "b9a14b8f",
   "bc525efd",
+  "be8fa385",
   "bfc3d0af",
+  "c083f539",
   "c753c01e",
+  "c78d22f5",
   "c88bc06c",
   "ca4af996",
   "cec52952",
   "ceee2228",
   "cf0a148d",
   "d2037f59",
+  "d26c626f",
   "d78f5017",
+  "dc4f2dea",
   "deb898ad",
+  "e07135cc",
   "e13d09e5",
   "e33dad76",
+  "e4dfbd32",
   "eb4e6c56",
   "f5ac015d",
   "f601d707",
+  "f748d3d7",
   "fabd7afd"
  ],
  "lines": {
+  "89af518b": {
+   "who": "drone",
+   "text": "Beep boop! Tiny ship detected!",
+   "seconds": 2.79
+  },
+  "5d2282b9": {
+   "who": "drone",
+   "text": "Virus drone online! Nobody gets past ME!",
+   "seconds": 3.64
+  },
+  "dc4f2dea": {
+   "who": "drone",
+   "text": "Uploading virus... to YOUR ship!",
+   "seconds": 2.81
+  },
+  "be8fa385": {
+   "who": "drone",
+   "text": "Beep! Bet you can't find x!",
+   "seconds": 2.43
+  },
+  "149af039": {
+   "who": "drone",
+   "text": "Spikes polished. Lasers charged!",
+   "seconds": 2.95
+  },
+  "31a449b4": {
+   "who": "drone",
+   "text": "Angles? Does not compute!",
+   "seconds": 2.37
+  },
+  "671008fe": {
+   "who": "drone",
+   "text": "Surrender now! Or after my update.",
+   "seconds": 3.08
+  },
+  "77b472ae": {
+   "who": "drone",
+   "text": "Scanning... is that a flying toaster?",
+   "seconds": 2.93
+  },
+  "88cffb84": {
+   "who": "crew",
+   "text": "It's just a drone, pilot. Find x and fire!",
+   "seconds": 4.22
+  },
+  "e07135cc": {
+   "who": "crew",
+   "text": "Rude! Let's show it some maths.",
+   "seconds": 2.67
+  },
+  "3d661b1e": {
+   "who": "crew",
+   "text": "Don't listen to it. You've got this!",
+   "seconds": 2.88
+  },
+  "a3c727bf": {
+   "who": "drone",
+   "text": "Beep boop! Missed me by a mile!",
+   "seconds": 2.68
+  },
+  "44149d51": {
+   "who": "drone",
+   "text": "Is that your best angle? Ha!",
+   "seconds": 2.91
+  },
+  "a80ce945": {
+   "who": "drone",
+   "text": "Wrong way! Recalculate, space cadet!",
+   "seconds": 3.25
+  },
+  "2d6b6ad4": {
+   "who": "drone",
+   "text": "So close! ...Not really.",
+   "seconds": 2.66
+  },
+  "e4dfbd32": {
+   "who": "drone",
+   "text": "Even old software aims better!",
+   "seconds": 2.95
+  },
+  "b0dbada0": {
+   "who": "drone",
+   "text": "Error 404: hit not found!",
+   "seconds": 3.22
+  },
+  "c083f539": {
+   "who": "drone",
+   "text": "Were you aiming at a star?",
+   "seconds": 2.35
+  },
+  "9f0a8f9b": {
+   "who": "drone",
+   "text": "Nyah nyah! Can't hit this drone!",
+   "seconds": 2.81
+  },
+  "54f2f2ca": {
+   "who": "drone",
+   "text": "ERROR! ERROR! System crash!",
+   "seconds": 2.38
+  },
+  "908ed677": {
+   "who": "drone",
+   "text": "Nooo! Not my shiny spikes!",
+   "seconds": 2.65
+  },
+  "f748d3d7": {
+   "who": "drone",
+   "text": "No fair! That was MATHS!",
+   "seconds": 2.16
+  },
+  "d26c626f": {
+   "who": "drone",
+   "text": "Rebooting... in tiny pieces!",
+   "seconds": 3.15
+  },
+  "9e589899": {
+   "who": "drone",
+   "text": "Shutting... down...",
+   "seconds": 1.85
+  },
+  "2df8c4e4": {
+   "who": "drone",
+   "text": "Okay! You know your angles!",
+   "seconds": 2.14
+  },
+  "ae3ead8d": {
+   "who": "drone",
+   "text": "Virus deleted?! Nooo!",
+   "seconds": 2.46
+  },
+  "8c508200": {
+   "who": "drone",
+   "text": "Too slow, pilot! Need a reboot?",
+   "seconds": 3.06
+  },
+  "abcf4e61": {
+   "who": "drone",
+   "text": "Beep beep! Time's up!",
+   "seconds": 2.33
+  },
+  "1d4804b1": {
+   "who": "drone",
+   "text": "Zzz... sleep mode... oh, too late!",
+   "seconds": 4.22
+  },
+  "8c91f15e": {
+   "who": "drone",
+   "text": "Beep! Your ship is a space pancake now!",
+   "seconds": 3.52
+  },
+  "ad624b1c": {
+   "who": "drone",
+   "text": "Virus wins! Better luck next time, pilot!",
+   "seconds": 3.87
+  },
+  "c78d22f5": {
+   "who": "drone",
+   "text": "Who's the tiny ship now? Still you!",
+   "seconds": 3.27
+  },
   "3118763a": {
    "who": "raider",
    "text": "Ha! A tiny ship! This will be easy.",
@@ -347,6 +540,11 @@
    "text": "Break its 4 turrets, then hit its core.",
    "seconds": 3.22
   },
+  "1a626e32": {
+   "who": "crew",
+   "text": "Virus drone incoming! It shoots at your ship.",
+   "seconds": 3.83
+  },
   "14d449a2": {
    "who": "crew",
    "text": "Raider incoming! It shoots at your ship.",
@@ -361,6 +559,11 @@
    "who": "crew",
    "text": "Turn it by the angle x to hit the target.",
    "seconds": 3.38
+  },
+  "a605f55c": {
+   "who": "crew",
+   "text": "Tap the correct value of x!",
+   "seconds": 2.69
   },
   "a49d06e4": {
    "who": "crew",
@@ -416,11 +619,6 @@
    "who": "crew",
    "text": "Remember: The angles in a triangle add up to 180°. Try again!",
    "seconds": 6.43
-  },
-  "a605f55c": {
-   "who": "crew",
-   "text": "Tap the correct value of x!",
-   "seconds": 2.69
   }
  }
 }

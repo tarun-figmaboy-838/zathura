@@ -1,10 +1,12 @@
+import { ENEMY_FACE } from '../enemies/look.js';
+
 const $ = (id) => document.getElementById(id);
 
 // Game-style comms dialogue: a speaker badge (enemy or crew), a name and a line that types out.
 // Lines play one after another; a tap finishes the line being typed, or skips to the next.
 //
 // line: { who: 'enemy' | 'crew', name, text, hold (seconds after typing),
-//         face: 'raider' | 'warden' | 'crew' (the portrait), mood: 'taunt' | 'laugh' | 'panic' | 'cheer' }
+//         face: 'drone' | 'raider' | 'warden' | 'crew' (the portrait), mood: 'taunt' | 'laugh' | 'panic' | 'cheer' }
 // voice(who): called every few letters while typing (the comic "blah-blah" talk blips)
 export class Dialogue {
   constructor() {
@@ -18,7 +20,7 @@ export class Dialogue {
     this.textEl.replaceChildren(this.typedEl, this.restEl);
     this.faceEl = this.root.querySelector('.portrait img');
     // portraits made with Figma AI; preloaded so a new speaker never pops in blank
-    this.faces = Object.fromEntries(['raider', 'warden', 'crew'].map((f) => {
+    this.faces = Object.fromEntries([ENEMY_FACE, 'warden', 'crew'].map((f) => {
       const img = new Image();
       img.src = `assets/ui/face-${f}.webp`;
       return [f, img.src];
@@ -56,7 +58,7 @@ export class Dialogue {
     }
     this.chars = 0;
     this.hold = 0;
-    const face = this.line.face || (this.line.who === 'crew' ? 'crew' : 'raider');
+    const face = this.line.face || (this.line.who === 'crew' ? 'crew' : ENEMY_FACE);
     this.root.dataset.face = face;
     this.root.dataset.mood = this.line.mood || '';
     if (this.faceEl.src !== this.faces[face]) this.faceEl.src = this.faces[face];

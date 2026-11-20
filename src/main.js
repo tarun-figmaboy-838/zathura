@@ -28,6 +28,8 @@ import { Projectiles } from './combat/projectiles.js';
 import { Effects, SHIP_CORE } from './combat/fx.js';
 import { Trails } from './combat/trails.js';
 import { Raiders } from './enemies/raiders.js';
+import { ENEMY_LOOK } from './enemies/look.js';
+import { makeVirusDrone } from './enemies/virusDrone.js';
 import { Boss, TURRET_HP, CORE_HP } from './enemies/boss.js';
 import { Intro } from './game/intro.js';
 import { Campaign, masteryLevel, answerOf } from './game/campaign.js';
@@ -36,7 +38,7 @@ import { Hud } from './ui/hud.js';
 import { Controls } from './ui/controls.js';
 import { Dialogue } from './ui/dialogue.js';
 import { Voice } from './audio/vo.js';
-import { raiderName, enemyLine, crewLine, wardenIntro, WARDEN } from './game/banter.js';
+import { raiderName, enemyLine, crewLine, wardenIntro, WARDEN, ENEMY_CALLSIGN, ENEMY_INTRO } from './game/banter.js';
 
 const SUN_DIR = new THREE.Vector3(-0.72, 0.4, -0.56).normalize();
 const BOLT_SPEED = 560;
@@ -122,8 +124,10 @@ scene.add(stars.object, dust.object, blackhole.object, ...planets.map((p) => p.o
 let shipGltf, rockGltf, raiderGltf, stationGltf, bossGltf;
 try {
   const loader = new GLTFLoader();
-  [shipGltf, rockGltf, raiderGltf, stationGltf, bossGltf] = await Promise.all(
-    ['ship', 'asteroids', 'raider', 'station', 'boss'].map((n) => loader.loadAsync(`assets/models/${n}.glb`)),
+  // the raider ship model is only needed for the saved ship draft (src/enemies/look.js)
+  [shipGltf, rockGltf, stationGltf, bossGltf, raiderGltf] = await Promise.all(
+    ['ship', 'asteroids', 'station', 'boss', ...(ENEMY_LOOK === 'ship' ? ['raider'] : [])]
+      .map((n) => loader.loadAsync(`assets/models/${n}.glb`)),
   );
 } catch (err) {
   $('load-msg').textContent = `Could not load models (${err.message}). Serve this folder over http.`;
@@ -196,7 +200,8 @@ const scenery = new AsteroidField(scene, rockGltf, {
 });
 scenery.material.envMapIntensity = 1.5;
 const trails = new Trails(scene);
-const raiders = new Raiders(scene, raiderGltf, trails, 10);
+// the enemies: virus drones (built in code), or the saved raider-ship draft
+const raiders = new Raiders(scene, raiderGltf ? raiderGltf.scene : makeVirusDrone(), trails, 10);
 const boss = new Boss(scene, bossGltf);
 const portal = new Portal(scene);
 const rings = new TargetRings(scene);
@@ -958,7 +963,7 @@ const campaignCtx = {
     r.taunted = false;
     fx.warp(pos, tmp.copy(ship.position).sub(pos).normalize());
     audio.warp(pos);
-    introduce('raider', [{ text: 'Raider incoming! It shoots at your ship.', cam: camRaider(r), time: 3.4 }]);
+    introduce('raider', [{ text: ENEMY_INTRO, cam: camRaider(r), time: 3.4 }]);
   },
   spawnMeteor(p, size, v) { field.spawn(V(p.x, p.y, p.z), size, V(v.x, v.y, v.z)); },
   levelComplete(level) {
@@ -1099,7 +1104,7 @@ const RULE_REMINDERS = {
 function defeatLines() {
   const k = state.killer;
   const boss_ = k && k.kind === 'boss';
-  const name = boss_ ? WARDEN : (k && k.obj && k.obj.callsign) || 'RAIDER';
+  const name = boss_ ? WARDEN : (k && k.obj && k.obj.callsign) || ENEMY_CALLSIGN;
   const key = (boss_ ? 'warden' : 'raider') + (state.deathCause === 'time' ? 'WinTime' : 'Win');
   const q = state.lastQ;
   const tip = q ? `Remember: ${RULE_REMINDERS[q.type] || q.hint} Try again!` : 'Hull breached! Dodge the rocks or shoot them first.';
@@ -1367,7 +1372,7 @@ function quizSolved(target, firstTry) {
   if (target.kind === 'raider') {
     const r = target.obj;
     if (r.alive) { raiders.kill(r); raiderDestroyed(r, true); }
-    dialogue.say(at(enemyLine(r.callsign || 'RAIDER', 'raiderHit', 0.9), r.model, r.position.clone()));
+    dialogue.say(at(enemyLine(r.callsign || ENEMY_CALLSIGN, 'raiderHit', 0.9), r.model, r.position.clone()));
   } else {
     if (target.kind === 'turret' && target.obj.alive) onBossHit(target.part, target.pos.clone(), 99);
     if (target.kind === 'turret') dialogue.say(at(enemyLine(WARDEN, 'wardenTurret', 1.3), boss.model, boss.corePos));

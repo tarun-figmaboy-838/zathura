@@ -13,7 +13,7 @@ Warden carrier, and then you jump home.
 
 Music is synthesized live and changes with the action (cruise, battle, boss).
 
-The first time something new appears (the portal, a raider, the battle radar, each angle rule, the
+The first time something new appears (the portal, a virus drone, the battle radar, each angle rule, the
 meteor field and its buttons, the boss) the game introduces it: one short line in the narration box,
 with a drone camera shot that zooms in on it and back out. Tap the line to skip ahead. Every fresh visit introduces everything again.
 
@@ -27,18 +27,21 @@ jump, the portal implodes behind it, and the victory screen rates the run out of
 
 ## Angle battles
 
-Each level is one raider: it flies in, holds position and keeps firing short bursts at you. Every
-question has a time limit (25 s on L1, easing down to 15 s; 18 s for the Warden): if it runs out, the raider
+Each level is one virus drone: a robot shaped like a virus (a spiked metal ball with one glowing eye,
+`src/enemies/virusDrone.js`), so students only ever destroy machines, never anything alive. It flies in,
+holds position and keeps firing short bursts at you. The old raider ships with alien pilots are kept as
+a draft: set `ENEMY_LOOK` in `src/enemies/look.js` to `'ship'` to bring them back. Every
+question has a time limit (25 s on L1, easing down to 15 s; 18 s for the Warden): if it runs out, the drone
 destroys your ship and you retry the level. A radar ring is drawn around your ship in thin, crisp
 lines (the stars and glow dim during battles so it reads clearly). No timer is shown; in the last
-seconds the clock ticks and the screen edge pulses red, then the raider fires: a bright beam shows where your
+seconds the clock ticks and the screen edge pulses red, then the drone fires: a bright beam shows where your
 cannon points, a red line runs to the enemy, and there is one marked angle and an **x** angle. Pick the
 value of **x** and the cannon turns by that angle: the right answer lands on the enemy and destroys it,
 and the question card shows the working (for example "76° + 104° = 180°"). A wrong answer misses, the
 enemy fires back, and the card shows the rule (after a second miss, the working).
 
 Layout: the question bar on top, the radar in the middle and the answers along the bottom (one row on
-landscape screens, 2×2 on phones). Comms are a speech bubble on the craft that is talking (the raider,
+landscape screens, 2×2 on phones). Comms are a speech bubble on the craft that is talking (the drone,
 the Warden, or your own ship for the co-pilot), placed so it never covers the question, the answers or
 the score; phones get a compact bubble.
 
