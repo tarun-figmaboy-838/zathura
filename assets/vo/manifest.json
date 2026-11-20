@@ -64,7 +64,6 @@
   "89af518b",
   "8c508200",
   "8c91f15e",
-  "8d18216e",
   "8d685ffe",
   "8f7417e0",
   "908ed677",
@@ -120,6 +119,7 @@
   "e33dad76",
   "e3efbfb9",
   "e4dfbd32",
+  "e84f41da",
   "eb4e6c56",
   "f5ac015d",
   "f601d707",
@@ -637,10 +637,10 @@
    "text": "Fly with the joystick. Dodge the rocks!",
    "seconds": 3.43
   },
-  "8d18216e": {
+  "e84f41da": {
    "who": "crew",
-   "text": "The X aims for you. Press FIRE to shoot!",
-   "seconds": 3.52
+   "text": "Steer the X onto a rock, then press FIRE!",
+   "seconds": 3.57
   },
   "1633990e": {
    "who": "crew",

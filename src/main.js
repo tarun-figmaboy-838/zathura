@@ -3,7 +3,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createRenderer, createComposer } from './core/renderer.js';
 import { Input } from './core/input.js';
 import { CameraRig, topHeight, wideLayout, battleFrame, bossZoom } from './core/cameraRig.js';
-import { clamp, damp, intercept, rand, segmentPointDistSq, segOut, wrapAngle } from './core/math.js';
+import { clamp, damp, rand, segmentPointDistSq, segOut, wrapAngle } from './core/math.js';
 import { createSky } from './world/sky.js';
 import { createStars } from './world/stars.js';
 import { createSun } from './world/sun.js';
@@ -298,7 +298,6 @@ const markerPoint = new THREE.Vector3();
 const turretPos = new THREE.Vector3();
 const tmp = new THREE.Vector3();
 const tmp2 = new THREE.Vector3();
-const pip = new THREE.Vector3();
 const hA = new THREE.Vector3();
 const hB = new THREE.Vector3();
 const hC = new THREE.Vector3();
@@ -1026,7 +1025,7 @@ const campaignCtx = {
     introduce('portal', [
       { time: 1.5 },
       { text: 'Fly with the joystick. Dodge the rocks!', focus: ['#stick'], time: 3.6 },
-      { text: 'The X aims for you. Press FIRE to shoot!', focus: ['#crosshair', '#controls .act.fire'], time: 3.8 },
+      { text: 'Steer the X onto a rock, then press FIRE!', focus: ['#crosshair', '#controls .act.fire'], time: 3.8 },
       { text: 'Then fly through the broken planet to start Level 1.', time: 3.6 },
     ]);
     if (campaign.firstOfGroup) state.sector = { asked: 0, first: 0 };
@@ -1085,15 +1084,24 @@ function toScreen(v, out) {
   return tmp.z < 1;
 }
 
-// The target X (journeys and meteor fields): it sits ahead of the ship and moves with it, leading
-// the way the joystick steers; when a rock, junk or a drone comes near it, it sets itself on that
-// (aimed where it is going), so FIRE hits what the X is on. No mouse or tap aiming.
-const AIM_DIST = 300;      // how far ahead the X sits
-const AIM_LEAD = 0.9;      // seconds of sideways motion it leads by
-const xBase = { x: 0, y: 0 };
-const xPt = { x: 0, y: 0 };
-const lockPt = new THREE.Vector3();
-const lockBox = { pos: null, radius: 1 };     // what the X has set itself on, for the lock brackets
+// The target X (journeys and meteor fields): it sits straight ahead of the ship's centre and moves
+// only with the craft: you aim by steering. It never jumps onto anything (no auto-aim). When a rock,
+// junk or a drone is in its line of fire, the sight turns gold and brackets frame that target, and
+// the cannon fires at the X along the craft's line. No mouse or tap aiming.
+const AIM_DIST = 300;      // how far ahead the X sits when nothing is in its line
+const AIM_REACH = 650;     // how far ahead it notices targets
+const _fwd = new THREE.Vector3(0, 0, -1);
+const _ray = new THREE.Vector3();
+const lockBox = { pos: null, radius: 1 };     // what is in the X's line of fire, for the brackets
+
+// distance along the ray from o (direction d) to a sphere, or Infinity
+function rayHit(o, d, c, r) {
+  _ray.subVectors(c, o);
+  const t = _ray.dot(d);
+  if (t <= 0) return Infinity;
+  const miss2 = _ray.lengthSq() - t * t;
+  return miss2 < r * r ? t - Math.sqrt(r * r - miss2) : Infinity;
+}
 
 // where the cannon should point this frame
 function computeAim() {
@@ -1107,22 +1115,19 @@ function computeAim() {
     aim.y = quiz.active ? quiz.target.pos.y : ship.position.y;
     return;
   }
-  const p = ship.position, v = ship.velocity;
-  aim.set(p.x + v.x * AIM_LEAD, p.y + v.y * AIM_LEAD, p.z - AIM_DIST);
-  if (!toScreen(aim, xBase)) return;
-  let bestPx = Math.min(window.innerWidth, window.innerHeight) * 0.13;
-  const consider = (obj, pos, vel, rad) => {
-    if (pos.z > p.z - 15 || pos.distanceToSquared(p) > 650 * 650) return;
-    intercept(turretPos, v, pos, vel, BOLT_SPEED, pip);
-    if (!toScreen(pip, xPt)) return;
-    const d = Math.hypot(xPt.x - xBase.x, xPt.y - xBase.y);
-    if (d < bestPx) { bestPx = d; lockPt.copy(pip); state.locked = obj; lockBox.pos = pos; lockBox.radius = rad; }
+  // the nearest target on the line straight ahead of the craft's centre
+  const p = ship.position;
+  let best = AIM_REACH;
+  const consider = (obj, pos, rad) => {
+    const t = rayHit(p, _fwd, pos, rad);
+    if (t < best) { best = t; state.locked = obj; lockBox.pos = pos; lockBox.radius = rad; }
   };
-  for (const r of raiders.list) if (r.alive) consider(r, r.position, r.vel, 4);
-  for (const j of trash.list) if (j.alive) consider(j, j.pos, j.vel, j.radius);
-  for (const r of field.rocks) if (r.alive) consider(r, r.pos, r.vel, r.radius);
-  for (const w of boss.weakPoints()) consider(w.obj, w.pos, w.vel, 5);
-  if (state.locked) aim.copy(lockPt);
+  for (const r of raiders.list) if (r.alive) consider(r, r.position, 4);
+  for (const j of trash.list) if (j.alive) consider(j, j.pos, j.radius);
+  for (const r of field.rocks) if (r.alive) consider(r, r.pos, r.radius);
+  for (const w of boss.weakPoints()) consider(w.obj, w.pos, 5);
+  // the X stays on the craft's line; the cannon converges there (on the target, if one is in line)
+  aim.copy(p).addScaledVector(_fwd, state.locked ? Math.max(25, best) : AIM_DIST);
 }
 
 // ------------------------------------------------------------------ defeat
