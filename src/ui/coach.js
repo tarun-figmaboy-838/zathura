@@ -4,8 +4,7 @@ import * as THREE from 'three';
 // is dimmed except one or two holes around what is being explained (on-screen controls, or a thing
 // in the 3D world such as a rock or a gate), so only that stays bright (no outline drawn round it;
 // the control itself pulses gently, see .spot), and a short line sits beside it. It goes on by
-// itself once the line has been read (a slim bar in the card fills up meanwhile); a tap, Space or
-// Enter skips ahead.
+// itself once the line has been read; a tap, Space or Enter skips ahead.
 //
 // show(step, onDone, seconds): step = { text, focus: [css selectors], world: [() => ({ pos, radius })] }
 
@@ -23,7 +22,7 @@ export class Coach {
       <svg class="dim" aria-hidden="true"><defs><mask id="coach-mask" maskUnits="userSpaceOnUse">
         <rect class="full" fill="white" /><g class="holes"></g></mask></defs>
         <rect class="full shade" mask="url(#coach-mask)" /></svg>
-      <div class="coach-card" role="status" aria-live="polite"><p class="text"></p><span class="timer"><i></i></span></div>`;
+      <div class="coach-card" role="status" aria-live="polite"><p class="text"></p></div>`;
     document.body.appendChild(root);
     this.root = root;
     this.svg = root.querySelector('svg');
@@ -46,7 +45,6 @@ export class Coach {
     this.onDone = onDone;
     this.shownAt = performance.now();
     this.duration = seconds * 1000;
-    this.card.style.setProperty('--dur', `${seconds}s`);
     this.textEl.textContent = step.text;
     const n = (step.focus || []).length + (step.world || []).length;
     this.holes.replaceChildren(...Array.from({ length: n }, () => document.createElementNS(SVG, 'rect')));

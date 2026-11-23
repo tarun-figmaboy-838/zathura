@@ -48,8 +48,8 @@ Music is synthesized live and changes with the action (cruise, battle, boss).
 The first time something new appears the game introduces it, and every fresh visit introduces
 everything again. Anything on screen or in the world gets a **spotlight** (`src/ui/coach.js`): the game
 freezes, everything else dims, only that control or object stays bright (it pulses gently, no outline),
-and the co-pilot reads one short line shown beside it; a slim bar fills up and the game goes on by
-itself once the line is read (a tap skips ahead). The first journey shows the controls one at a time
+and the co-pilot reads one short line shown beside it; the game goes on by itself once the line is
+read (a tap skips ahead). The first journey shows the controls one at a time
 (joystick, FIRE, the X, pause), then the first rock coming at you, the first rock wall's gap and each
 kind of gate; the battles spotlight the x label and the answer buttons, the meteor field the joystick
 and FIRE. A spotlight waits for the camera to settle so its target is in view. Things without a
