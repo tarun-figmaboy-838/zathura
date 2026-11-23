@@ -329,6 +329,7 @@ function setMode(m) {
   hud.show(m === 'play' || m === 'dying');
   controls.show(m === 'play');
   input.active = m === 'play';
+  document.body.classList.toggle('mode-gameover', m === 'gameover');   // the co-pilot's tip shows above the card's backdrop
 }
 
 // title screen: the logo always ends above the black hole (where the hole shows depends on the
@@ -529,6 +530,9 @@ function gameOver() {
   $('go-score').textContent = state.score.toLocaleString('en-US');
   $('go-level').textContent = campaign.L.label;
   setMode('gameover');
+  // the co-pilot's tip comes now, with the card, not over the close-up of the drone that won (it
+  // looked like the drone talking with the co-pilot's face)
+  dialogue.play([defeatTip()]);
 }
 
 // Ending: a drone parks behind the ship and keeps zooming in as it burns away, so the ship stays
@@ -863,6 +867,37 @@ function spawnObstacle(z) {
   }
 }
 
+// Through a gate the ship does a stunt that fits the opening, starting just before its mouth and
+// easing back to level on the rush out:
+//   planet: rolls on its side (wings up and down) to slip through the narrow crack
+//   station: a full barrel roll into the docking tunnel
+//   cave: leans in with a gentle weave
+//   rings: tilts its wings to the slant of the rings and dips its nose through the gap
+//   wreck: rolls on its other side between the ribs
+const ease = (x) => x * x * (3 - 2 * x);
+function gateStunt(dt) {
+  const m = ship.maneuver;
+  const on = (campaign.phase === 'journey' && gate.state !== 'off') || state.tunnel > 0;
+  if (!on) {                                       // settle back to level (a full turn counts as level)
+    m.roll = Math.abs(m.roll) > 3 ? 0 : damp(m.roll, 0, 4, dt);
+    m.pitch = damp(m.pitch, 0, 4, dt);
+    return;
+  }
+  const dz = ship.position.z - gate.group.position.z;                 // > 0 before the middle
+  const into = ease(clamp(1 - (dz - gate.radius) / 220, 0, 1));      // 0 .. 1 by the gate's mouth
+  const back = state.tunnel > 0 ? ease(clamp((PORTAL_RIDE - state.tunnel - 0.35) / 0.9, 0, 1)) : 0;   // level again on the rush out
+  const hold = into * (1 - back);
+  const p = ease(clamp(1 - dz / (gate.radius + 120), 0, 1));        // 0 .. 1 from the mouth to the middle
+  switch (gates.indexOf(gate)) {
+    case 0: m.roll = (Math.PI / 2) * hold; m.pitch = 0; break;
+    case 1: m.roll = 2 * Math.PI * p; m.pitch = 0; break;
+    case 2: m.roll = (0.55 + 0.12 * Math.sin(state.time * 3)) * hold; m.pitch = 0; break;
+    case 3: m.roll = -0.35 * hold; m.pitch = -0.22 * Math.sin(Math.PI * p) * (1 - back); break;
+    case 4: m.roll = (-Math.PI / 2) * hold; m.pitch = 0; break;
+    default: m.roll = m.pitch = 0;
+  }
+}
+
 // spotlights on the journey, each the first time: a rock coming at you, a wall's gap, each kind of gate
 const GATE_LINES = [
   'Fly through the crack to start the level.',
@@ -1188,12 +1223,13 @@ function defeatLines() {
   const boss_ = k && k.kind === 'boss';
   const name = boss_ ? WARDEN : (k && k.obj && k.obj.callsign) || ENEMY_CALLSIGN;
   const key = (boss_ ? 'warden' : 'raider') + (state.deathCause === 'time' ? 'WinTime' : 'Win');
+  // only the winner speaks over its close-up (in its own bubble); the co-pilot's tip waits for the card
+  return k ? [boss_ ? at(enemyLine(name, key, 1.6), boss.model, boss.corePos) : at(enemyLine(name, key, 1.6, null, k.obj.kind), k.obj.model, k.obj.position)] : [];
+}
+function defeatTip() {
   const q = state.lastQ;
   const tip = q ? `Remember: ${RULE_REMINDERS[q.type] || q.hint} Try again!` : 'Hull breached! Dodge the rocks or shoot them first.';
-  const lines = [];
-  if (k) lines.push(boss_ ? at(enemyLine(name, key, 1.6), boss.model, boss.corePos) : at(enemyLine(name, key, 1.6, null, k.obj.kind), k.obj.model, k.obj.position));
-  lines.push({ who: 'crew', name: 'CO-PILOT', text: tip, hold: 2.0, face: 'crew', mood: 'cheer' });
-  return lines;
+  return { who: 'crew', name: 'CO-PILOT', text: tip, hold: 3.0, face: 'crew', mood: 'cheer' };
 }
 
 // a slow push-in on the enemy that won
@@ -1690,6 +1726,7 @@ function frame() {
     const auto = (campaign.phase === 'journey' && gate.state === 'in' && ship.position.z - gate.group.position.z < gate.radius + 120) || state.tunnel > 0;
     const sx = auto ? clamp((LANE.x - ship.position.x) / 10, -1, 1) : cfg.steer ? input.dirX : 0;
     const sy = auto ? clamp((LANE.y - ship.position.y) / 6, -1, 1) : cfg.steer ? input.dirY : 0;
+    gateStunt(dt);
     ship.rail(dt, state.tunnel > 0 ? 320 : cfg.speed, sx, sy, LANE, BOUNDS);   // a rush out through the crack
   } else if (mode === 'finale') {
     finaleUpdate(dt);

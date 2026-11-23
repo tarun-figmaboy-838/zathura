@@ -370,6 +370,9 @@ body.narrating .quiz-prompt, body.narrating #banner { opacity: 0 !important; }
 .coach-card .text { margin: 0; font: 700 18px/1.3 'Fredoka', 'Inter', sans-serif; letter-spacing: 0.01em; }
 body.coaching .narrate { opacity: 0 !important; }
 
+/* game over: the co-pilot's tip sits at the bottom, above the card's dimmed backdrop */
+body.mode-gameover .dialog { z-index: 11; }
+
 /* full-screen layers (title, pause, game over, victory) sit above the 3D view and the cockpit art */
 .screen { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; padding: 24px; }
 

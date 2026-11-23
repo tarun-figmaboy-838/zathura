@@ -113,6 +113,9 @@ export class Ship {
     this.radius = 6;
     this.docked = false;   // held by the station clamps: no physics, no bob
     this.kinematic = false; // moved by rail() / the finale instead of the free-flight model
+    this.maneuver = { roll: 0, pitch: 0 };   // extra roll / pitch on top of the banking (a stunt through a gate)
+    this.bankRoll = 0;
+    this.bankPitch = 0;
     this.scripted = null;  // { fwd, boost } overrides the controls (launch cinematic)
     this.redshift = 0;     // 0..1 near a black hole: colours slide to deep red and fade to black
     this.base = new Map([...Object.values(this.materials)].map((m) => [m, {
@@ -144,6 +147,8 @@ export class Ship {
     this.kinematic = false;
     this.model.visible = true;
     this.visual.rotation.set(0, 0, 0);
+    this.maneuver.roll = this.maneuver.pitch = 0;
+    this.bankRoll = this.bankPitch = 0;
     this.visual.scale.set(1, 1, 1);
     this.setRedshift(0);
   }
@@ -165,8 +170,11 @@ export class Ship {
     this.root.quaternion.identity();
     this.thrust = damp(this.thrust, Math.min(0.75, 0.15 + speed / 220), 3, dt);
     this.boost = damp(this.boost, speed > 200 ? 1 : 0, 3, dt);
-    this.visual.rotation.z = damp(this.visual.rotation.z, -v.x / 40 * 0.55, 6, dt);
-    this.visual.rotation.x = damp(this.visual.rotation.x, v.y / 26 * 0.18, 6, dt);
+    // banks into a turn and tips its nose with a climb or dive, plus any stunt on top
+    this.bankRoll = damp(this.bankRoll, -v.x / 40 * 0.55, 6, dt);
+    this.bankPitch = damp(this.bankPitch, v.y / 26 * 0.18, 6, dt);
+    this.visual.rotation.z = this.bankRoll + this.maneuver.roll;
+    this.visual.rotation.x = this.bankPitch + this.maneuver.pitch;
   }
 
   // cannon coils glow with heat and flash on each shot

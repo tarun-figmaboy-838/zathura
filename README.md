@@ -22,7 +22,10 @@ planet), each coloured for its sector and each open in the middle so it never hi
 5. **Starship wreck**: in at the shattered bow of a giant derelict ship and out of its stern, between
    bare ribs and torn plates, past flickering warning lamps (`src/world/wreckGate.js`).
 The level's name shows on a banner at the start. After the gate the ship rushes on and the camera
-glides straight into the battle view (no white flash). On the journey, asteroids are moving obstacles in the flight path, each timed to be on
+glides straight into the battle view (no white flash). Through each gate the ship does a stunt that fits the
+opening: on its side through the planet's crack, a barrel roll into the station's tunnel, a lean into
+the cave, wings tilted to the rings' slant with a dip through the gap, on its other side between the
+wreck's ribs; then it levels out. When you steer it banks into the turn. On the journey, asteroids are moving obstacles in the flight path, each timed to be on
 your line just as you get there, tumbling as they come: a rock sweeping in from the side and across
 your path, two rocks crossing from opposite sides one after the other, a boulder drifting onto your
 line, or (from level 2) a rock wall with one gap that slides sideways so the gap moves; plus some
