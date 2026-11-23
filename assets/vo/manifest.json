@@ -12,6 +12,7 @@
   "1d4804b1",
   "1edf61bd",
   "1fe63ed9",
+  "24b9c41b",
   "2b2bea1f",
   "2b3b8949",
   "2d6b6ad4",
@@ -25,6 +26,8 @@
   "34ede49d",
   "35b07a02",
   "36dbce5e",
+  "39bbc7cd",
+  "3a1aa0d7",
   "3c7b6cf7",
   "3d601b64",
   "3d661b1e",
@@ -38,7 +41,10 @@
   "45f03086",
   "49c7c7a1",
   "4ed4a305",
+  "4fdce419",
+  "51112347",
   "51404b76",
+  "525d830f",
   "53afba0e",
   "54f2f2ca",
   "55ef0ee2",
@@ -56,7 +62,6 @@
   "77b472ae",
   "7b1b1063",
   "7cdea476",
-  "7ce66b4c",
   "7e380f6f",
   "82bee507",
   "83d4003c",
@@ -109,21 +114,23 @@
   "cf0a148d",
   "d2037f59",
   "d26c626f",
+  "d70baadd",
   "d78f5017",
-  "d7c3a3ca",
   "dc4f2dea",
   "deb898ad",
+  "dedf27c0",
   "e07135cc",
   "e11da9bc",
   "e13d09e5",
   "e33dad76",
   "e3efbfb9",
   "e4dfbd32",
-  "e84f41da",
   "eb4e6c56",
+  "f53a3256",
   "f5ac015d",
   "f601d707",
   "f748d3d7",
+  "f7910056",
   "fabd7afd"
  ],
  "lines": {
@@ -632,25 +639,60 @@
    "text": "Hull breached! Dodge the rocks or shoot them first.",
    "seconds": 3.81
   },
-  "d7c3a3ca": {
+  "3a1aa0d7": {
    "who": "crew",
-   "text": "Fly with the joystick. Dodge the rocks!",
-   "seconds": 3.43
+   "text": "This is your joystick. Drag it to fly.",
+   "seconds": 3.52
   },
-  "e84f41da": {
+  "dedf27c0": {
    "who": "crew",
-   "text": "Steer the X onto a rock, then press FIRE!",
-   "seconds": 3.57
+   "text": "Press FIRE to shoot.",
+   "seconds": 2.22
+  },
+  "d70baadd": {
+   "who": "crew",
+   "text": "The X shows where your shots go.",
+   "seconds": 2.67
+  },
+  "f7910056": {
+   "who": "crew",
+   "text": "Need a break? Tap here to pause.",
+   "seconds": 2.88
+  },
+  "51112347": {
+   "who": "crew",
+   "text": "A rock! Put the X on it and press FIRE, or dodge it.",
+   "seconds": 4.02
   },
   "1633990e": {
    "who": "crew",
    "text": "Rock wall! Fly through the gap.",
    "seconds": 2.72
   },
-  "7ce66b4c": {
+  "f53a3256": {
    "who": "crew",
-   "text": "Then fly through the broken planet to start Level 1.",
-   "seconds": 4.17
+   "text": "Fly through the crack to start the level.",
+   "seconds": 2.95
+  },
+  "24b9c41b": {
+   "who": "crew",
+   "text": "A space station! Fly through its tunnel.",
+   "seconds": 3.45
+  },
+  "39bbc7cd": {
+   "who": "crew",
+   "text": "A crystal cave! Fly through it.",
+   "seconds": 3.02
+  },
+  "4fdce419": {
+   "who": "crew",
+   "text": "Giant rings! Fly through the gap.",
+   "seconds": 2.95
+  },
+  "525d830f": {
+   "who": "crew",
+   "text": "An old starship! Fly through its hull.",
+   "seconds": 3.33
   },
   "eb4e6c56": {
    "who": "crew",

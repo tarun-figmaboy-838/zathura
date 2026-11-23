@@ -24,6 +24,7 @@ import { SpaceTrash } from './world/trash.js';
 import { AngleOverlay } from './world/angleOverlay.js';
 import { AngleQuiz } from './game/quiz.js';
 import { Director } from './game/director.js';
+import { Coach } from './ui/coach.js';
 import { makeQuestion } from './game/angles.js';
 import { Ship, addPanelDetail } from './ship/ship.js';
 import { Turret } from './ship/turret.js';
@@ -264,6 +265,14 @@ dialogue.onLine = (line) => { if (line) vo.play(line.text); else vo.stop(); };
 dialogue.busy = () => vo.speaking;
 const campaign = new Campaign();
 const director = new Director(rig);
+// tutorial spotlights: the game freezes, everything but the thing explained dims, a tap goes on
+const coach = new Coach();
+director.coach = coach;
+// a spotlight starts once the camera has settled and its controls are fully on screen
+director.ready = (s) => rig.t >= 0.98 && (s.focus || []).every((sel) => {
+  const r = document.querySelector(sel)?.getBoundingClientRect();
+  return r && r.width > 0 && r.top >= 8 && r.left >= 8 && r.bottom <= innerHeight - 8 && r.right <= innerWidth - 8;
+});
 // the co-pilot reads the introductions; a step lasts at least as long as its voice
 director.onText = (step) => {
   if (!step) { if (!dialogue.active) vo.stop(); return; }
@@ -834,11 +843,13 @@ function spawnObstacle(z) {
     // the wall: six rocks across with two side by side left out for the gap, all sliding together
     const gap = 1 + Math.floor(Math.random() * 3);
     const vx = pickSide() * rand(4, 6 + 3 * fast);
+    const row = [];
     for (let i = 0; i < 6; i++) {
       if (i === gap || i === gap + 1) continue;
-      movingRock(lerpLane('x', i / 5) + rand(-1.5, 1.5), LANE.y + rand(-2.5, 2.5), z + rand(-8, 8), rand(4.8, 5.8), vx, 0, rand(0, 3));
+      row[i] = movingRock(lerpLane('x', i / 5) + rand(-1.5, 1.5), LANE.y + rand(-2.5, 2.5), z + rand(-8, 8), rand(4.8, 5.8), vx, 0, rand(0, 3));
     }
-    introduce('wall', [{ text: 'Rock wall! Fly through the gap.', focus: ['#stick'], time: 3 }]);
+    // the first wall gets a spotlight on its gap once it is close (see updateScenery)
+    if (!seen.has('wall') && row[gap - 1] && row[gap + 2]) state.wallGap = [row[gap - 1], row[gap + 2]];
   } else if (roll < 0.55) {
     movingRock(lineX(), lineY(), z, rand(5.5, 8.5), pickSide() * rand(9, 13 + 6 * fast), rand(-1.5, 1.5), rand(2, 8));
   } else if (roll < 0.75) {
@@ -849,6 +860,36 @@ function spawnObstacle(z) {
     movingRock(lineX(), lineY(), z, rand(6.5, 9), rand(-5, 5), rand(-2, 2), rand(4, 10 + 14 * fast));
   } else {
     trash.spawn(V(p.x + rand(-10, 10), p.y + rand(-5, 5), z), rand(1.4, 2.2), V(rand(-3, 3), rand(-1.5, 1.5), rand(14, 28)));
+  }
+}
+
+// spotlights on the journey, each the first time: a rock coming at you, a wall's gap, each kind of gate
+const GATE_LINES = [
+  'Fly through the crack to start the level.',
+  'A space station! Fly through its tunnel.',
+  'A crystal cave! Fly through it.',
+  'Giant rings! Fly through the gap.',
+  'An old starship! Fly through its hull.',
+];
+const _gapMid = new THREE.Vector3();
+const onView = (pos) => { tmp.copy(pos).project(camera); return tmp.z < 1 && Math.abs(tmp.x) < 0.8 && Math.abs(tmp.y) < 0.75; };
+function journeySpotlights() {
+  const p = ship.position;
+  if (!seen.has('rock')) {
+    const r = field.rocks.find((x) => x.alive && !x.fragment && p.z - x.pos.z > 110 && p.z - x.pos.z < 280 && onView(x.pos));
+    if (r) introduce('rock', [{ text: 'A rock! Put the X on it and press FIRE, or dodge it.', world: [() => ({ pos: r.pos, radius: r.radius })], focus: ['#crosshair'] }]);
+  }
+  const wall = state.wallGap;
+  if (wall && !seen.has('wall')) {
+    if (!wall[0].alive || !wall[1].alive) state.wallGap = null;
+    else if (p.z - wall[0].pos.z < 260 && onView(_gapMid.copy(wall[0].pos).lerp(wall[1].pos, 0.5))) {
+      state.wallGap = null;
+      introduce('wall', [{ text: 'Rock wall! Fly through the gap.', world: [() => ({ pos: _gapMid.copy(wall[0].pos).lerp(wall[1].pos, 0.5), radius: 12 })] }]);
+    }
+  }
+  const k = gates.indexOf(gate);
+  if (gate.state === 'in' && !seen.has(`gate:${k}`) && p.z - gate.group.position.z < gate.radius + 650 && onView(gate.group.position)) {
+    introduce(`gate:${k}`, [{ text: GATE_LINES[k], world: [() => ({ pos: gate.group.position, radius: 85 })] }]);
   }
 }
 
@@ -875,6 +916,7 @@ function updateScenery(dt) {
     }
     if (props.busy && room < 260) props.hurry();
   }
+  if (ph === 'journey' && !director.active) journeySpotlights();
   // the journey: asteroids placed in the flight path to dodge or shoot, and some space junk; more
   // and harder patterns on later levels (none in the last stretch before the portal)
   if (ph === 'journey' && gate.state === 'in') {
@@ -1022,11 +1064,14 @@ const campaignCtx = {
     state.portalPassed = false;
     for (let i = 0; i < 16; i++) spawnScenery(rand(90, 900));
     audio.waveHorn();
-    introduce('portal', [
-      { time: 1.5 },
-      { text: 'Fly with the joystick. Dodge the rocks!', focus: ['#stick'], time: 3.6 },
-      { text: 'Steer the X onto a rock, then press FIRE!', focus: ['#crosshair', '#controls .act.fire'], time: 3.8 },
-      { text: 'Then fly through the broken planet to start Level 1.', time: 3.6 },
+    // the first journey: the game freezes and each control is shown on its own (the first rock and
+    // the gate get their own spotlight when they come, see updateScenery)
+    introduce('controls', [
+      { time: 1.2 },
+      { text: 'This is your joystick. Drag it to fly.', focus: ['#stick'] },
+      { text: 'Press FIRE to shoot.', focus: ['#controls .act.fire'] },
+      { text: 'The X shows where your shots go.', focus: ['#crosshair'] },
+      { text: 'Need a break? Tap here to pause.', focus: ['#pause-btn'] },
     ]);
     if (campaign.firstOfGroup) state.sector = { asked: 0, first: 0 };
     vitals.reset();                                        // repaired between levels: earlier hits never end a later one
@@ -1603,7 +1648,7 @@ const clock = new THREE.Clock();
 let forcedDt = null;
 function frame() {
   const raw = forcedDt ?? clock.getDelta();
-  const realDt = state.mode === 'paused' ? 0 : Math.min(raw, 1 / 30);
+  const realDt = state.mode === 'paused' || coach.active ? 0 : Math.min(raw, 1 / 30);   // a spotlight freezes the game
   const dt = realDt * state.timeScale;
   state.timeScale = Math.min(1, state.timeScale + realDt * 1.4);
   state.time += dt;
@@ -1612,7 +1657,7 @@ function frame() {
   const mode = state.mode;
   const play = mode === 'play';
 
-  if (input.consume('pause')) { if (play) pause(); else if (mode === 'paused') resume(); }
+  if (input.consume('pause') && !coach.active) { if (play) pause(); else if (mode === 'paused') resume(); }
   if (input.consume('mute')) { hud.alert(audio.toggleMute() ? 'Sound off' : 'Sound on', 'info', 1.2); updateSoundButton(); }
 
   if (intro.active && (mode === 'title' || mode === 'launch')) {
@@ -1662,6 +1707,7 @@ function frame() {
     else rig.setMode(campaign.cfg.view, 1.15);            // ...and back out
   }
   rig.update(dt, ship, t);
+  coach.update(camera);
   if (intro.active) intro.applyCamera(camera, t);
   if (mode === 'title') fitTitle();
   wormTube.update(t);
@@ -1736,7 +1782,7 @@ function frame() {
     state.volley.next = t + 0.07;
     if (state.volley.n <= 0) state.volley = null;
   }
-  if (play && input.fire && !battlePhase()) {
+  if (play && input.fire && !battlePhase() && !coach.active) {
     const wasHot = turret.overheated;
     if (turret.tryFire(t, shot)) {
       fired = true;
