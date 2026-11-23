@@ -20,7 +20,7 @@ export function makePhageDrone() {
     shell: mat('PhageShell', { color: 0x2f7a72, metalness: 0.75, roughness: 0.3, flatShading: true }),
     plate: mat('PhagePlate', { color: 0x9aa4ad, metalness: 0.85, roughness: 0.28 }),
     dark: mat('PhageDark', { color: 0x0a0d0d, metalness: 0.3, roughness: 0.7 }),
-    glow: mat('PhageGlow', { color: 0x000000, emissive: new THREE.Color(0.35, 1, 0.1), emissiveIntensity: 1.9, roughness: 0.5 }),
+    glow: mat('PhageGlow', { color: 0x000000, emissive: new THREE.Color(0.4, 1, 0.08), emissiveIntensity: 1.5, roughness: 0.5 }),
   };
   const root = new THREE.Group();
   root.name = 'PhageDrone';

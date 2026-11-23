@@ -30,11 +30,11 @@ function along(geo, d, at) {
 
 export function makeVirusDrone() {
   const M = {
-    shell: mat('DroneShell', { color: 0x5b5f6b, metalness: 0.7, roughness: 0.32 }),
-    plate: mat('DronePlate', { color: 0x80858f, metalness: 0.8, roughness: 0.26 }),
+    shell: mat('DroneShell', { color: 0x2c2e35, metalness: 0.7, roughness: 0.3 }),      // dark charcoal, like its portrait
+    plate: mat('DronePlate', { color: 0x4c505a, metalness: 0.8, roughness: 0.26 }),
     spike: mat('DroneSpike', { color: 0x8d929d, metalness: 0.85, roughness: 0.28 }),
     dark: mat('DroneDark', { color: 0x0b0b0e, metalness: 0.4, roughness: 0.35 }),
-    glow: mat('DroneGlow', { color: 0x000000, emissive: new THREE.Color(1, 0.26, 0.06), emissiveIntensity: 3.6, roughness: 0.5 }),
+    glow: mat('DroneGlow', { color: 0x000000, emissive: new THREE.Color(1, 0.16, 0.03), emissiveIntensity: 1.7, roughness: 0.5 }),   // red-orange (brighter washes to white)
   };
   const mesh = (name, geo, m, parent) => {
     const o = new THREE.Mesh(geo, m);

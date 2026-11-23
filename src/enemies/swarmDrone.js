@@ -22,7 +22,7 @@ export function makeSwarmDrone() {
     shell: mat('SwarmShell', { color: 0x5a3466, metalness: 0.7, roughness: 0.3 }),
     plate: mat('SwarmPlate', { color: 0xb8bcc8, metalness: 0.9, roughness: 0.22 }),
     dark: mat('SwarmDark', { color: 0x0c0a0e, metalness: 0.3, roughness: 0.7 }),
-    glow: mat('SwarmGlow', { color: 0x000000, emissive: new THREE.Color(1, 0.12, 0.7), emissiveIntensity: 3.8, roughness: 0.5 }),
+    glow: mat('SwarmGlow', { color: 0x000000, emissive: new THREE.Color(1, 0.08, 0.8), emissiveIntensity: 1.8, roughness: 0.5 }),   // magenta (brighter washes to white)
   };
   const root = new THREE.Group();
   root.name = 'SwarmDrone';

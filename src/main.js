@@ -898,7 +898,7 @@ function gateStunt(dt) {
   }
 }
 
-// spotlights on the journey, each the first time: a rock coming at you, a wall's gap, each kind of gate
+// spotlights on the journey, each the first time: a rock coming at you, a wall's gap, the first gate
 const GATE_LINES = [
   'Fly through the crack to start the level.',
   'A space station! Fly through its tunnel.',
@@ -922,9 +922,10 @@ function journeySpotlights() {
       introduce('wall', [{ text: 'Rock wall! Fly through the gap.', world: [() => ({ pos: _gapMid.copy(wall[0].pos).lerp(wall[1].pos, 0.5), radius: 12 })] }]);
     }
   }
+  // only the first gate of the run is introduced (the others just fly by, no interruption)
   const k = gates.indexOf(gate);
-  if (gate.state === 'in' && !seen.has(`gate:${k}`) && p.z - gate.group.position.z < gate.radius + 650 && onView(gate.group.position)) {
-    introduce(`gate:${k}`, [{ text: GATE_LINES[k], world: [() => ({ pos: gate.group.position, radius: 85 })] }]);
+  if (gate.state === 'in' && !seen.has('gate') && p.z - gate.group.position.z < gate.radius + 650 && onView(gate.group.position)) {
+    introduce('gate', [{ text: GATE_LINES[k], world: [() => ({ pos: gate.group.position, radius: 85 })] }]);
   }
 }
 
@@ -1954,7 +1955,7 @@ $('load-msg').textContent = '';
 // handy for tuning from the devtools console
 window.game = {
   THREE, scene, camera, renderer, ship, turret, rig, field, fx, raiders, boss, vitals, intro, campaign, state, input, audio, hud,
-  portal, rings, director, blackhole, planets, quiz, angleOverlay, launch, setMode, props, gates,
+  portal, rings, director, blackhole, planets, quiz, angleOverlay, launch, setMode, props, gates, dialogue,
   get gate() { return gate; },
   debug: {
     fire(on) { input.virtual.fire = on; },

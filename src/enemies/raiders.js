@@ -304,9 +304,10 @@ export class Raiders {
     r.visual.rotation.z = Math.sin(t * 1.3 + r.seed) * 0.12 + (1 - k) * 0.5 * Math.sin(r.seed);   // banks in on arrival
     r.visual.rotation.x = (1 - k) * 0.25;
     r.flash = Math.max(0, r.flash - dt * 6);
-    const danger = 0.12 + 0.1 * Math.sin(t * 4 + r.seed);
-    for (const m of r.hullMats) m.emissive.setRGB(r.flash * 1.6 + danger, r.flash * 0.7 + danger * 0.18, r.flash * 0.3 + danger * 0.1);
-    r.glowMat.emissiveIntensity = r.glowBase * (1.1 + 0.3 * Math.sin(t * 7 + r.seed));
+    // no red "danger" wash over the body (it turned every drone pink, unlike its portrait): only the
+    // hit flash, and its own lights pulse a little
+    for (const m of r.hullMats) m.emissive.setRGB(r.flash * 1.6, r.flash * 0.7, r.flash * 0.3);
+    r.glowMat.emissiveIntensity = r.glowBase * (1 + 0.2 * Math.sin(t * 7 + r.seed));
     r.root.scale.setScalar(1.35 + 0.55 * k);       // grows to full size as it brakes into place
     // no contrail while riding along with the ship: it would be dragged into a long line
     r.trail.intensity = 0;
