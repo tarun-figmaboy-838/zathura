@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { clamp, damp, intercept, rand, segmentPointDistSq, segOut } from '../core/math.js';
 import { addPanelDetail } from '../ship/ship.js';
+const _flash = new THREE.Color();
 
 export const RAIDER_RADIUS = 5.6;
 export const ENEMY_BOLT_SPEED = 330;
@@ -91,7 +92,8 @@ class Raider {
     const look = template.userData.look || SHIP_LOOK;
     this.hullMats = mats.filter((m) => look.hull.includes(m.name));
     this.hullMats.forEach((m) => {
-      m.envMapIntensity = 1.3;
+      m.envMapIntensity = 1.6;
+      m.userData.glow = m.emissive.clone();       // its own faint glow (keeps it visible on black space)
       // clones don't carry onBeforeCompile, so weather each one (shared program cache key)
       addPanelDetail(m, look.panel);
     });
@@ -266,7 +268,7 @@ export class Raiders {
       r.visual.rotation.z = damp(r.visual.rotation.z, -clamp(_des.dot(_right), -1, 1) * 1.5, 4, dt);
 
       r.flash = Math.max(0, r.flash - dt * 6);
-      for (const m of r.hullMats) m.emissive.setRGB(r.flash * 1.6, r.flash * 0.7, r.flash * 0.3);
+      for (const m of r.hullMats) m.emissive.copy(m.userData.glow).add(_flash.setRGB(r.flash * 1.6, r.flash * 0.7, r.flash * 0.3));
       const critical = r.hp / r.maxHp < 0.4 && Math.sin(t * 25) < 0;
       r.glowMat.emissiveIntensity = r.glowBase * (0.85 + 0.15 * Math.sin(t * 7 + r.seed)) * (critical ? 0.3 : 1);
 
@@ -306,7 +308,7 @@ export class Raiders {
     r.flash = Math.max(0, r.flash - dt * 6);
     // no red "danger" wash over the body (it turned every drone pink, unlike its portrait): only the
     // hit flash, and its own lights pulse a little
-    for (const m of r.hullMats) m.emissive.setRGB(r.flash * 1.6, r.flash * 0.7, r.flash * 0.3);
+    for (const m of r.hullMats) m.emissive.copy(m.userData.glow).add(_flash.setRGB(r.flash * 1.6, r.flash * 0.7, r.flash * 0.3));
     r.glowMat.emissiveIntensity = r.glowBase * (1 + 0.2 * Math.sin(t * 7 + r.seed));
     r.root.scale.setScalar(1.35 + 0.55 * k);       // grows to full size as it brakes into place
     // no contrail while riding along with the ship: it would be dragged into a long line

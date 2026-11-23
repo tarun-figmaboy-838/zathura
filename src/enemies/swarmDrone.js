@@ -19,7 +19,7 @@ const BALL_R = 0.78;
 
 export function makeSwarmDrone() {
   const M = {
-    shell: mat('SwarmShell', { color: 0x5a3466, metalness: 0.7, roughness: 0.3 }),
+    shell: mat('SwarmShell', { color: 0x6a3d78, metalness: 0.65, roughness: 0.3, emissive: 0x1c0a24 }),
     plate: mat('SwarmPlate', { color: 0xb8bcc8, metalness: 0.9, roughness: 0.22 }),
     dark: mat('SwarmDark', { color: 0x0c0a0e, metalness: 0.3, roughness: 0.7 }),
     glow: mat('SwarmGlow', { color: 0x000000, emissive: new THREE.Color(1, 0.08, 0.8), emissiveIntensity: 1.8, roughness: 0.5 }),   // magenta (brighter washes to white)

@@ -53,8 +53,8 @@ const onTop = (x, z, lift = 0) => V(x, C.y + Math.sqrt(Math.max(0, R * R - x * x
 
 export function makeWardenDrone() {
   const M = {
-    shell: mat('WardenShell', { color: 0x221d2b, metalness: 0.7, roughness: 0.34 }),
-    plate: mat('WardenPlate', { color: 0x3b2f4a, metalness: 0.8, roughness: 0.3 }),
+    shell: mat('WardenShell', { color: 0x2e2838, metalness: 0.7, roughness: 0.34, emissive: 0x140c1a }),
+    plate: mat('WardenPlate', { color: 0x4a3b5c, metalness: 0.8, roughness: 0.3, emissive: 0x150c1e }),
     trim: mat('WardenTrim', { color: 0x8e1e18, metalness: 0.9, roughness: 0.28 }),
     blade: mat('WardenBlade', { color: 0x8a8494, metalness: 0.9, roughness: 0.22 }),
     bone: mat('WardenHorn', { color: 0x2a2430, metalness: 0.6, roughness: 0.4 }),

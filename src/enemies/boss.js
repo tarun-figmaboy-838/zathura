@@ -74,7 +74,7 @@ export class Boss {
     const mats = new Set();
     this.model.traverse((o) => { if (o.isMesh) { o.castShadow = true; mats.add(o.material); } });
     this.hullMats = [...mats].filter((m) => look.hull.includes(m.name));
-    this.hullMats.forEach((m) => { m.envMapIntensity = 1.3; addPanelDetail(m, look.panel); });
+    this.hullMats.forEach((m) => { m.envMapIntensity = 1.5; m.userData.glow = m.emissive.clone(); addPanelDetail(m, look.panel); });
     this.coreMat = [...mats].find((m) => m.name === look.core);
     this.glowMat = [...mats].find((m) => m.name === look.glow);
     this.coreBase = this.coreMat.emissiveIntensity;
@@ -181,7 +181,7 @@ export class Boss {
     this.shieldMat.uniforms.uTime.value = t;
     this.flash = Math.max(0, this.flash - dt * 6);
     this.coreFlash = Math.max(0, this.coreFlash - dt * 6);
-    for (const m of this.hullMats) m.emissive.setRGB(this.flash * 1.2, this.flash * 0.5, this.flash * 0.2);
+    for (const m of this.hullMats) m.emissive.setRGB(m.userData.glow.r + this.flash * 1.2, m.userData.glow.g + this.flash * 0.5, m.userData.glow.b + this.flash * 0.2);
     this.model.userData.rig?.(dt, t);          // the Warden drone's jaws, claws and eye
     this.updateMarker(t);
 
