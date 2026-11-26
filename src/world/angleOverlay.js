@@ -204,6 +204,7 @@ export class AngleOverlay {
     this.t = 0;
     u.uRing.value = len;
     u.uTLen.value = tLen;
+    this.retract = false;
     u.uExtR.value = q.type === 'opposite' || q.type === 'linear' ? 1 : 0;   // the straight line through the ship
     u.uExtT.value = q.type === 'opposite' ? 1 : 0;
     u.uAxis.value = q.rYaw;
@@ -262,6 +263,7 @@ export class AngleOverlay {
   result(ok) {
     this.u.uResult.value = ok ? 1 : -1;
     this.u.uFlash.value = 1;
+    this.retract = ok;              // the target is gone: its line pulls back inside the radar ring
   }
 
   hide() {
@@ -274,6 +276,8 @@ export class AngleOverlay {
     this.mesh.position.copy(center);
     this.t += dt;
     u.uTime.value = time;
+    // once the target is destroyed its line no longer runs out past the ring into empty space
+    if (this.retract && u.uTLen.value > u.uRing.value) u.uTLen.value = Math.max(u.uRing.value, u.uTLen.value - dt * 60);
     // muted: hidden during a focus shot on a talking craft (comes back with the battle view)
     u.uAlpha.value = this.on && !this.muted ? Math.min(1, u.uAlpha.value + dt * 4) : Math.max(0, u.uAlpha.value - dt * 5);
     u.uDraw.value = this.on ? ease(this.t / 0.7) : u.uDraw.value;

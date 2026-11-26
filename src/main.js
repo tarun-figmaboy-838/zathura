@@ -1098,6 +1098,8 @@ const campaignCtx = {
     state.bossSolved = 0;
     state.wardenTalk = false;
     audio.alarm();
+    // the Warden's reveal: the camera zooms in on it (no text)
+    introduce('boss', [{ cam: camBoss, time: 3.4 }]);
   },
   announce(title, sub) { hud.banner(title, sub, 2.2); audio.waveHorn(); },
   spawnRaider(skill) {
@@ -1117,6 +1119,8 @@ const campaignCtx = {
     r.taunted = false;
     fx.warp(pos, tmp.copy(ship.position).sub(pos).normalize());
     audio.warp(pos);
+    // the first drone of each kind: the camera zooms in on it as it flies in (no text)
+    introduce(`enemy:${kind}`, [{ cam: camRaider(r), time: 3.2 }]);
   },
   spawnMeteor(p, size, v) { field.spawn(V(p.x, p.y, p.z), size, V(v.x, v.y, v.z)); },
   levelComplete(level) {
@@ -1317,9 +1321,9 @@ const focus = (line, on) => Object.assign(line, { focus: on, hold: Math.max(line
 function camBoss(o) {
   _cA.copy(ship.position).sub(boss.position).setY(0).normalize();
   _cB.set(_cA.z, 0, -_cA.x);
-  const k = dronePull();
+  const k = dronePull() * boss.root.scale.x * 1.15;      // the Warden is drawn big: pull back to frame all of it
   o.pos.copy(boss.position).addScaledVector(_cA, 30 * k).addScaledVector(_cB, 16 * k).add(tmp.set(0, 20 * k, 0));
-  o.target.copy(boss.position).lerp(ship.position, camera.aspect < 1 ? 0 : 0.15);
+  o.target.copy(boss.position).lerp(ship.position, camera.aspect < 1 ? 0 : 0.12);
   o.up.set(0, 1, 0);
   o.fov = 50;
 }
