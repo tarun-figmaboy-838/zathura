@@ -139,6 +139,14 @@ leaves out the Blender scripts and local launchers.
 - **CLI:** run `vercel` in this folder (choose framework **Other**, no build command, output directory `.`).
 - **Dashboard:** import the repository and set **Root Directory** to this folder, framework **Other**.
 
+## Developer screen jumps
+
+Add `?dev=1` to the address (for example `http://localhost:8765/?dev=1`) and a small **DEV** button
+appears at the top left. It opens a panel that jumps straight to any screen: the title, the start of
+the game, any level's journey or battle (L1–M4 and the boss), a sector's meteor field, the victory or
+game-over screen, and replays or skips the tutorial (`src/ui/devPanel.js`). Without `?dev=1` players
+never see it.
+
 ## Controls
 
 | Action | Mouse / touch | Keyboard | On-screen |

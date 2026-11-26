@@ -24,6 +24,7 @@ import { AngleOverlay } from './world/angleOverlay.js';
 import { AngleQuiz } from './game/quiz.js';
 import { Director } from './game/director.js';
 import { Coach } from './ui/coach.js';
+import { devMode, setupDevPanel } from './ui/devPanel.js';
 import { makeQuestion } from './game/angles.js';
 import { Ship, addPanelDetail } from './ship/ship.js';
 import { Turret } from './ship/turret.js';
@@ -1873,3 +1874,45 @@ window.game = {
     level(n) { clearCombat(); campaign.start(n); },
   },
 };
+
+// ------------------------------------------------------------------ ?dev=1: screen jumps
+// A DEV button (top left) to jump straight to any screen while testing (see ui/devPanel.js).
+if (devMode()) {
+  // into play on the route, from anywhere (the title, the launch, a menu)
+  const toPlay = () => {
+    if (state.mode === 'play') return;
+    victoryTimers.forEach(clearTimeout);
+    victoryTimers.length = 0;
+    audio.start();
+    vo.preload();
+    clearCombat();
+    emerge();                                   // the far side of the black hole, level 1 begins
+  };
+  setupDevPanel({
+    levels: campaign.levels,
+    title() { restartFromStation(false); setMode('title'); },
+    victory() { toPlay(); clearCombat(); victory(); },
+    gameOver() { toPlay(); clearCombat(); state.lastQ = null; state.deathCause = null; gameOver(); },
+    // the level whose meteor field follows level n (the last of its sector of four), or -1
+    meteorLevel(n) {
+      const L = campaign.levels[n];
+      if (!L || L.boss) return -1;
+      const end = Math.floor(n / 4) * 4 + 3;
+      return campaign.levels[end]?.meteors ? end : -1;
+    },
+    level(n, phase) {
+      toPlay();
+      clearCombat();
+      vitals.reset();
+      state.doom = 0;
+      campaign.start(n);
+      if (phase !== 'journey') { campaign.announced = true; campaignCtx.sector(n); }   // set the level up now (it runs on its first update)
+      if (phase === 'battle') { gate.hide(); crossPortal(); }                         // straight through the gate
+      else if (phase === 'meteors') { gate.hide(); props.clear(); campaign.enter('meteors'); }
+    },
+    tutorial(on) {
+      seen.clear();
+      if (!on) for (const k of ['controls', 'rock', 'battle', 'boss', 'enemy:drone', 'enemy:phage', 'enemy:swarm']) seen.add(k);
+    },
+  });
+}
