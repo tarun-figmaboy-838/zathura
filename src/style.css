@@ -370,9 +370,6 @@ body.narrating .quiz-prompt, body.narrating #banner { opacity: 0 !important; }
 .coach-card .text { margin: 0; font: 700 18px/1.3 'Fredoka', 'Inter', sans-serif; letter-spacing: 0.01em; }
 body.coaching .narrate { opacity: 0 !important; }
 
-/* game over: the co-pilot's tip sits at the bottom, above the card's dimmed backdrop */
-body.mode-gameover .dialog { z-index: 11; }
-
 /* full-screen layers (title, pause, game over, victory) sit above the 3D view and the cockpit art */
 .screen { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; padding: 24px; }
 
@@ -420,6 +417,9 @@ body.mode-gameover .dialog { z-index: 11; }
 .panel.small { width: min(340px, 100%); padding: 26px 26px 30px; border-radius: 22px; text-align: center; display: grid; gap: 18px; justify-items: center;
   background: rgba(9, 14, 24, 0.86); border: 1px solid var(--panel-border); animation: play-in 0.45s var(--spring) both; }
 .panel.small h2 { margin: 0; font: 400 34px var(--font-game); letter-spacing: 0.04em; color: #ffe066; text-shadow: var(--ink-outline); }
+/* game over: the rule to remember, quietly under the results */
+.go-tip { margin: 0 0 14px; max-width: 260px; font: 600 13px/1.35 'Inter', sans-serif; color: rgba(200, 225, 255, 0.85); text-align: center; }
+.go-tip:empty { display: none; }
 .modal-actions { display: flex; align-items: center; justify-content: center; gap: 18px; }
 .modal-actions .img-btn { width: 64px; height: 64px; }
 .modal-actions .img-btn.big { width: 92px; height: 92px; border-radius: 50%; }
@@ -435,12 +435,6 @@ body.mode-gameover .dialog { z-index: 11; }
 .v-score span.new-best { color: #123a10; padding: 4px 14px; border-radius: 999px; rotate: -3deg; background: linear-gradient(180deg, #b6ffab, #4fd96c);
   box-shadow: 0 0 0 2px var(--ink), 0 3px 0 2px var(--ink); }
 /* every 4 levels: the stars earned pop in over the action (no card, no numbers), then fade */
-.stars-pop { position: fixed; left: 50%; top: 22%; translate: -50% 0; z-index: 6; pointer-events: none; opacity: 0; transition: opacity 0.35s ease; }
-.stars-pop.show { opacity: 1; }
-.stars-pop::before { content: ''; position: absolute; inset: -46px -70px; z-index: -1; background: radial-gradient(closest-side, rgba(4, 8, 24, 0.6), rgba(4, 8, 24, 0)); }
-.stars-pop .stars { gap: 12px; }
-.stars-pop .stars i { width: clamp(60px, 7vw, 86px); }
-.stars-pop .stars i:nth-child(2) { width: clamp(72px, 8.6vw, 104px); translate: 0 -16px; }
 
 /* ---------------------------------------------------------------- stars */
 .stars { display: inline-flex; gap: 8px; filter: drop-shadow(0 2px 0 var(--ink)) drop-shadow(0 0 1.5px var(--ink)); }

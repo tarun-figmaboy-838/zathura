@@ -120,7 +120,7 @@ export class Campaign {
   }
 
   // ctx: { raiders, field, ship, boss, sector(level), announce(title, sub), spawnBoss(),
-  //        spawnRaider(skill), spawnMeteor(pos, size, vel), levelComplete(group), portalPassed(), reportOpen() }
+  //        spawnRaider(skill), spawnMeteor(pos, size, vel), levelComplete(group), portalPassed() }
   update(dt, ctx) {
     this.t += dt;
     const L = this.L;
@@ -186,7 +186,7 @@ export class Campaign {
         break;
       case 'complete':
         // wait for the stars moment to finish (it closes by itself)
-        if (this.t > 1.2 && !(ctx.reportOpen && ctx.reportOpen())) {
+        if (this.t > 1.2) {
           if (this.level < this.levels.length - 1) this.start(this.level + 1);
           else this.enter('finale');
         }

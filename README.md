@@ -48,16 +48,13 @@ under it and red brackets frame it (no text tags). Then you jump home.
 
 Music is synthesized live and changes with the action (cruise, battle, boss).
 
-The first time something new appears the game introduces it, and every fresh visit introduces
-everything again. Anything on screen or in the world gets a **spotlight** (`src/ui/coach.js`): the game
-freezes, everything else dims, only that control or object stays bright (it pulses gently, no outline),
-and the co-pilot reads one short line shown beside it; the game goes on by itself once the line is
-read (a tap skips ahead). The first journey shows the controls one at a time
-(joystick, FIRE, the X, pause), then the first rock coming at you, the first rock wall's gap and the
-first gate (the other gates just fly by, no interruption); the battles spotlight the x label and the answer buttons, the meteor field the joystick
-and FIRE. A spotlight waits for the camera to settle so its target is in view. Things without a
-screen target (a new drone, the radar, each angle rule, the boss) get one line in the narration box
-with a drone camera shot that zooms in on it and back out.
+Only what you need to play is introduced, once (every fresh visit starts again), and nothing else
+interrupts the game. Each is a **spotlight** (`src/ui/coach.js`): the game freezes, everything else
+dims, only that control or object stays bright (it pulses gently, no outline), and one short line is
+read out beside it; the game goes on by itself once the line is read (a tap skips ahead). The first
+journey shows the joystick, FIRE and the X one at a time, then the first rock coming at you; the
+first battle shows your cannon line (one line with a close-up), the x label and the answer buttons.
+There are no other introductions: no new-drone, rule, boss, gate, wall, meteor-field or pause lines.
 
 After the ship crosses the black hole's horizon it rides a wormhole: a real 3D funnel anchored
 where it opens (inside the hole), seen
@@ -70,8 +67,7 @@ jump, the portal implodes behind it, and the victory screen rates the run out of
 ## Angle battles
 
 Each level is one virus drone, a robot shaped like a virus, so students only ever destroy machines,
-never anything alive. Each sector brings a new kind, introduced by the co-pilot the first time, with
-its own look, colour, names, lines and voice (`src/enemies/droneKinds.js`): the spiked **virus drone**
+never anything alive. Each sector brings a new kind, with its own look, colour, names, lines and voice (`src/enemies/droneKinds.js`): the spiked **virus drone**
 with one glowing eye (levels 1-4), the six-legged **Phage** with a gem head (levels 5-8), and the
 **Swarm**, three little drones circling a hub that talk as "we" (mastery 1-4). It flies in,
 holds position and keeps firing short bursts at you. The old raider ships with alien pilots and the Warden's
@@ -86,15 +82,15 @@ and the question card shows the working (for example "76° + 104° = 180°"). A 
 enemy fires back, and the card shows the rule (after a second miss, the working).
 
 Layout: the question bar on top, the radar in the middle and the answers along the bottom (one row on
-landscape screens, 2×2 on phones). Comms are a speech bubble on the craft that is talking (the drone,
-the Warden, or your own ship for the co-pilot), placed so it never covers the question, the answers or
-the score; phones get a compact bubble.
+landscape screens, 2×2 on phones). Comms are a speech bubble on the craft that is talking (the drone
+or the Warden), placed so it never covers the question, the answers or the score; phones get a
+compact bubble. The co-pilot does not talk.
 
 Enemies talk back, like comms chatter in an arcade shooter, in a game-style dialogue box with character
 portraits (made with Figma AI) that act out each line: each raider gets a silly callsign, taunts
 you when it arrives, mocks a wrong answer and panics when hit, and the Warden boasts and sulks
-(`src/game/banter.js`). The timer waits while someone is talking. After a defeat the enemy gloats and
-the co-pilot reminds you of the rule.
+(`src/game/banter.js`). The timer waits while someone is talking. After a defeat the enemy gloats, and
+the game-over card quietly shows the rule to remember.
 
 | Levels | Rules (Angle Hunt) |
 |---|---|
@@ -102,12 +98,12 @@ the co-pilot reminds you of the rule.
 | M1–M4 | Mastery: the same two rules with new random angles every run |
 | Warden | Its 4 turrets, then its core (3 hits); every target is a mastery question |
 
-Every 4 levels the stars you earned pop up for a moment (every target hit on the first try = 3,
-at least 60% = 2, otherwise 1); the victory screen rates the whole run out of 3 stars.
+Stars are counted every 4 levels (every target hit on the first try = 3, at least 60% = 2, otherwise
+1) but only shown at the end: the victory screen rates the whole run out of 3 stars.
 
 ## Voice-over
 
-Every comms line, the co-pilot's introductions and tips are voiced with **Kokoro** (open source,
+Every comms line and the few tutorial lines are voiced with **Kokoro** (open source,
 Apache-2.0, runs locally for free). Each character has its own voice: a goofy pitched-up raider, a
 deep metallic Warden, a cheerful robot co-pilot on the radio, with comic delivery per kind of line
 (panic is fast and squeaky, gloating is slow). The music dips while someone speaks.

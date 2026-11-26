@@ -27,11 +27,6 @@ const DRONE_LINES = {
     'Surrender now! Or after my update.',
     'Scanning... is that a flying toaster?',
   ],
-  crewReply: [
-    "It's just a drone, pilot. Find x and fire!",
-    "Rude! Let's show it some maths.",
-    "Don't listen to it. You've got this!",
-  ],
   raiderMock: [
     'Beep boop! Missed me by a mile!',
     'Is that your best angle? Ha!',
@@ -114,11 +109,6 @@ const SHIP_LINES = {
     'Surrender now! Or later. Later works too.',
     'Is that a ship or a flying toaster?',
   ],
-  crewReply: [
-    'Ignore him, pilot. Find x and fire!',
-    "Rude! Let's show him some maths.",
-    "Don't listen to him. You've got this!",
-  ],
   raiderMock: [
     'Ha! Missed me by a mile!',
     'Is that your best angle?',
@@ -162,7 +152,6 @@ export const raiderName = (kind = ENEMY_FACE) => pick(`name:${kind}`, kindOf(kin
 export const enemyIntro = (kind = ENEMY_FACE) => kindOf(kind).intro;
 export const ENEMY_CALLSIGN = ENEMY_LOOK === 'ship' ? 'RAIDER' : 'DRONE';   // when a callsign is missing
 export const WARDEN = 'THE WARDEN';
-const CREW = 'CO-PILOT';
 
 const POOLS = {
   ...(ENEMY_LOOK === 'ship' ? SHIP_LINES : DRONE_LINES),
@@ -196,7 +185,7 @@ const POOLS = {
 // bubble beside it
 // a little acting for each kind of line (see .dialog[data-mood] in style.css)
 const MOOD = {
-  raiderArrive: 'taunt', wardenArrive: 'taunt', crewReply: 'cheer',
+  raiderArrive: 'taunt', wardenArrive: 'taunt',
   raiderMock: 'laugh', wardenMock: 'laugh', raiderWin: 'laugh', raiderWinTime: 'laugh', wardenWin: 'laugh', wardenWinTime: 'laugh',
   raiderHit: 'panic', wardenTurret: 'panic', wardenCore: 'panic', wardenDown: 'panic',
 };
@@ -210,5 +199,4 @@ const line = (who, name, key, hold = 1.5, src = null, kind = null) => {
   };
 };
 export const enemyLine = (name, key, hold, src, kind) => line('enemy', name, key, hold, src, kind);
-export const crewLine = (key, hold) => line('crew', CREW, key, hold);
 export const wardenIntro = () => POOLS.wardenArrive.map((text) => ({ who: 'enemy', name: WARDEN, text, hold: 1.3, face: 'warden', mood: 'taunt' }));

@@ -46,7 +46,7 @@ import { Hud } from './ui/hud.js';
 import { Controls } from './ui/controls.js';
 import { Dialogue } from './ui/dialogue.js';
 import { Voice } from './audio/vo.js';
-import { raiderName, enemyLine, crewLine, wardenIntro, WARDEN, ENEMY_CALLSIGN, enemyIntro } from './game/banter.js';
+import { raiderName, enemyLine, wardenIntro, WARDEN, ENEMY_CALLSIGN } from './game/banter.js';
 
 const SUN_DIR = new THREE.Vector3(-0.72, 0.4, -0.56).normalize();
 const BOLT_SPEED = 560;
@@ -300,7 +300,7 @@ const state = {
   damage: 0, smokeT: 0, warnedHull: false, shieldHintT: 0, cannonFlash: 0, locked: null,
   finaleSpeed: 0, shipScale: 1, jumped: false, crossT: 0,
   volley: null, timeScale: 1, bossHoldT: 0, bossSolved: 0,
-  sector: { asked: 0, first: 0 }, stars: [], reportOpen: false, reportT: 0,
+  sector: { asked: 0, first: 0 }, stars: [],
 };
 const aim = new THREE.Vector3();
 const shot = { position: new THREE.Vector3(), direction: new THREE.Vector3() };
@@ -329,7 +329,6 @@ function setMode(m) {
   hud.show(m === 'play' || m === 'dying');
   controls.show(m === 'play');
   input.active = m === 'play';
-  document.body.classList.toggle('mode-gameover', m === 'gameover');   // the co-pilot's tip shows above the card's backdrop
 }
 
 // title screen: the logo always ends above the black hole (where the hole shows depends on the
@@ -463,7 +462,6 @@ function restartFromStation(launchNow = true) {
   victoryTimers.length = 0;
   clearCombat();
   state.stars = [];
-  closeReport();
   vitals.reset();
   turret.reset();
   shield.mesh.visible = true;
@@ -530,9 +528,9 @@ function gameOver() {
   $('go-score').textContent = state.score.toLocaleString('en-US');
   $('go-level').textContent = campaign.L.label;
   setMode('gameover');
-  // the co-pilot's tip comes now, with the card, not over the close-up of the drone that won (it
-  // looked like the drone talking with the co-pilot's face)
-  dialogue.play([defeatTip()]);
+  // the rule to remember shows quietly on the card (no co-pilot line)
+  const q = state.lastQ;
+  $('go-tip').textContent = q ? RULE_REMINDERS[q.type] || q.hint || '' : '';
 }
 
 // Ending: a drone parks behind the ship and keeps zooming in as it burns away, so the ship stays
@@ -847,13 +845,10 @@ function spawnObstacle(z) {
     // the wall: six rocks across with two side by side left out for the gap, all sliding together
     const gap = 1 + Math.floor(Math.random() * 3);
     const vx = pickSide() * rand(4, 6 + 3 * fast);
-    const row = [];
     for (let i = 0; i < 6; i++) {
       if (i === gap || i === gap + 1) continue;
-      row[i] = movingRock(lerpLane('x', i / 5) + rand(-1.5, 1.5), LANE.y + rand(-2.5, 2.5), z + rand(-8, 8), rand(4.8, 5.8), vx, 0, rand(0, 3));
+      movingRock(lerpLane('x', i / 5) + rand(-1.5, 1.5), LANE.y + rand(-2.5, 2.5), z + rand(-8, 8), rand(4.8, 5.8), vx, 0, rand(0, 3));
     }
-    // the first wall gets a spotlight on its gap once it is close (see updateScenery)
-    if (!seen.has('wall') && row[gap - 1] && row[gap + 2]) state.wallGap = [row[gap - 1], row[gap + 2]];
   } else if (roll < 0.55) {
     movingRock(lineX(), lineY(), z, rand(5.5, 8.5), pickSide() * rand(9, 13 + 6 * fast), rand(-1.5, 1.5), rand(2, 8));
   } else if (roll < 0.75) {
@@ -898,34 +893,13 @@ function gateStunt(dt) {
   }
 }
 
-// spotlights on the journey, each the first time: a rock coming at you, a wall's gap, the first gate
-const GATE_LINES = [
-  'Fly through the crack to start the level.',
-  'A space station! Fly through its tunnel.',
-  'A crystal cave! Fly through it.',
-  'Giant rings! Fly through the gap.',
-  'An old starship! Fly through its hull.',
-];
-const _gapMid = new THREE.Vector3();
+// the one spotlight on the journey itself: the first rock coming at you
 const onView = (pos) => { tmp.copy(pos).project(camera); return tmp.z < 1 && Math.abs(tmp.x) < 0.8 && Math.abs(tmp.y) < 0.75; };
 function journeySpotlights() {
   const p = ship.position;
   if (!seen.has('rock')) {
     const r = field.rocks.find((x) => x.alive && !x.fragment && p.z - x.pos.z > 110 && p.z - x.pos.z < 280 && onView(x.pos));
     if (r) introduce('rock', [{ text: 'A rock! Put the X on it and press FIRE, or dodge it.', world: [() => ({ pos: r.pos, radius: r.radius })], focus: ['#crosshair'] }]);
-  }
-  const wall = state.wallGap;
-  if (wall && !seen.has('wall')) {
-    if (!wall[0].alive || !wall[1].alive) state.wallGap = null;
-    else if (p.z - wall[0].pos.z < 260 && onView(_gapMid.copy(wall[0].pos).lerp(wall[1].pos, 0.5))) {
-      state.wallGap = null;
-      introduce('wall', [{ text: 'Rock wall! Fly through the gap.', world: [() => ({ pos: _gapMid.copy(wall[0].pos).lerp(wall[1].pos, 0.5), radius: 12 })] }]);
-    }
-  }
-  // only the first gate of the run is introduced (the others just fly by, no interruption)
-  const k = gates.indexOf(gate);
-  if (gate.state === 'in' && !seen.has('gate') && p.z - gate.group.position.z < gate.radius + 650 && onView(gate.group.position)) {
-    introduce('gate', [{ text: GATE_LINES[k], world: [() => ({ pos: gate.group.position, radius: 85 })] }]);
   }
 }
 
@@ -1100,14 +1074,13 @@ const campaignCtx = {
     state.portalPassed = false;
     for (let i = 0; i < 16; i++) spawnScenery(rand(90, 900));
     audio.waveHorn();
-    // the first journey: the game freezes and each control is shown on its own (the first rock and
-    // the gate get their own spotlight when they come, see updateScenery)
+    // the first journey: the game freezes and each control is shown on its own (the first rock gets
+    // its own spotlight when it comes, see journeySpotlights)
     introduce('controls', [
       { time: 1.2 },
       { text: 'This is your joystick. Drag it to fly.', focus: ['#stick'] },
       { text: 'Press FIRE to shoot.', focus: ['#controls .act.fire'] },
       { text: 'The X shows where your shots go.', focus: ['#crosshair'] },
-      { text: 'Need a break? Tap here to pause.', focus: ['#pause-btn'] },
     ]);
     if (campaign.firstOfGroup) state.sector = { asked: 0, first: 0 };
     vitals.reset();                                        // repaired between levels: earlier hits never end a later one
@@ -1123,10 +1096,6 @@ const campaignCtx = {
     state.bossSolved = 0;
     state.wardenTalk = false;
     audio.alarm();
-    introduce('boss', [
-      { text: 'The Warden is here!', cam: camBoss, time: 3.2 },
-      { text: 'Break its 4 turrets, then hit its core.', cam: camBoss, time: 4 },
-    ]);
   },
   announce(title, sub) { hud.banner(title, sub, 2.2); audio.waveHorn(); },
   spawnRaider(skill) {
@@ -1146,16 +1115,14 @@ const campaignCtx = {
     r.taunted = false;
     fx.warp(pos, tmp.copy(ship.position).sub(pos).normalize());
     audio.warp(pos);
-    introduce(`enemy:${kind}`, [{ text: enemyIntro(kind), cam: camRaider(r), time: 3.4 }]);
   },
   spawnMeteor(p, size, v) { field.spawn(V(p.x, p.y, p.z), size, V(v.x, v.y, v.z)); },
   levelComplete(level) {
     const bonus = 500 * (level + 1) + Math.round(vitals.hull) * 5;
     state.score += bonus;
     state.levelStartScore = state.score;
-    openReport(level);
+    state.stars[level] = Math.max(state.stars[level] || 0, starsFor(state.sector));   // shown only at the end (victory)
   },
-  reportOpen: () => state.reportOpen,
 };
 
 function toScreen(v, out) {
@@ -1224,14 +1191,10 @@ function defeatLines() {
   const boss_ = k && k.kind === 'boss';
   const name = boss_ ? WARDEN : (k && k.obj && k.obj.callsign) || ENEMY_CALLSIGN;
   const key = (boss_ ? 'warden' : 'raider') + (state.deathCause === 'time' ? 'WinTime' : 'Win');
-  // only the winner speaks over its close-up (in its own bubble); the co-pilot's tip waits for the card
+  // only the winner speaks over its close-up (in its own bubble)
   return k ? [boss_ ? at(enemyLine(name, key, 1.6), boss.model, boss.corePos) : at(enemyLine(name, key, 1.6, null, k.obj.kind), k.obj.model, k.obj.position)] : [];
 }
-function defeatTip() {
-  const q = state.lastQ;
-  const tip = q ? `Remember: ${RULE_REMINDERS[q.type] || q.hint} Try again!` : 'Hull breached! Dodge the rocks or shoot them first.';
-  return { who: 'crew', name: 'CO-PILOT', text: tip, hold: 3.0, face: 'crew', mood: 'cheer' };
-}
+
 
 // a slow push-in on the enemy that won
 const _death = { pos: new THREE.Vector3(), target: new THREE.Vector3(), up: new THREE.Vector3(0, 1, 0), fov: 50 };
@@ -1265,24 +1228,6 @@ function starsFor(s) {
   return s.first / s.asked >= 0.6 ? 2 : 1;
 }
 
-// every 4 levels: the stars earned pop in over the action (no card, numbers or buttons), then the
-// game flies on by itself; the victory screen gives the run its overall rating
-const REPORT_TIME = 2.6;
-function openReport(level) {
-  const stars = starsFor(state.sector);
-  state.stars[level] = Math.max(state.stars[level] || 0, stars);
-  state.reportStars = stars;
-  $('r-stars').querySelectorAll('i').forEach((el) => { el.className = ''; });
-  $('report').classList.add('show');
-  state.reportOpen = true;
-  state.reportT = 0;
-}
-
-function closeReport() {
-  if (!state.reportOpen) return;
-  $('report').classList.remove('show');
-  state.reportOpen = false;
-}
 
 // pause menu: sound on/off and back to the station
 function updateSoundButton() { $('p-sound').classList.toggle('off', audio.muted); }
@@ -1298,13 +1243,6 @@ function introduce(key, steps) {
   director.play(steps);
 }
 
-const RULES = {
-  opposite: 'New rule: vertically opposite angles are equal.',
-  linear: 'Rule: angles on a straight line add up to 180°.',
-  complement: 'New rule: a right angle makes 90°.',
-  point: 'New rule: angles around a point make 360°.',
-  triangle: "New rule: a triangle's angles make 180°.",
-};
 function introduceQuestion(q) {
   const steps = [];
   const first = !seen.has('battle');
@@ -1313,7 +1251,6 @@ function introduceQuestion(q) {
     steps.push({ text: 'This bright line is your cannon.', cam: camCannon, time: 3.6, onStart: markSeen('battle') });
     steps.push({ text: 'Turn it by the angle x to hit the target.', focus: ['.ang-label.unknown'], time: 4 });
   }
-  if (!seen.has(q.type)) steps.push({ text: RULES[q.type], cam: camDiagram, time: 5, onStart: markSeen(q.type) });
   if (first) steps.push({ text: 'Tap the correct value of x!', focus: ['.quiz-options'], time: 3 });
   if (steps.length) director.play(steps);
 }
@@ -1393,13 +1330,6 @@ function camCannon(o) {
   o.fov = 52;
 }
 // a closer look at the angle diagram
-function camDiagram(o) {
-  o.pos.copy(quizCenter).add(tmp.set(0, 72 * rig.topZoom, 12 * rig.topZoom));
-  o.target.copy(quizCenter);
-  o.up.set(0, 1, 0);
-  o.fov = 52;
-}
-
 // ------------------------------------------------------------------ angle battles
 // the next thing to ask about: the hovering raider, or (boss) a turret, then the core
 function nextQuizTarget(dt) {
@@ -1649,7 +1579,6 @@ function updateBanter() {
     if (!r.alive || !r.hold || r.taunted || !raiders.arrived(r)) continue;
     r.taunted = true;
     const lines = [at(enemyLine(r.callsign, 'raiderArrive', 1.3, null, r.kind), r.model, r.position)];
-    if (Math.random() < 0.35) lines.push(at(crewLine('crewReply', 1.2), ship.model, ship.position));   // the co-pilot answers from your ship
     for (const l of lines) l.intro = true;     // the question waits for the opening banter
     dialogue.play(lines);
   }
@@ -1764,15 +1693,6 @@ function frame() {
   // a line spoken by a craft in a battle ends with the battle: once the next journey starts its
   // craft is gone, and the bubble must not drift over the controls with the wrong face on it
   if (dialogue.line && dialogue.line.src && mode === 'play' && !battlePhase()) dialogue.clear();
-  if (play && state.reportOpen) {
-    const before = state.reportT;
-    state.reportT += dt;
-    $('r-stars').querySelectorAll('i').forEach((el, i) => {
-      const at = 0.35 + i * 0.32;
-      if (i < state.reportStars && before < at && state.reportT >= at) { el.className = 'on'; audio.star(i); }
-    });
-    if (state.reportT > REPORT_TIME) closeReport();
-  }
   placeComms(dt);
   // comms sit in the battle layout (console column / top strip) during battles; a line that is
   // still playing keeps its place until it ends
@@ -1787,11 +1707,6 @@ function frame() {
       if ((state.tunnel -= dt) <= 0) { state.tunnel = 0; endPortalRide(); }
     }
     else campaign.update(dt, campaignCtx);
-    if (campaign.phase === 'cleared' && !seen.has('meteors')) {
-      introduce('meteors', [
-        { text: 'Meteor field! Dodge them or shoot them!', focus: ['#stick', '#controls .act.fire'], time: 3.8 },
-      ]);
-    }
     if (campaign.phase === 'finale') startFinale();
   }
   if (play) {
