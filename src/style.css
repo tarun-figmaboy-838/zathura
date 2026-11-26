@@ -235,7 +235,11 @@ body.quiz-on:has(#banner.show) .quiz-prompt { opacity: 0; }
 body.narrating .quiz-prompt, body.narrating #banner { opacity: 0 !important; }
 /* the thing being introduced glows and breathes */
 .spot { animation: spot 0.9s ease-in-out infinite !important; }
-@keyframes spot { 50% { scale: 1.07; filter: brightness(1.2) drop-shadow(0 0 10px rgba(255, 255, 255, 0.4)); } }
+/* the X never pulses or moves while it is introduced: it stays exactly where it aims */
+#crosshair.spot { animation: none !important; }
+/* a highlighted control glows gently; it never scales (scaling slid things that are placed by a
+   transform, like the X and the angle labels, across the screen) */
+@keyframes spot { 50% { filter: brightness(1.25) drop-shadow(0 0 10px rgba(255, 255, 255, 0.45)); } }
 
 /* landscape: the classic layout. The question bar on top, the answers in one row at the bottom and
    the radar in the middle; the enemy flies in from the side, and its comms appear as a speech bubble
