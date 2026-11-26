@@ -793,7 +793,6 @@ function endPortalRide() {
   portalTube.alpha = 0;
   portalTube.exit = 0;
   rig.addShake(0.2);
-  hud.banner(campaign.L.boss ? 'THE WARDEN' : campaign.L.title, '', 2.2);
 }
 
 // ------------------------------------------------------------------ scenery belt
@@ -1064,8 +1063,7 @@ const campaignCtx = {
   portalPassed: () => state.portalPassed,
   sector(level) {
     const L = campaign.L;
-    // the broken planet waits at the end of the journey, in the sector's colours; the level's
-    // name shows on a banner (no sign in the middle of the view)
+    // the gate waits at the end of the journey, in the sector's colours (no level text anywhere)
     gate = L.boss ? planetGate : gates[campaign.level % gates.length];
     for (const g of gates) if (g !== gate) g.hide();
     planets[0].enabled = !(gate instanceof RingGate);     // one ringed giant at a time
@@ -1073,7 +1071,6 @@ const campaignCtx = {
     state.propT = rand(0.8, 2);
     // the UFO's visit (about 6 s) starts early enough to finish before the gate (see updateScenery)
     state.ufoAt = campaign.level > 0 && Math.random() < 0.55 ? rand(1.2, 2.6) : -1;
-    hud.banner(L.boss ? 'FINAL' : L.title, L.name, 2.6);
     portalTube.alpha = 0;
     portalTube.exit = 0;
     state.portalPassed = false;
