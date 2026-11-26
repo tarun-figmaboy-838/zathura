@@ -95,15 +95,8 @@ export class Boss {
     this.shield.renderOrder = 6;
     this.root.add(this.shield);
     this.root.scale.setScalar(SCALE);
-    // the part to destroy now (set by the game each frame, see highlight): the part itself lights up
-    // (its weak-spot core flashes gold, a hot outline wraps it) and a pulsing ring sits under it;
-    // nothing covers the part
-    const hot = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, 0.6, 0.12), toneMapped: false });
-    this.marker = new THREE.Group();
-    this.markerRing = new THREE.Mesh(new THREE.TorusGeometry(3.8, 0.32, 8, 48).rotateX(Math.PI / 2), hot);
-    this.marker.add(this.markerRing);
-    this.marker.visible = false;
-    this.root.add(this.marker);
+    // the part to destroy now (set by the game each frame, see highlight) glows: its weak-spot core
+    // flashes gold and a hot outline wraps it (no rings; nothing covers the part)
     this.highlight = null;
     this.corePos = new THREE.Vector3();
     this.vel = new THREE.Vector3();
@@ -335,6 +328,7 @@ export class Boss {
     const at = !h || this.dying ? null : h.kind === 'core' ? this.core.position
       : this.turrets[h.index]?.alive ? this.turrets[h.index].head.position : null;
     const pulse = 0.5 + 0.5 * Math.sin(t * 6);
+    // the exposed core: its own glow flares (see coreMat in update)
     // the weak-spot cores: the target's flashes gold-white, the others smoulder dimly
     for (const tr of this.turrets) {
       if (!tr.core) continue;
@@ -344,12 +338,6 @@ export class Boss {
       tr.outline.visible = on;
       if (on) tr.outline.scale.setScalar(1 + 0.08 * pulse);
     }
-    this.marker.visible = !!at;
-    if (!at) return;
-    const big = h.kind === 'core' ? 1.25 : 1;
-    this.marker.position.copy(at);
-    this.markerRing.scale.setScalar(big * (1 + 0.15 * pulse));
-    this.markerRing.position.y = h.kind === 'core' ? 0.6 : -0.9;
   }
 
   // nearest boss part hit by segment a→b

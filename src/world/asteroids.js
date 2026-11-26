@@ -34,6 +34,23 @@ function addRockDetail(material, rim, fill) {
   };
 }
 
+// a soft glow round one rock (no ring): a shell of its own shape, a little bigger, bright at the
+// rim and faint inside, added on top of the scene
+const GLOW_VERT = /* glsl */ `
+  varying vec3 vN; varying vec3 vV;
+  void main() {
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    vN = normalize(normalMatrix * normal); vV = -mv.xyz;
+    gl_Position = projectionMatrix * mv;
+  }`;
+const GLOW_FRAG = /* glsl */ `
+  uniform vec3 uColor; uniform float uK;
+  varying vec3 vN; varying vec3 vV;
+  void main() {
+    float f = 1.0 - abs(dot(normalize(vN), normalize(vV)));
+    gl_FragColor = vec4(uColor * (pow(f, 2.2) * 1.7 + 0.1) * uK, 1.0);
+  }`;
+
 function gauss(r) {
   return (r() + r() + r() + r() - 2) * 0.866;
 }
@@ -74,7 +91,7 @@ export class AsteroidField {
       scene.add(mesh);
       return mesh;
     };
-    this.pools = variants.map((name) => {
+    this.pools = variants.map((name, variant) => {
       const high = makeMesh(byName[name]);
       const low = makeMesh(byName[`${name}_lod`] || byName[name]);
       const slots = [];
@@ -83,12 +100,26 @@ export class AsteroidField {
           alive: false, fragment: false, respawnAt: 0,
           pos: new THREE.Vector3(), vel: new THREE.Vector3(), axis: new THREE.Vector3(0, 1, 0),
           base: new THREE.Quaternion(), angle: 0, spin: 0, size: 1, radius: 1, hp: 1, flash: 0, owner: this, age: 0,
-          tint: new THREE.Color(1, 1, 1),
+          tint: new THREE.Color(1, 1, 1), variant,
         };
         slots.push(rock);
         this.rocks.push(rock);
       }
       return { high, low, slots };
+    });
+    // glows: a few shells that follow the rocks the game picks (see setGlows)
+    this.glowList = [];
+    this.glows = Array.from({ length: 4 }, () => {
+      const m = new THREE.Mesh(this.pools[0].low.geometry, new THREE.ShaderMaterial({
+        uniforms: { uColor: { value: new THREE.Color() }, uK: { value: 1 } }, vertexShader: GLOW_VERT, fragmentShader: GLOW_FRAG,
+        transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      }));
+      m.matrixAutoUpdate = false;
+      m.frustumCulled = false;
+      m.visible = false;
+      m.renderOrder = 2;
+      scene.add(m);
+      return m;
     });
 
     const r = this.r;
@@ -194,7 +225,24 @@ export class AsteroidField {
         mesh.instanceColor.needsUpdate = true;
       }
     });
+    // the glows follow their rocks
+    this.glows.forEach((g, i) => {
+      const e = this.glowList[i];
+      if (!e || !e.rock.alive) { g.visible = false; return; }
+      const r = e.rock;
+      const grow = r.age >= 0.5 ? 1 : 1 - (1 - r.age / 0.5) ** 3;
+      g.geometry = this.pools[r.variant].low.geometry;
+      _q.setFromAxisAngle(r.axis, r.angle).multiply(r.base);
+      g.matrix.compose(r.pos, _q, _s.setScalar(r.size * grow * 1.08));
+      g.matrixWorldNeedsUpdate = true;
+      g.material.uniforms.uColor.value.copy(e.color);
+      g.material.uniforms.uK.value = e.k;
+      g.visible = true;
+    });
   }
+
+  // which rocks glow, and how: [{ rock, color, k }] (up to four)
+  setGlows(list) { this.glowList = list; }
 
   // Nearest rock hit by segment a→b (projectile sweep). Returns { rock, t } or null.
   segmentHit(a, b, out) {

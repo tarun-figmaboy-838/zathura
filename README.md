@@ -30,8 +30,8 @@ your line just as you get there, tumbling as they come: a rock sweeping in from 
 your path, two rocks crossing from opposite sides one after the other, a boulder drifting onto your
 line, or (from level 2) a rock wall with one gap that slides sideways so the gap moves; plus some
 space junk. Later levels move faster. They are light stone with a soft warm rim so they read against the calm, sparse sky
-without glaring, and they grow in rather than pop up; a rock about to hit the ship gets a red ring
-with a "!" (the two soonest only; steer away and it goes). Fly round them or shoot them; the far belt
+without glaring, and they grow in rather than pop up; a rock about to hit the ship glows red (the
+two soonest only; steer away and the glow goes). No rings or markers are drawn round rocks. Fly round them or shoot them; the far belt
 beside the lane is dim scenery only. Rock and junk crashes cost shield and hull but can never destroy the
 ship (the hull stops at 15%), and the ship is repaired as it flies through the gate, so only the
 battles decide a level. Along the way a few satellites and small outposts drift by off to the
@@ -43,8 +43,8 @@ Warden: a monster of a virus drone (still a machine), drawn big: a dark armoured
 with glowing red seams, two swept-back horns, one huge red eye with a slit pupil under angry brows
 (its core) and four small spider eyes, a toothed maw that chomps, four claw arms, and four big
 turrets, each with a glowing weak-spot core (`src/enemies/wardenDrone.js`). In its battle only the
-part the question is about is marked: its core flashes gold, a hot outline wraps it, a ring sits
-under it and red brackets frame it (no text tags). Then you jump home.
+part the question is about glows: its core flashes gold and a hot outline wraps it (no rings,
+brackets or text). Then you jump home.
 
 Music is synthesized live and changes with the action (cruise, battle, boss).
 
@@ -147,14 +147,13 @@ leaves out the Blender scripts and local launchers.
 | Skip the intro | click | Space / Enter / Esc | Skip button |
 | Pause / mute | – | Esc / M | Pause button (the pause menu also has sound on/off and back to the station) |
 
-On the journeys and in the meteor fields only the joystick and FIRE show. The target sight (a
-turning segmented ring, four ticks and a bold **X**) sits straight ahead of the ship's centre and
-moves only with the craft: you aim by steering, and it never jumps onto anything (no auto-aim). When
-a rock, junk or a drone is in its line of fire, two quick beeps sound: the sight snaps tight, spins
-faster and turns gold, and gold brackets frame that target, with a health bar for rocks that take
-several hits. Each hit flashes the brackets white and
-knocks a bar off; when the target breaks the brackets fly apart. If the locked target is about to hit
-you, the sight and brackets turn red and pulse: dodge it or shoot it. There is no mouse or tap aiming. The ring around the Fire
+On the journeys and in the meteor fields only the joystick and FIRE show. The target sight is small
+and quiet (a thin ring and an **X**); it sits straight ahead of the ship's centre and moves only with
+the craft: you aim by steering, and it never jumps onto anything (no auto-aim). When a rock, junk or
+a drone is in its line of fire, two quick beeps sound, the sight turns gold and the rock itself glows
+gold; tough targets show small health dots under the sight. If that target is about to hit you, the
+sight turns red and the rock glows red: dodge it or shoot it. Targets are marked only by glowing, never
+by rings or brackets. There is no mouse or tap aiming. The ring around the Fire
 button shows the cannon's heat. In the angle battles the controls hide and the answer buttons take over.
 
 ## Project layout

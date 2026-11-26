@@ -12,7 +12,6 @@ import { createBlackHole } from './world/blackhole.js';
 import { AsteroidField } from './world/asteroids.js';
 import { createDust } from './world/dust.js';
 import { WormholeTube } from './world/wormhole.js';
-import { TargetRings } from './world/holo.js';
 import { Portal } from './world/portal.js';
 import { PlanetGate } from './world/brokenPlanet.js';
 import { StationGate } from './world/stationGate.js';
@@ -232,7 +231,6 @@ let gate = planetGate;
 // satellites, small outposts and now and then a friendly UFO beside the route
 const props = new Props(scene, $('markers'));
 props.onSay = () => audio.alienHi();
-const rings = new TargetRings(scene);
 const angleOverlay = new AngleOverlay(scene, $('markers'));
 const fx = new Effects(scene, field.pools[2].low.geometry, field.material);
 const playerBolts = new Projectiles(scene, { headSize: 3, minPx: 9 });
@@ -749,8 +747,7 @@ function onPlayerBolt(target, point, bolt) {
   if (target.isTrash) {
     fx.impact(point, tmp.copy(point).sub(target.pos).normalize());
     hud.hitMarker(false);
-    if (--target.hp > 0) { hud.lockHit(target); return; }
-    hud.lockKill(target);
+    if (--target.hp > 0) return;
     trash.kill(target);
     fx.explosion(target.pos, 0.9, target.vel, { scrap: true });
     audio.explosion(target.pos, 0.7);
@@ -761,8 +758,7 @@ function onPlayerBolt(target, point, bolt) {
   const rock = target;
   fx.impact(point, tmp.copy(point).sub(rock.pos).normalize());
   hud.hitMarker(false);
-  if (!rock.owner.damage(rock, 1)) { hud.lockHit(rock); return; }
-  hud.lockKill(rock);
+  if (!rock.owner.damage(rock, 1)) return;
   const scale = THREE.MathUtils.clamp(rock.size / 4, 0.8, 3);
   fx.explosion(rock.pos, scale, rock.vel);
   audio.explosion(rock.pos, scale * 0.6);
@@ -1009,8 +1005,8 @@ function collideShip() {
 }
 field.onPassed = () => { campaign.missed++; };
 
-// rocks about to hit the ship (on its current course, within ~2 s) get a red warning ring on screen,
-// the two soonest only so the view stays clear: steer away and the ring goes
+// rocks about to hit the ship (on its current course, within ~2 s) glow red, the two soonest only:
+// steer away and the glow goes. The rock in the X's line of fire glows gold. No rings or brackets.
 const hazards = [];
 const _hzP = new THREE.Vector3();
 const _hzV = new THREE.Vector3();
@@ -1030,6 +1026,16 @@ function findHazards() {
   hazards.sort((a, b) => a.hitIn - b.hitIn);
   if (hazards.length > 2) hazards.length = 2;
   return hazards;
+}
+const GLOW_RED = new THREE.Color(1, 0.16, 0.06);
+const GLOW_GOLD = new THREE.Color(1, 0.68, 0.16);
+function rockGlows() {
+  const hz = findHazards();
+  const list = battlePhase() ? [] : hz.map((rock) => ({ rock, color: GLOW_RED, k: 0.75 + 0.45 * Math.sin(state.time * 10) }));
+  const l = state.locked;
+  if (!battlePhase() && l && l.owner === field && !hz.includes(l)) list.push({ rock: l, color: GLOW_GOLD, k: 0.7 });
+  field.setGlows(list);
+  return hz;
 }
 
 const raiderCtx = {
@@ -1139,7 +1145,6 @@ const AIM_DIST = 300;      // how far ahead the X sits when nothing is in its li
 const AIM_REACH = 650;     // how far ahead it notices targets
 const _fwd = new THREE.Vector3(0, 0, -1);
 const _ray = new THREE.Vector3();
-const lockBox = { pos: null, radius: 1 };     // what is in the X's line of fire, for the brackets
 
 // distance along the ray from o (direction d) to a sphere, or Infinity
 function rayHit(o, d, c, r) {
@@ -1167,7 +1172,7 @@ function computeAim() {
   let best = AIM_REACH;
   const consider = (obj, pos, rad) => {
     const t = rayHit(p, _fwd, pos, rad);
-    if (t < best) { best = t; state.locked = obj; lockBox.pos = pos; lockBox.radius = rad; }
+    if (t < best) { best = t; state.locked = obj; }
   };
   for (const r of raiders.list) if (r.alive) consider(r, r.position, 4);
   for (const j of trash.list) if (j.alive) consider(j, j.pos, j.radius);
@@ -1587,24 +1592,8 @@ function updateBanter() {
   }
 }
 
-// in-world enemy markers: health rings under each enemy
+// the Warden's part to destroy now glows (its outline and core, see Boss.updateMarker); no rings
 function updateHolo(t, show) {
-  rings.begin(t);
-  if (show) {
-    for (const r of raiders.list) {
-      if (!r.alive) continue;
-      rings.add(tmp.copy(r.position).setY(r.position.y - 1.2), r.hold ? 5.2 : 7.5, r.hp / r.maxHp, 0);
-    }
-    // the boss: only the part the question is about is marked (red, big), so it is clear which
-    // one to destroy; the others get no marks
-    const part = quiz.active && quiz.target?.part?.isBossPart ? quiz.target.part : null;
-    for (const w of boss.weakPoints()) {
-      if (w.obj !== part) continue;
-      const core = w.obj.kind === 'core';
-      rings.add(w.pos, core ? 13 : 10, core ? boss.coreHp / CORE_HP : boss.turrets[w.obj.index].hp / TURRET_HP, 0);
-    }
-  }
-  rings.end();
   boss.highlight = show && quiz.active && quiz.target?.part?.isBossPart ? quiz.target.part : null;
 }
 
@@ -1769,7 +1758,6 @@ function frame() {
   scenery.update(dt, t, ship.position, camera.position);
   if (play && dt > 0) collideShip();
   updateHolo(t, play);
-  rings.mesh.visible = !director.camera && !focusing();   // lock-on brackets would float oddly in a low close-up
   // a focus shot is about the craft: the radar and the question fade out until the battle view is back
   const focusNow = !!focusing();
   angleOverlay.muted = focusNow;
@@ -1845,7 +1833,7 @@ function frame() {
     toScreen(aim, crosshair);                             // the target X
     hud.update(dt, {
       camera, campaign, vitals, score: state.score, crosshair, markerPoint, showMarker: false, hideAim: battlePhase(),
-      turret, raiders, locked: state.locked, lockBox: state.locked && !battlePhase() ? lockBox : null, boss, hazards: findHazards(),
+      turret, raiders, locked: state.locked, boss, hazards: rockGlows(),
     });
     controls.update({ heat: turret.heat, overheated: turret.overheated });
   }
@@ -1870,7 +1858,7 @@ $('load-msg').textContent = '';
 // handy for tuning from the devtools console
 window.game = {
   THREE, scene, camera, renderer, ship, turret, rig, field, fx, raiders, boss, vitals, intro, campaign, state, input, audio, hud,
-  portal, rings, director, blackhole, planets, quiz, angleOverlay, launch, setMode, props, gates, dialogue,
+  portal, director, blackhole, planets, quiz, angleOverlay, launch, setMode, props, gates, dialogue,
   get gate() { return gate; },
   debug: {
     fire(on) { input.virtual.fire = on; },

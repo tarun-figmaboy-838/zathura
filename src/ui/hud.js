@@ -10,15 +10,15 @@ const fmt = (n) => Math.round(n).toLocaleString('en-US');
 // Deliberately minimal: score + pause (top-right), the boss bar, a crosshair, edge arrows for
 // off-screen raiders and short banners. The sector name is on the gate the ship flies through,
 // the ship's condition shows on the ship itself (shield flashes, smoke, red screen edges), and
-// enemy health lives in the world as holographic rings (see world/holo.js).
+// targets are marked by glowing (rocks: AsteroidField.setGlows; the Warden: Boss.updateMarker), not rings.
 export class Hud {
   constructor() {
     this.root = $('hud');
     this.el = {
       score: $('score'),
       banner: $('banner'), alert: $('alert'), crosshair: $('crosshair'), hit: $('hitmarker'), marker: $('turret-marker'),
-      lockbox: $('lockbox'), lockburst: $('lockburst'),
     };
+    this.el.hp = this.el.crosshair.querySelector('.hp');
     const markers = $('markers');
     const make = (cls) => {
       const d = document.createElement('div');
@@ -28,7 +28,6 @@ export class Hud {
       return d;
     };
     this.arrows = Array.from({ length: POOL }, () => make('offscreen'));
-    this.hazards = Array.from({ length: 6 }, () => make('hazard'));
     this.boss = { root: $('bossbar'), fill: $('boss-fill'), state: $('boss-state') };
     this.hitT = 0;
     this.bannerT = 0;
@@ -51,24 +50,6 @@ export class Hud {
     this.el.alert.textContent = text;
     this.el.alert.className = `show ${kind}`;
     this.alertT = dur;
-  }
-
-  // the locked target was hit (the brackets flash) or broken (they fly apart)
-  lockHit(obj) { if (obj === this.lockObj) this.lockHitT = 0.1; }
-  lockKill(obj) {
-    const b = this.el.lockburst, l = this.el.lockbox;
-    if (obj !== this.lockObj || l.style.display !== 'block') return;
-    b.style.width = l.style.width;
-    b.style.height = l.style.height;
-    b.style.transform = l.style.transform;
-    b.style.setProperty('--c', getComputedStyle(l).getPropertyValue('--c'));
-    b.classList.remove('go');
-    void b.offsetWidth;
-    b.classList.add('go');
-    clearTimeout(this.burstT);
-    this.burstT = setTimeout(() => b.classList.remove('go'), 450);
-    l.style.display = 'none';
-    this.lockObj = null;
   }
 
   hitMarker(kill) {
@@ -123,52 +104,16 @@ export class Hud {
     if (mv) this.el.marker.style.transform = `translate(${s.x}px, ${s.y}px) rotate(45deg)`;
     this.el.marker.classList.toggle('on', ctx.turret.onTarget);
 
-    // the lock brackets snap around whatever the target has set itself on (sized to it)
-    const focal = H / 2 / Math.tan((camera.fov * Math.PI) / 360);
-    const lb = ctx.lockBox, lock = this.el.lockbox;
-    const hazards = ctx.hazards || [];
-    const danger = !!ctx.locked && hazards.includes(ctx.locked);
+    // the sight turns red when what is in its line is about to hit the ship (the target itself glows,
+    // see AsteroidField.setGlows); tough targets show how many hits are left as dots under it
+    const danger = !!ctx.locked && (ctx.hazards || []).includes(ctx.locked);
     this.el.crosshair.classList.toggle('danger', danger);
-    if (lb && lb.pos && ctx.locked?.alive !== false && !ctx.hideAim && toScreen(lb.pos, s)) {
-      // never smaller than the sight, so the brackets always frame it
-      const px = Math.max(36, (lb.radius / Math.max(1, lb.pos.distanceTo(camera.position))) * focal * 1.25);
-      if (this.lockObj !== ctx.locked) {             // a new target: replay the snap-in
-        this.lockObj = ctx.locked;
-        this.lockHp = '';
-        lock.style.display = 'none';
-        void lock.offsetWidth;
-      }
-      lock.style.display = 'block';
-      lock.style.width = lock.style.height = `${Math.round(px * 2)}px`;
-      lock.style.transform = `translate(${(s.x - px).toFixed(1)}px, ${(s.y - px).toFixed(1)}px)`;
-      lock.classList.toggle('danger', danger);
-      // tough targets show how many hits are left
-      const o = ctx.locked, max = o && o.maxHp > 1 ? Math.min(8, o.maxHp) : 0;
-      const hp = max ? `${Math.max(0, Math.min(max, Math.ceil((o.hp / o.maxHp) * max)))}/${max}` : '';
-      if (hp !== this.lockHp) {
-        this.lockHp = hp;
-        const [n] = hp.split('/').map(Number);
-        lock.querySelector('.hp').innerHTML = max ? Array.from({ length: max }, (_, i) => `<u${i < n ? '' : ' class="gone"'}></u>`).join('') : '';
-      }
-    } else {
-      lock.style.display = 'none';
-      this.lockObj = null;
+    const o = ctx.locked, max = o && o.alive !== false && o.maxHp > 1 ? Math.min(8, o.maxHp) : 0;
+    const n = max ? Math.max(0, Math.min(max, Math.ceil((o.hp / o.maxHp) * max))) : 0;
+    if (this.last.hpDots !== `${n}/${max}`) {
+      this.last.hpDots = `${n}/${max}`;
+      this.el.hp.innerHTML = max ? Array.from({ length: max }, (_, i) => `<u${i < n ? '' : ' class="gone"'}></u>`).join('') : '';
     }
-    this.lockHitT = Math.max(0, (this.lockHitT || 0) - dt);
-    lock.classList.toggle('hit', this.lockHitT > 0);
-
-    // red warning rings on the other rocks about to hit the ship, sized to the rock
-    let k = 0;
-    for (const r of hazards) {
-      if (k >= this.hazards.length) break;
-      if (r === ctx.locked || !toScreen(r.pos, s)) continue;
-      const px = Math.max(18, (r.radius / Math.max(1, r.pos.distanceTo(camera.position))) * focal * 1.3);
-      const el = this.hazards[k++];
-      el.style.display = 'block';
-      el.style.width = el.style.height = `${Math.round(px * 2)}px`;
-      el.style.transform = `translate(${(s.x - px).toFixed(1)}px, ${(s.y - px).toFixed(1)}px)`;
-    }
-    for (; k < this.hazards.length; k++) this.hazards[k].style.display = 'none';
 
     // edge arrows for raiders that are off screen
     const camInv = _inv.copy(camera.quaternion).invert();
