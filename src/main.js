@@ -273,11 +273,10 @@ director.ready = (s) => rig.t >= 0.98 && (s.focus || []).every((sel) => {
   const r = document.querySelector(sel)?.getBoundingClientRect();
   return r && r.width > 0 && r.top >= 8 && r.left >= 8 && r.bottom <= innerHeight - 8 && r.right <= innerWidth - 8;
 });
-// the co-pilot reads the introductions; a step lasts at least as long as its voice
+// the few tutorial lines are not read out (no co-pilot voice): each stays long enough to read
 director.onText = (step) => {
-  if (!step) { if (!dialogue.active) vo.stop(); return; }
-  const d = vo.play(step.text);
-  if (d) step.time = Math.max(step.time || 0, d + 0.6);
+  if (!step) return;
+  step.time = Math.max(step.time || 0, Math.min(5, 1.2 + step.text.length * 0.055));
 };
 // what has been introduced already in this visit (every fresh visit introduces everything again)
 const seen = new Set();
@@ -398,10 +397,10 @@ function emerge() {
   rig.t = 1;
   state.score = 0;
   startCampaign();
-  setWhiteout('white', 1);
+  // out of the wormhole: the route fades in from dark (no white flash)
+  setWhiteout('black', 1);
   void whiteout.offsetWidth;
-  setWhiteout('white', 0, 0.7, 'cubic-bezier(0.15, 0.75, 0.3, 1)');
-  lens.uniforms.uFlash.value = 0.4;
+  setWhiteout('black', 0, 0.7, 'cubic-bezier(0.15, 0.75, 0.3, 1)');
   state.warp = 1.3;
   wormTube.alpha = 0;
   wormTube.exit = 0;
@@ -1628,8 +1627,9 @@ function frame() {
 
   if (intro.active && (mode === 'title' || mode === 'launch')) {
     const ev = intro.update(dt, t);
-    // crossing the horizon goes black; emerge() then bursts out into white light
-    if (mode === 'launch') { if (intro.white > 0.001) setWhiteout('white', intro.white); else setWhiteout('black', intro.fade); }
+    // crossing the horizon goes black; the end of the wormhole fades to dark too (no white flash),
+    // and emerge() fades the route in from it
+    if (mode === 'launch') { if (intro.white > 0.001) setWhiteout('black', intro.white); else setWhiteout('black', intro.fade); }
     lens.uniforms.uAberration.value = 0.0018 + 0.012 * intro.distort * intro.distort;
     if (ev === 'emerge') emerge();
   }

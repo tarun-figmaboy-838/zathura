@@ -17,7 +17,6 @@
   "34ede49d",
   "35b07a02",
   "36dbce5e",
-  "3a1aa0d7",
   "3c7b6cf7",
   "3d601b64",
   "3dec912e",
@@ -30,7 +29,6 @@
   "45f03086",
   "49c7c7a1",
   "4ed4a305",
-  "51112347",
   "51404b76",
   "53afba0e",
   "54f2f2ca",
@@ -62,8 +60,6 @@
   "a32218ad",
   "a3c727bf",
   "a3e52fb0",
-  "a605f55c",
-  "a6fa4229",
   "a80ce945",
   "a928d1be",
   "aa97b645",
@@ -88,14 +84,11 @@
   "cf0a148d",
   "d2037f59",
   "d26c626f",
-  "d70baadd",
   "d78f5017",
   "dc4f2dea",
   "deb898ad",
-  "dedf27c0",
   "e11da9bc",
   "e13d09e5",
-  "e33dad76",
   "e3efbfb9",
   "e4dfbd32",
   "f5ac015d",
@@ -572,41 +565,6 @@
    "who": "warden",
    "text": "Your ship is scrap! Mwahaha!",
    "seconds": 4.1
-  },
-  "3a1aa0d7": {
-   "who": "crew",
-   "text": "This is your joystick. Drag it to fly.",
-   "seconds": 3.52
-  },
-  "dedf27c0": {
-   "who": "crew",
-   "text": "Press FIRE to shoot.",
-   "seconds": 2.22
-  },
-  "d70baadd": {
-   "who": "crew",
-   "text": "The X shows where your shots go.",
-   "seconds": 2.67
-  },
-  "51112347": {
-   "who": "crew",
-   "text": "A rock! Put the X on it and press FIRE, or dodge it.",
-   "seconds": 4.02
-  },
-  "a6fa4229": {
-   "who": "crew",
-   "text": "This bright line is your cannon.",
-   "seconds": 2.72
-  },
-  "e33dad76": {
-   "who": "crew",
-   "text": "Turn it by the angle x to hit the target.",
-   "seconds": 3.38
-  },
-  "a605f55c": {
-   "who": "crew",
-   "text": "Tap the correct value of x!",
-   "seconds": 2.69
   }
  }
 }

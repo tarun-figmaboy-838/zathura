@@ -50,8 +50,8 @@ Music is synthesized live and changes with the action (cruise, battle, boss).
 
 Only what you need to play is introduced, once (every fresh visit starts again), and nothing else
 interrupts the game. Each is a **spotlight** (`src/ui/coach.js`): the game freezes, everything else
-dims, only that control or object stays bright (it pulses gently, no outline), and one short line is
-read out beside it; the game goes on by itself once the line is read (a tap skips ahead). The first
+dims, only that control or object stays bright (it pulses gently, no outline), and one short line
+shows beside it (silently, no voice); the game goes on by itself once the line is read (a tap skips ahead). The first
 journey shows the joystick, FIRE and the X one at a time, then the first rock coming at you; the
 first battle shows your cannon line (one line with a close-up), the x label and the answer buttons.
 There are no other introductions: no new-drone, rule, boss, gate, wall, meteor-field or pause lines.
@@ -59,7 +59,8 @@ There are no other introductions: no new-drone, rule, boss, gate, wall, meteor-f
 After the ship crosses the black hole's horizon it rides a wormhole: a real 3D funnel anchored
 where it opens (inside the hole), seen
 opening as the ship approaches. Swirling gas, light streaks and sparks rush past, and the light at
-the far end swells until it carries the ship out (`src/world/wormhole.js`).
+the far end swells, then the screen fades to dark and the route fades in from it (no white flash)
+(`src/world/wormhole.js`).
 
 The ending: after the Warden a giant portal opens; the ship races into it and vanishes like a time
 jump, the portal implodes behind it, and the victory screen rates the run out of 3 stars.
@@ -103,7 +104,7 @@ Stars are counted every 4 levels (every target hit on the first try = 3, at leas
 
 ## Voice-over
 
-Every comms line and the few tutorial lines are voiced with **Kokoro** (open source,
+Every comms line (the drones and the Warden; the co-pilot is silent) is voiced with **Kokoro** (open source,
 Apache-2.0, runs locally for free). Each character has its own voice: a goofy pitched-up raider, a
 deep metallic Warden, a cheerful robot co-pilot on the radio, with comic delivery per kind of line
 (panic is fast and squeaky, gloating is slow). The music dips while someone speaks.
