@@ -44,20 +44,20 @@ export function makeQuestion(tYaw, type, r = Math.random, level = null) {
   if (type === 'opposite') {
     q.given = answer;
     q.known = { from: rYaw + Math.PI, sweep: s * A };
-    q.prompt = `Find x  It is opposite the ${q.given}° angle`;
+    q.prompt = 'Find x';
     q.hint2 = `x is opposite the ${q.given}° angle, and opposite angles are equal`;
     q.explain = `Opposite angles are equal: ${answer}°`;
   } else if (type === 'linear') {
     q.given = 180 - answer;
     q.known = { from: tYaw, sweep: s * (Math.PI - A) };
-    q.prompt = `Find x  x and ${q.given}° make a straight line`;
+    q.prompt = 'Find x';
     q.hint2 = `x = 180° − ${q.given}°`;
     q.explain = `${q.given}° + ${answer}° = 180°`;
   } else if (type === 'complement') {
     q.given = 90 - answer;
     q.pYaw = rYaw + s * Math.PI / 2;
     q.known = { from: tYaw, sweep: s * (Math.PI / 2 - A) };
-    q.prompt = `Find x  With ${q.given}° it makes 90°`;
+    q.prompt = 'Find x';
     q.hint2 = `x = 90° − ${q.given}°`;
     q.explain = `${q.given}° + ${answer}° = 90°`;
   } else if (type === 'point') {
@@ -70,7 +70,7 @@ export function makeQuestion(tYaw, type, r = Math.random, level = null) {
     q.pYaw = tYaw + s * b * DEG;                                   // the third ray, dotted
     q.known = { from: tYaw, sweep: s * b * DEG };
     q.known2 = { from: q.pYaw, sweep: s * c * DEG };
-    q.prompt = `Find x  ${b}°, ${c}° and x go all the way round`;
+    q.prompt = 'Find x';
     q.hint2 = `x = 360° − ${b}° − ${c}°`;
     q.explain = `${b}° + ${c}° + ${answer}° = 360°`;
   } else {
@@ -86,7 +86,7 @@ export function makeQuestion(tYaw, type, r = Math.random, level = null) {
     q.given2 = c;
     q.tri = { b, c };
     q.known = { from: 0, sweep: 0 };                               // drawn at the other corners
-    q.prompt = `Find x  The triangle's angles make 180°`;
+    q.prompt = 'Find x';
     q.hint2 = `x = 180° − ${b}° − ${c}°`;
     q.explain = `${b}° + ${c}° + ${answer}° = 180°`;
   }

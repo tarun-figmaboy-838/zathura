@@ -18,13 +18,23 @@ export class Dialogue {
     this.restEl = document.createElement('span');
     this.restEl.className = 'rest';
     this.textEl.replaceChildren(this.typedEl, this.restEl);
-    this.faceEl = this.root.querySelector('.portrait img');
-    // portraits made with Figma AI; preloaded so a new speaker never pops in blank
+    this.portraitEl = this.root.querySelector('.portrait');
+    // portraits made with Figma AI: one image element per speaker, loaded up front and swapped in
+    // whole, so a slow connection can never leave the previous speaker's face showing on a new line
+    // (an <img> whose src changes keeps the old picture until the new one has arrived); a face that
+    // is still loading stays hidden instead
     this.faces = Object.fromEntries([...ENEMY_KINDS, 'warden', 'crew'].map((f) => {
       const img = new Image();
+      img.alt = '';
+      img.draggable = false;
+      img.decoding = 'async';
+      const ready = () => img.classList.add('ready');
+      img.addEventListener('load', ready);
       img.src = `assets/ui/face-${f === 'warden' ? WARDEN_ART : f}.webp`;
-      return [f, img.src];
+      if (img.complete && img.naturalWidth) ready();
+      return [f, img];
     }));
+    this.faceImg = null;
     this.queue = [];
     this.line = null;
     this.onDone = null;
@@ -61,7 +71,8 @@ export class Dialogue {
     const face = this.line.face || (this.line.who === 'crew' ? 'crew' : ENEMY_FACE);
     this.root.dataset.face = face;
     this.root.dataset.mood = this.line.mood || '';
-    if (this.faceEl.src !== this.faces[face]) this.faceEl.src = this.faces[face];
+    const img = this.faces[face] || this.faces.crew;
+    if (this.faceImg !== img) { this.portraitEl.replaceChildren(img); this.faceImg = img; }
     this.root.classList.add('typing');
     this.root.classList.remove('done');
     this.nameEl.textContent = this.line.name;

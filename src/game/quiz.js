@@ -153,9 +153,18 @@ export class AngleQuiz {
     }
   }
 
-  // the question box: "Find x" in the game font, then the rest; angles in orange (like their arcs
-  // on the radar) and x in the radar's italic serif. mood: '' | 'ok' | 'bad'
+  // the question box: "Find x" in the game font (the question is just that: the radar shows the
+  // angles), or a result line; angles in orange (like their arcs on the radar) and x in the radar's
+  // italic serif. mood: '' | 'ok' | 'bad'
   say(text, mood) {
+    if (text === 'Find x') {
+      const find = document.createElement('b');
+      find.className = 'find';
+      find.append(rich(text));
+      this.textEl.replaceChildren(find);
+      this.flash(mood);
+      return;
+    }
     const [head, ...rest] = text.split('  ');
     if (rest.length) {
       const find = document.createElement('b');

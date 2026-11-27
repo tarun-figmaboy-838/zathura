@@ -268,6 +268,8 @@ body.narrating .quiz-prompt, body.narrating #banner { opacity: 0 !important; }
 .dialog .portrait { position: relative; align-self: start; width: 76px; height: 76px; margin: -32px 0 -6px; border-radius: 50%; overflow: hidden;
   background: var(--face-bot); box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--rim), 0 0 0 9px #060a1c, 0 8px 16px rgba(0, 0, 0, 0.5); }
 .dialog .portrait img { display: block; width: 100%; height: 100%; object-fit: cover; transform-origin: 50% 90%; -webkit-user-drag: none; }
+/* a speaker's face still downloading stays hidden (never someone else's face in its place) */
+.dialog .portrait img:not(.ready) { visibility: hidden; }
 .dialog .talk { min-width: 0; }
 .dialog .name { display: inline-block; margin: -30px 0 6px; padding: 4px 14px 5px; border-radius: 999px; rotate: -3deg;
   font: 400 15px var(--font-game); letter-spacing: 0.07em; color: #fff; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);

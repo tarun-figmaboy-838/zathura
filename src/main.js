@@ -35,7 +35,7 @@ import { Projectiles } from './combat/projectiles.js';
 import { Effects, SHIP_CORE } from './combat/fx.js';
 import { Trails } from './combat/trails.js';
 import { Raiders } from './enemies/raiders.js';
-import { ENEMY_LOOK, kindFor } from './enemies/look.js';
+import { ENEMY_LOOK, ENEMY_KINDS, WARDEN_ART, kindFor } from './enemies/look.js';
 import { DRONE_KINDS } from './enemies/droneKinds.js';
 import { makeWardenDrone } from './enemies/wardenDrone.js';
 import { Boss, TURRET_HP, CORE_HP } from './enemies/boss.js';
@@ -74,7 +74,8 @@ const UI_FONTS = ['400 64px "Lilita One"', '600 20px "Fredoka"', '700 30px "Fred
   '700 20px "Inter"', '800 12px "Inter"', '700 20px "Orbitron"', '900 20px "Orbitron"'];
 function uiImageUrls() {
   const urls = new Set([...document.querySelectorAll('img[src]')].map((i) => i.src));
-  for (const f of ['raider', 'warden', 'crew']) urls.add(new URL(`assets/ui/face-${f}.webp`, document.baseURI).href);
+  // every portrait the comms box can show (the drone kinds in use, the Warden, the co-pilot)
+  for (const f of [...ENEMY_KINDS, WARDEN_ART, 'crew']) urls.add(new URL(`assets/ui/face-${f}.webp`, document.baseURI).href);
   for (const sheet of document.styleSheets) {
     let rules;
     try { rules = sheet.cssRules; } catch { continue; }        // cross-origin (Google Fonts): skip

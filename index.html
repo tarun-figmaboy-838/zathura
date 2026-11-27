@@ -10,6 +10,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Inter:wght@400;500;600;700;800&family=Lilita+One&family=Orbitron:wght@700;900&display=swap" />
   <link rel="stylesheet" href="src/style.css" />
+  <!-- slow connections: start the big downloads at once, in parallel with the game code (the
+       models are otherwise only asked for after every script has loaded) -->
+  <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.min.js" crossorigin="anonymous" />
+  <link rel="preload" href="assets/models/ship.glb" as="fetch" crossorigin="anonymous" />
+  <link rel="preload" href="assets/models/asteroids.glb" as="fetch" crossorigin="anonymous" />
+  <link rel="preload" href="assets/models/station.glb" as="fetch" crossorigin="anonymous" />
   <script>
     // If start-up fails, say why on the title screen instead of spinning forever.
     (function () {
@@ -33,7 +39,7 @@
   <script type="importmap">
   {
     "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.min.js",
       "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
     }
   }
