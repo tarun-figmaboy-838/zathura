@@ -1102,7 +1102,7 @@ const campaignCtx = {
     // the Warden's reveal: the camera zooms in on it (no text)
     introduce('boss', [{ cam: camBoss, time: 3.4 }]);
   },
-  announce(title, sub) { hud.banner(title, sub, 2.2); audio.waveHorn(); },
+  announce(title, sub) { if (title) hud.banner(title, sub, 2.2); audio.waveHorn(); },   // no title: just the horn
   spawnRaider(skill) {
     // anywhere around the ship except straight up (question bar) or straight down (answers)
     const side = Math.random() < 0.5 ? 1 : -1;

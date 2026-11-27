@@ -163,7 +163,7 @@ export class Campaign {
         if (this.t > 2.4) {
           if (L.meteors) {
             this.enter('meteors');
-            ctx.announce('METEOR FIELD', '');
+            ctx.announce('', '');            // the horn only: no name on screen
           } else {
             this.enter('complete');
             ctx.levelComplete(L.group);
