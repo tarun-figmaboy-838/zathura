@@ -46,12 +46,13 @@
   <div id="hud" class="hidden">
     <div id="markers"></div>
     <div id="turret-marker"></div>
-    <!-- the target: a small sight straight ahead of the ship (a thin ring and an X). Gold when a rock,
+    <!-- the target: a small scope sight straight ahead of the ship: a ring with four marks crossing it,
+         pointing at an open centre (where the shot goes; nothing covers the target). Gold when a rock,
          junk or a drone is in its line of fire (the rock itself glows gold), red when that one is about
          to hit you (it glows red); tough targets show small health dots under it -->
-    <div id="crosshair"><svg class="x" viewBox="-32 -32 64 64" aria-hidden="true">
-        <g class="ring"><circle class="ink" r="20" /><circle class="line" r="20" /></g>
-        <g class="mark"><path class="ink" d="M-7,-7 L7,7 M7,-7 L-7,7" /><path class="line" d="M-7,-7 L7,7 M7,-7 L-7,7" /></g>
+    <div id="crosshair"><svg class="sight" viewBox="-32 -32 64 64" aria-hidden="true">
+        <g class="ink"><circle r="19" /><path d="M0,-29 V-10 M0,10 V29 M-29,0 H-10 M10,0 H29" /></g>
+        <g class="line"><circle r="19" /><path d="M0,-29 V-10 M0,10 V29 M-29,0 H-10 M10,0 H29" /></g>
       </svg><span class="hp"></span>
       <svg id="hitmarker" viewBox="-20 -20 40 40" aria-hidden="true">
         <line x1="-13" y1="-13" x2="-6" y2="-6" /><line x1="13" y1="-13" x2="6" y2="-6" />

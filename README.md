@@ -54,7 +54,7 @@ Only what you need to play is introduced, once (every fresh visit starts again),
 interrupts the game. Each is a **spotlight** (`src/ui/coach.js`): the game freezes, everything else
 dims, only that control or object stays bright (it pulses gently, no outline), and one short line
 shows beside it (silently, no voice); the game goes on by itself once the line is read (a tap skips ahead). The first
-journey shows the joystick, FIRE and the X one at a time, then the first rock coming at you; the
+journey shows the joystick, FIRE and the sight one at a time, then the first rock coming at you; the
 first battle shows your cannon line (one line with a close-up), the x label and the answer buttons.
 There are no other introductions: no new-drone, rule, boss, gate, wall, meteor-field or pause lines.
 
@@ -158,7 +158,8 @@ never see it.
 | Pause / mute | – | Esc / M | Pause button (the pause menu also has sound on/off and back to the station) |
 
 On the journeys and in the meteor fields only the joystick and FIRE show. The target sight is small
-and quiet (a thin ring and an **X**); it sits straight ahead of the ship's centre and moves only with
+and quiet: a scope (a ring with four marks crossing it, pointing at an open centre, so nothing
+covers the target); it sits straight ahead of the ship's centre and moves only with
 the craft: you aim by steering, and it never jumps onto anything (no auto-aim). When a rock, junk or
 a drone is in its line of fire, two quick beeps sound, the sight turns gold and the rock itself glows
 gold; tough targets show small health dots under the sight. If that target is about to hit you, the

@@ -894,7 +894,7 @@ function journeySpotlights() {
   const p = ship.position;
   if (!seen.has('rock')) {
     const r = field.rocks.find((x) => x.alive && !x.fragment && p.z - x.pos.z > 110 && p.z - x.pos.z < 280 && onView(x.pos));
-    if (r) introduce('rock', [{ text: 'A rock! Put the X on it and press FIRE, or dodge it.', world: [() => ({ pos: r.pos, radius: r.radius })], focus: ['#crosshair'] }]);
+    if (r) introduce('rock', [{ text: 'A rock! Put the sight on it and press FIRE, or dodge it.', world: [() => ({ pos: r.pos, radius: r.radius })], focus: ['#crosshair'] }]);
   }
 }
 
@@ -1083,7 +1083,7 @@ const campaignCtx = {
       { time: 1.2 },
       { text: 'This is your joystick. Drag it to fly.', focus: ['#stick'] },
       { text: 'Press FIRE to shoot.', focus: ['#controls .act.fire'] },
-      { text: 'The X shows where your shots go.', focus: ['#crosshair'] },
+      { text: 'The sight shows where your shots go.', focus: ['#crosshair'] },
     ]);
     if (campaign.firstOfGroup) state.sector = { asked: 0, first: 0 };
     vitals.reset();                                        // repaired between levels: earlier hits never end a later one

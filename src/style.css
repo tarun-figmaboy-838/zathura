@@ -59,23 +59,20 @@ body.warping #hud, body.warping #controls { opacity: 0; }
 #top-right .score.pop .coin { animation: coin-pop 0.35s var(--spring); }
 @keyframes coin-pop { 40% { transform: scale(1.3) rotate(-12deg); } }
 
-/* the target sight: small and quiet (a thin ring and an X, white with a dark outline). Gold when a
-   target is in its line of fire, red when that one is about to hit the ship; the targets themselves
-   glow (see AsteroidField.setGlows), no rings or brackets round them */
-#crosshair { position: absolute; left: 0; top: 0; width: 30px; height: 30px; margin: -15px 0 0 -15px; --c: rgba(255, 255, 255, 0.9); }
+/* the target sight: a small scope (a ring with four marks crossing it, pointing at an open centre),
+   white with a dark outline so it reads on stars, rocks and planets. Gold when a target is in its
+   line of fire, red when that one is about to hit the ship; the targets themselves glow (see
+   AsteroidField.setGlows), no rings or brackets round them */
+#crosshair { position: absolute; left: 0; top: 0; width: 30px; height: 30px; margin: -15px 0 0 -15px; --c: rgba(255, 255, 255, 0.92); }
 #crosshair.locked { --c: #ffc83a; }
 #crosshair.danger { --c: #ff4a3a; }
-#crosshair .x { position: absolute; left: -5px; top: -5px; width: 40px; height: 40px; overflow: visible; transition: transform 0.18s var(--spring); }
-#crosshair .x * { fill: none; stroke-linecap: round; }
-#crosshair .x .ink { stroke: rgba(6, 10, 28, 0.6); }
-#crosshair .x .line { stroke: var(--c); transition: stroke 0.12s; }
-#crosshair .ring .ink { stroke-width: 6; }
-#crosshair .ring .line { stroke-width: 3; }
-#crosshair .mark .ink { stroke-width: 7.5; }
-#crosshair .mark .line { stroke-width: 3.8; }
-#crosshair.locked .x { transform: scale(0.85); }
+#crosshair .sight { position: absolute; left: -6px; top: -6px; width: 42px; height: 42px; overflow: visible; transition: transform 0.18s var(--spring); }
+#crosshair .sight * { fill: none; stroke-linecap: round; }
+#crosshair .sight .ink * { stroke: rgba(6, 10, 28, 0.62); stroke-width: 8.5; }
+#crosshair .sight .line * { stroke: var(--c); stroke-width: 4; transition: stroke 0.12s; }
+#crosshair.locked .sight { transform: scale(0.86); }
 /* tough targets: small health dots just under the sight */
-#crosshair .hp { position: absolute; left: 50%; top: 40px; translate: -50% 0; display: flex; gap: 2px; padding: 2px; border-radius: 4px;
+#crosshair .hp { position: absolute; left: 50%; top: 42px; translate: -50% 0; display: flex; gap: 2px; padding: 2px; border-radius: 4px;
   background: rgba(6, 10, 28, 0.6); }
 #crosshair .hp:empty { display: none; }
 #crosshair .hp u { display: block; width: 6px; height: 4px; border-radius: 2px; background: var(--c); }
