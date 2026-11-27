@@ -195,13 +195,18 @@ export function createPlanet(sunDir, skyCube, { position, radius = 900, preset =
     object: group,
     radius,
     enabled: true,
+    k: 1,                 // 0..1: follows `enabled` over about a second, so switching never pops
+    lastT: null,
     update(camera, time) {
       uniforms.uTime.value = time;
+      const dt = api.lastT === null ? 0 : Math.min(0.1, Math.max(0, time - api.lastT));
+      api.lastT = time;
+      api.k += ((api.enabled ? 1 : 0) - api.k) * Math.min(1, dt * 2.2);
       // only worlds within ~6.5 km ahead are shown, so the route never feels crowded
       const ahead = camera.position.z - group.position.z;
-      const f = Math.min(1, Math.max(0, (6500 - ahead) / 1500));
+      const f = Math.min(1, Math.max(0, (6500 - ahead) / 1500)) * api.k;
       uniforms.uFade.value = f;
-      group.visible = api.enabled && f > 0.001;
+      group.visible = f > 0.001;
     },
     blocksRay(origin, dir) {
       if (!group.visible) return false;

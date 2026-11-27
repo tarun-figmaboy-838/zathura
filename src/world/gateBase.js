@@ -51,3 +51,19 @@ export class GateBase {
 
 // a small seeded random source, so a gate looks the same every time
 export const seeded = (seed) => { let s = seed; return () => ((s = (s * 16807) % 2147483647) / 2147483647); };
+
+// Fade a gate in (k 0..1) instead of letting it pop into view: its materials become see-through for
+// the fade and go back to solid at 1. Shader materials take k through a uFade uniform.
+export function setFade(group, k) {
+  const solid = k >= 0.999;
+  group.traverse((o) => {
+    const mats = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+    for (const m of mats) {
+      m.userData.fade ??= { transparent: m.transparent, opacity: m.opacity };
+      const base = m.userData.fade;
+      if (m.uniforms?.uFade) m.uniforms.uFade.value = k;
+      else m.opacity = base.opacity * k;
+      m.transparent = solid ? base.transparent : true;
+    }
+  });
+}

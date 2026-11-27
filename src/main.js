@@ -14,6 +14,7 @@ import { createDust } from './world/dust.js';
 import { WormholeTube } from './world/wormhole.js';
 import { Portal } from './world/portal.js';
 import { PlanetGate } from './world/brokenPlanet.js';
+import { setFade } from './world/gateBase.js';
 import { StationGate } from './world/stationGate.js';
 import { CaveGate } from './world/caveGate.js';
 import { RingGate } from './world/ringGate.js';
@@ -1769,6 +1770,8 @@ function frame() {
   else angleOverlay.update(dt, t, quizCenter, camera);
   portal.update(dt, t, ship.position);                                          // the ending's portal (see finaleUpdate)
   if (gate.update(dt, t, ship.position) && state.mode === 'play') crossPortal();   // live mode: it may have died this frame
+  // a new gate fades in over two seconds (it used to pop into view, most visibly after a meteor field)
+  if (gate.state !== 'off' && gate.t <= 2.2) { const x = Math.min(1, gate.t / 2); setFade(gate.group, x * x * (3 - 2 * x)); }
 
   if (vitals.update(dt) && play) { shield.pulse(); audio.shieldUp(); }
   if (mode === 'launch' && !riding()) shield.mesh.visible = ship.redshift < 0.02;

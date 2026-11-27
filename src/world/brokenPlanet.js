@@ -105,7 +105,7 @@ const faceVertex = /* glsl */ `
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }`;
 const faceFragment = /* glsl */ `
-  uniform float uTime, uR, uHeat;
+  uniform float uTime, uR, uHeat, uFade;
   uniform vec3 uCrust, uGlow, uCore, uSun;
   varying vec3 vP;
   varying vec3 vN;
@@ -124,7 +124,7 @@ const faceFragment = /* glsl */ `
     // a molten layer and a small bright core, soft so the crack never glares
     col = mix(col, uGlow * (0.35 + 0.3 * n), smoothstep(0.46, 0.34, r + 0.06 * (n2 - 0.5)));
     col = mix(col, uCore * (0.9 + 0.35 * n), smoothstep(0.17, 0.06, r + 0.04 * (n - 0.5)));
-    gl_FragColor = vec4(col * uHeat, 1.0);
+    gl_FragColor = vec4(col * uHeat, uFade);
   }`;
 
 // the outside: dark rock with a few glowing cracks seeping out near the break
@@ -156,7 +156,7 @@ export class PlanetGate {
     this.group.visible = false;
     scene.add(this.group);
     this.u = {
-      uTime: { value: 0 }, uR: { value: R }, uHeat: { value: 1 }, uSun: { value: sunDir.clone().normalize() },
+      uTime: { value: 0 }, uR: { value: R }, uHeat: { value: 1 }, uFade: { value: 1 }, uSun: { value: sunDir.clone().normalize() },
       uCrust: { value: new THREE.Color() }, uGlow: { value: new THREE.Color() }, uCore: { value: new THREE.Color() },
     };
     const faceMat = new THREE.ShaderMaterial({ uniforms: this.u, vertexShader: faceVertex, fragmentShader: faceFragment });

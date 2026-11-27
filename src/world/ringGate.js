@@ -58,7 +58,7 @@ const ringVertex = /* glsl */ `
 const ringFragment = /* glsl */ `
   uniform vec3 uTint;
   uniform vec2 uGap;
-  uniform float uFlash;
+  uniform float uFlash, uFade;
   varying float vR;
   void main() {
     float x = vR;
@@ -66,7 +66,7 @@ const ringFragment = /* glsl */ `
     d *= smoothstep(${RINGS[0].toFixed(1)}, ${(RINGS[0] + 14).toFixed(1)}, x) * smoothstep(${RINGS[1].toFixed(1)}, ${(RINGS[1] - 40).toFixed(1)}, x);
     d *= 1.0 - smoothstep(uGap.x - 6.0, uGap.x + 4.0, x) * smoothstep(uGap.y + 6.0, uGap.y - 4.0, x);   // the gap
     vec3 col = uTint * (0.55 + 0.45 * sin(x * 0.09)) * (1.0 + uFlash);
-    gl_FragColor = vec4(col, clamp(d, 0.0, 1.0) * 0.8);
+    gl_FragColor = vec4(col, clamp(d, 0.0, 1.0) * 0.8 * uFade);
   }`;
 
 export class RingGate extends GateBase {
@@ -83,7 +83,7 @@ export class RingGate extends GateBase {
     this.planet = planet;
     this.group.add(planet);
 
-    this.u = { uTint: { value: new THREE.Color() }, uGap: { value: new THREE.Vector2(...GAP) }, uFlash: { value: 0 } };
+    this.u = { uTint: { value: new THREE.Color() }, uGap: { value: new THREE.Vector2(...GAP) }, uFlash: { value: 0 }, uFade: { value: 1 } };
     const ring = new THREE.Mesh(new THREE.RingGeometry(RINGS[0], RINGS[1], 256, 4),
       new THREE.ShaderMaterial({ uniforms: this.u, vertexShader: ringVertex, fragmentShader: ringFragment, transparent: true, depthWrite: false, side: THREE.DoubleSide }));
     ring.position.copy(C);
